@@ -1,0 +1,1484 @@
+# OptimalRunner — Implementation Plan
+
+| Field | Value |
+|---|---|
+| Document | `docs/implementation.md` |
+| Version | 1.0 |
+| Status | Ready to execute |
+| Last updated | 2026-07-24 |
+| Companions | [`requirements.md`](./requirements.md), [`design.md`](./design.md) |
+
+---
+
+## 0. How to execute this plan
+
+This document is written to be executed by agents working sequentially or concurrently. Each task is self-contained: it names its inputs, its outputs, its dependencies, the requirements it satisfies, and how it is proven done.
+
+### Task contract
+
+Every task carries this block:
+
+| Field | Meaning |
+|---|---|
+| **ID** | `T-###`. Stable forever. Never reuse or renumber. |
+| **Wave** | Which dependency wave it belongs to. Tasks in the same wave with no listed dependency on each other are safe to run concurrently. |
+| **Depends on** | Task IDs that must be `completed` first. |
+| **Satisfies** | Requirement IDs from `requirements.md`. |
+| **Touches** | Paths this task is allowed to create or modify. **A task must not modify paths outside this list** — this is what makes concurrent execution safe. |
+| **Done when** | Objective, checkable completion conditions. |
+
+### Rules for concurrent agents
+
+1. **Respect `Touches`.** Two tasks in the same wave never list overlapping paths. If you need to modify a file outside your `Touches` list, stop and raise it rather than editing — the plan is wrong and needs amending.
+2. **One task, one PR, one branch** named `t-###-short-slug`.
+3. **Never mark a task done with a failing or skipped test.** A blocked task stays `in_progress` and gets a new task describing the blocker.
+4. **Never edit golden fixture files to make a test pass.** Regenerating a golden is a deliberate act with a written justification in the PR body (see [T-031](#t-031)).
+5. **Tunable constants go in `PaceEngineConfiguration`, never inline** (NFR-21). A literal in engine logic is a review rejection.
+
+### Wave overview
+
+```mermaid
+graph LR
+    W0[Wave 0<br/>Scaffolding<br/>T-001…T-010] --> W1[Wave 1<br/>Core engine<br/>T-011…T-032]
+    W1 --> W2[Wave 2<br/>Modern watch<br/>T-033…T-047]
+    W1 --> W3[Wave 3<br/>Sync + iPhone P0<br/>T-048…T-062]
+    W2 --> W4[Wave 4<br/>Legacy watch<br/>T-063…T-072]
+    W3 --> W4
+    W3 --> W5[Wave 5<br/>Planning P1<br/>T-073…T-080]
+    W5 --> W6[Wave 6<br/>Library P2<br/>T-081…T-086]
+    W2 --> W7[Wave 7<br/>Hardening<br/>T-087…T-094]
+    W4 --> W7
+```
+
+### Milestone mapping
+
+| Milestone | Waves | Tasks | Ships |
+|---|---|---|---|
+| M1 — Pace core | 0, 1, 2 | T-001…T-047 | Modern watch: tempo/easy/long with colour, haptics, grade adjustment |
+| M2 — Analysis hub | 3 | T-048…T-062 | Sync + iPhone run list, detail, global statistics |
+| M3 — Intervals | 1, 2 | included above | VO2 max and interval workouts |
+| M4 — Legacy tier | 4 | T-063…T-072 | Series 3 app |
+| M5 — Planning | 5 | T-073…T-080 | Training plans, today's workout |
+| M6 — Library | 6 | T-081…T-086 | Routes, laps, custom workouts |
+| Release | 7 | T-087…T-094 | Hardening, performance, manual protocol |
+
+---
+
+## Wave 0 — Scaffolding and gates
+
+Everything here is prerequisite. **T-001 must complete before anything else.** T-002 through T-010 can then run concurrently.
+
+<a id="t-001"></a>
+### T-001 — Create the repository skeleton
+
+| | |
+|---|---|
+| **Wave** | 0 |
+| **Depends on** | — |
+| **Satisfies** | NFR-20, NFR-22 |
+| **Touches** | `Core/Package.swift`, `Core/Sources/**/README.md`, `Apps/*/README.md`, `Fixtures/README.md`, `Tools/README.md`, `README.md`, `CONTRIBUTING.md`, `.gitignore` |
+
+Create the directory layout from `design.md` §3. Create `Core/Package.swift` declaring the seven library targets (`ORModels`, `ORPace`, `ORIntervals`, `ORAlerts`, `ORTraining`, `ORStats`, `ORColor`) and their test targets, with `swift-tools-version: 6.0` and **no external dependencies**. Each source directory gets a placeholder file so SwiftPM resolves. Each directory gets a `README.md` stating what belongs there and what does not.
+
+Update the root `README.md` with the GitHub description, a build-from-clean-clone section, and the architecture summary. Add the logo as `Assets/running_man_heart.svg`.
+
+**Done when:** `swift build --package-path Core` succeeds on Linux and macOS; every directory in the layout exists with a README; a clean clone builds following only the README.
+
+<a id="t-002"></a>
+### T-002 — Core CI workflow
+
+| | |
+|---|---|
+| **Wave** | 0 |
+| **Depends on** | T-001 |
+| **Satisfies** | NFR-18, NFR-19 |
+| **Touches** | `.github/workflows/core.yml`, `Tools/coverage-gate.sh` |
+
+Implement `core.yml` per `design.md` §16.5: Ubuntu container, `swift build`, `swift test --enable-code-coverage`, then `coverage-gate.sh` failing under 85% line coverage on `Core`.
+
+`coverage-gate.sh` parses `llvm-cov export` JSON, excludes test targets, and prints a per-target table so a coverage failure names the culprit.
+
+**Done when:** the workflow runs green on Linux; deliberately deleting a test drops coverage and fails the gate.
+
+<a id="t-003"></a>
+### T-003 — Structural gate scripts
+
+| | |
+|---|---|
+| **Wave** | 0 |
+| **Depends on** | T-001 |
+| **Satisfies** | CON-3, NFR-18, NFR-14, NFR-15, AC-FR-K-1-5 |
+| **Touches** | `.github/workflows/gates.yml`, `Tools/check-no-availability.sh`, `Tools/check-core-imports.sh`, `Tools/check-no-network.sh`, `.swiftlint.yml` |
+
+Implement the gate scripts from `design.md` §16.5 and wire them into `gates.yml` with SwiftLint.
+
+- `check-no-availability.sh` fails if `#available` or `@available(watchOS` appears under `Apps/WatchModern` or `Apps/WatchLegacy`.
+- `check-core-imports.sh` fails if `Core/Sources` imports any Apple framework.
+- `check-no-network.sh` fails if any target imports `Network`, references `URLSession`, or declares an `NSAppTransportSecurity` key. This is the mechanical enforcement of the no-backend, no-telemetry guarantee (NFR-14, NFR-15) — a promise that is only credible if something checks it on every push.
+
+**Done when:** all three scripts exit 0 on the clean tree; each fails with a clear `::error::` message when a violation is deliberately introduced in a scratch commit; all three are wired into `gates.yml`.
+
+<a id="t-004"></a>
+### T-004 — Traceability checker
+
+| | |
+|---|---|
+| **Wave** | 0 |
+| **Depends on** | T-001 |
+| **Satisfies** | §12 of `requirements.md` |
+| **Touches** | `Tools/check-traceability.swift` |
+
+A script that parses `requirements.md` for all `FR-*`/`NFR-*` IDs and `implementation.md` for all `Satisfies` entries, then fails if any P0 requirement has no covering task, or any task cites a non-existent requirement ID.
+
+**Done when:** the checker passes against these three documents as written; introducing a bogus requirement ID in a task fails it; deleting a task's coverage of a P0 requirement fails it.
+
+<a id="t-005"></a>
+### T-005 — App project scaffolding
+
+| | |
+|---|---|
+| **Wave** | 0 |
+| **Depends on** | T-001 |
+| **Satisfies** | §4.1 of `requirements.md`, ADR-002 |
+| **Touches** | `Apps/iPhone/**`, `Apps/WatchModern/**`, `Apps/WatchLegacy/**` (project files and Info.plists only) |
+
+Create three Xcode projects with correct deployment targets: iPhone iOS 17.0, WatchModern watchOS 10.0, WatchLegacy watchOS 8.0. Separate bundle identifiers. Each links `Core` via a local package reference.
+
+Both watch targets get `UIBackgroundModes` containing `workout-processing` and `audio` in `Info.plist` — the latter is what permits background haptics (AC-FR-B-1-6) and is easy to omit and hard to debug later.
+
+Add HealthKit, location, and motion usage descriptions with text explaining *why* each is needed.
+
+**Done when:** all three targets build empty and launch in their simulators; `plutil` confirms the background modes and usage descriptions in both watch targets.
+
+<a id="t-006"></a>
+### T-006 — App CI workflows
+
+| | |
+|---|---|
+| **Wave** | 0 |
+| **Depends on** | T-005 |
+| **Satisfies** | NFR-18 |
+| **Touches** | `.github/workflows/apps.yml`, `.github/workflows/legacy.yml` |
+
+`apps.yml`: matrix over iPhone (iOS 17 simulator) and WatchModern (watchOS 10 simulator), using `build-for-testing` + `test-without-building`.
+
+`legacy.yml`: pinned to Xcode 26 via `maxim-lobanov/setup-xcode`, with a comment citing [CON-2](./requirements.md#con-2) explaining the pin and what to do when it starts failing.
+
+**Done when:** both workflows run green against the empty projects; the Xcode pin is present with its explanatory comment.
+
+<a id="t-007"></a>
+### T-007 — Units and pace primitives
+
+| | |
+|---|---|
+| **Wave** | 0 |
+| **Depends on** | T-001 |
+| **Satisfies** | AC-FR-A-1-4, ADR-003, NFR-24 |
+| **Touches** | `Core/Sources/ORModels/Units/**`, `Core/Tests/ORModelsTests/UnitsTests.swift` |
+
+Implement `Pace`, `PaceRatio`, `UnitPreference`, and formatting helpers per `design.md` §4.
+
+**Done when:** `PaceRatio(percentSlower: 12.5).value == 1.125` exactly; `Pace(minutesPerMile: 8).scaled(by: PaceRatio(percentSlower: 12.5))` formats as `9:00 /mi`; round-trip property test passes within 1e-9; formatting is correct for both mile and kilometre preferences.
+
+<a id="t-008"></a>
+### T-008 — Engine configuration type
+
+| | |
+|---|---|
+| **Wave** | 0 |
+| **Depends on** | T-007 |
+| **Satisfies** | NFR-21 |
+| **Touches** | `Core/Sources/ORModels/Configuration/**`, `Core/Tests/ORModelsTests/ConfigurationTests.swift` |
+
+`PaceEngineConfiguration`: one `Codable, Sendable` struct holding every tunable from `requirements.md` and `design.md`, each with its documented default and a `validate()` that rejects out-of-range values. Include a `.default` and per-run-type band/curve presets.
+
+**Done when:** every constant marked *(tunable)* in `requirements.md` has a field here; `validate()` rejects each out-of-range value with a specific error; the type round-trips through JSON.
+
+<a id="t-009"></a>
+### T-009 — Core domain models
+
+| | |
+|---|---|
+| **Wave** | 0 |
+| **Depends on** | T-007 |
+| **Satisfies** | AC-FR-A-7-1, AC-FR-I-1-1 |
+| **Touches** | `Core/Sources/ORModels/Domain/**`, `Core/Tests/ORModelsTests/DomainTests.swift` |
+
+`RunType`, `StepKind`, `StepGoal`, `PaceZone`, `RunnerProfile`, `SensorCapabilities`, `DegradationFlag`, `LocationSample`, `EngineInput`, `EngineOutput`, `RunSample`.
+
+**Done when:** all types are `Codable, Sendable, Hashable`; `PaceZone` has all six cases; JSON round-trip tests pass for every type.
+
+<a id="t-010"></a>
+### T-010 — Fixture format and replay CLI
+
+| | |
+|---|---|
+| **Wave** | 0 |
+| **Depends on** | T-009 |
+| **Satisfies** | AC-FR-A-1-6, §16.2 of `design.md` |
+| **Touches** | `Tools/replay/**`, `Fixtures/README.md`, `Core/Sources/ORModels/Fixtures/**` |
+
+Define the on-disk fixture format (a JSON array of `EngineInput` plus metadata) and the golden format (a JSON array of the asserted subset of `EngineOutput`). Build `swift run replay` supporting `--fixture`, `--golden`, `--update-goldens`, and `--print-timeline`.
+
+`--update-goldens` must produce a human-reviewable diff, not an opaque blob — this is what makes rule 4 enforceable.
+
+**Done when:** the CLI replays a hand-written 60-sample fixture and prints a zone timeline; `--update-goldens` writes a golden that a subsequent run matches exactly.
+
+---
+
+## Wave 1 — The core engine
+
+The heart of the product. **T-011 through T-030 are highly parallel** — each owns a distinct source directory. T-031/032 integrate.
+
+<a id="t-011"></a>
+### T-011 — Rolling pace estimator
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-008, T-009 |
+| **Satisfies** | FR-A-1 (all ACs) |
+| **Touches** | `Core/Sources/ORPace/RollingPace/**`, `Core/Tests/ORPaceTests/RollingPaceTests.swift` |
+
+Implement `RollingPaceEstimator` per `design.md` §5.1: distance-windowed at 200 m, time-bounded [20 s, 60 s], accuracy rejection above 20 m, EWMA α = 0.30, stationary detection, plausibility clamp.
+
+**Done when:** a constant-8:00/mi synthetic trace converges to 8:00 ± 1 s within 30 s; samples with accuracy 50 m provably do not move the output; a 5 s stop yields `nil`; two identical runs of the suite produce identical output; every AC in FR-A-1 has a named test.
+
+<a id="t-012"></a>
+### T-012 — Target pace curve
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-008 |
+| **Satisfies** | FR-A-2 (all ACs) |
+| **Touches** | `Core/Sources/ORPace/TargetCurve/**`, `Core/Tests/ORPaceTests/TargetCurveTests.swift` |
+
+Implement `TargetPaceCurve` and the three presets from `design.md` §5.3.
+
+**Done when:** Tempo yields 8:00 at progress 0.5 and 8:07 at progress 1.0 from an 8:00 base; Easy is flat at every progress; Long yields 8:00 at 0.6 and 8:19 at 1.0; progress-0 with no plan yields no drift; a property test confirms drift is monotonic in progress.
+
+<a id="t-013"></a>
+### T-013 — Progress calculator
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-009 |
+| **Satisfies** | AC-FR-A-2-5, AC-FR-A-2-6, AC-FR-A-2-7 |
+| **Touches** | `Core/Sources/ORPace/Progress/**`, `Core/Tests/ORPaceTests/ProgressTests.swift` |
+
+Distance-based when a planned distance exists, time-based on planned duration otherwise, 0 when neither. Excludes paused time.
+
+**Done when:** all three modes are tested; progress clamps to [0, 1]; a run paused for 10 minutes shows progress unchanged across the pause.
+
+<a id="t-014"></a>
+### T-014 — Grade estimator
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-008, T-009 |
+| **Satisfies** | FR-A-4, AC-FR-A-4-1, AC-FR-A-4-2, AC-FR-A-4-6 |
+| **Touches** | `Core/Sources/ORPace/Grade/Estimator/**`, `Core/Tests/ORPaceTests/GradeEstimatorTests.swift` |
+
+Barometric relative altitude over a 100 m horizontal window, EWMA α = 0.20, plus the 15 s persistence requirement before an applied-grade change.
+
+**Done when:** a synthetic 4% climb converges to 0.04 ± 0.005 within 100 m; a single 2 m altitude spike over 5 m of travel does not move the applied grade; absent altitude input, the estimator reports unavailable rather than 0.
+
+<a id="t-015"></a>
+### T-015 — Grade adjustment model
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-008 |
+| **Satisfies** | FR-A-4, AC-FR-A-4-3, AC-FR-A-4-4, AC-FR-A-4-5, AC-FR-A-4-9, NFR-11, CON-6, ADR-006 |
+| **Touches** | `Core/Sources/ORPace/Grade/Model/**`, `Core/Tests/ORPaceTests/GradeModelTests.swift` |
+
+Implement the Minetti polynomial and the attenuated, clamped factor from `design.md` §5.4.
+
+**Done when:** the full §5.4 table is encoded as a test with 0.001 tolerance; `factor(0) == 1.0` exactly; the factor is monotonically non-decreasing in grade across [−0.5, 0.5]; NaN and ±infinity inputs return 1.0 rather than propagating; the output is clamped to [0.90, 1.30] for all real inputs.
+
+<a id="t-016"></a>
+### T-016 — Zone classifier and hysteresis
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-008 |
+| **Satisfies** | FR-A-3 (all ACs) |
+| **Touches** | `Core/Sources/ORPace/Zones/**`, `Core/Tests/ORPaceTests/ZoneTests.swift` |
+
+Six-zone classifier with four asymmetric thresholds and 0.5% boundary hysteresis, per `design.md` §5.5.
+
+**Done when:** the three preset band tables are encoded as tests; a pace oscillating within 0.4% of a boundary produces at most one zone change over 1 000 ticks; a property test confirms zone monotonicity in pace; all six zones are reachable.
+
+<a id="t-017"></a>
+### T-017 — Settling window
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-008 |
+| **Satisfies** | FR-A-5 (all ACs), AC-FR-C-5-4 |
+| **Touches** | `Core/Sources/ORPace/Settling/**`, `Core/Tests/ORPaceTests/SettlingTests.swift` |
+
+Run-level (400 m / 90 s) and step-level (100 m) settling windows forcing `neutral`.
+
+**Done when:** zone is `neutral` for the first 400 m and correct at 401 m; the 90 s path triggers for a slow runner before 400 m; metrics are unaffected; step-level settling applies at every interval step start.
+
+<a id="t-018"></a>
+### T-018 — Workout plan model
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-009 |
+| **Satisfies** | FR-C-1 (all ACs) |
+| **Touches** | `Core/Sources/ORIntervals/Plan/**`, `Core/Tests/ORIntervalsTests/PlanTests.swift` |
+
+`WorkoutPlan`, `PlanElement`, `Step`, repeat blocks, flattening to `[ResolvedStep]` with rep indices, validation, and the built-in presets including the memo's canonical VO2 max workout.
+
+**Done when:** the canonical workout flattens to exactly 10 resolved steps with correct rep indices; repeat counts 1–40 and distances 100 m–42 195 m are accepted and outside those rejected; validation rejects an empty plan; the plan round-trips through JSON.
+
+<a id="t-019"></a>
+### T-019 — Step state machine
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-018 |
+| **Satisfies** | FR-C-2, FR-C-3, FR-C-6, NFR-9, NFR-10 |
+| **Touches** | `Core/Sources/ORIntervals/Machine/**`, `Core/Tests/ORIntervalsTests/MachineTests.swift` |
+
+The state machine from `design.md` §6.2: per-step distance from the step's own origin, auto-advance on distance goals, manual advance refused on closed goals, pause/resume, one-step undo, terminal handling.
+
+**Done when:** a 4×1000 m fixture produces 8 transitions at the correct cumulative distances; total measured distance after 4 reps is within 0.1% of 4 000 m; a manual advance during a closed-goal step is a no-op; advance-then-undo restores exact prior state; a property test confirms the machine always reaches `Finished`; pause freezes step elapsed but not cumulative distance.
+
+<a id="t-020"></a>
+### T-020 — VO2 max mode semantics
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-018 |
+| **Satisfies** | FR-C-4 (all ACs), FR-C-5 |
+| **Touches** | `Core/Sources/ORIntervals/RunTypeSemantics/**`, `Core/Tests/ORIntervalsTests/VO2MaxTests.swift` |
+
+Encode the Interval-vs-VO2max distinction from `design.md` §6.3 as a pure policy type consulted by the engine.
+
+**Done when:** a VO2 max plan yields `zone == .neutral` at every tick regardless of pace; pace alerts are suppressed and transition alerts are not; an Interval plan with per-step targets colours only the targeted steps.
+
+<a id="t-021"></a>
+### T-021 — Alert policy
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-008, T-009 |
+| **Satisfies** | FR-B-1 (all ACs) |
+| **Touches** | `Core/Sources/ORAlerts/**`, `Core/Tests/ORAlertsTests/**` |
+
+Dwell/cooldown machine per `design.md` §7.
+
+**Done when:** 20 s continuous in `tooFast` fires exactly one alert; a 19 s excursion fires none; a second alert within the 60 s cooldown is suppressed while the opposite direction still fires; the AC-FR-B-1-8 oscillation scenario fires zero alerts; suppression works for settling, pause, VO2 max, and the user setting; a property test bounds alert count by `T / cooldown`.
+
+<a id="t-022"></a>
+### T-022 — Colour maths
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-001 |
+| **Satisfies** | AC-FR-J-1-3, AC-FR-J-1-4, AC-FR-J-2-2, AC-FR-A-6-7 |
+| **Touches** | `Core/Sources/ORColor/**`, `Core/Tests/ORColorTests/**` |
+
+sRGB→linear, WCAG relative luminance and contrast ratio, CIELAB conversion and ΔE*ab, and Brettel–Viénot–Mollon CVD simulation for protanopia, deuteranopia, and tritanopia. **No UI imports.**
+
+**Done when:** contrast ratio of black-on-white is 21.0 ± 0.01; known reference pairs from the WCAG spec match published values; ΔE between identical colours is 0; CVD simulation of a pure red is verifiably shifted under deuteranopia.
+
+<a id="t-023"></a>
+### T-023 — Zone palettes and their tests
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-022, T-009 |
+| **Satisfies** | FR-J-1, FR-J-2, AC-FR-A-6-7, CON-4 |
+| **Touches** | `Core/Sources/ORColor/Palettes/**`, `Core/Tests/ORColorTests/PaletteTests.swift` |
+
+Encode both palettes from `design.md` §11 as data, with normal and dimmed variants. **Text colour is a property of (zone, luminance state), not of zone alone** — the amber `slightlyFast` swatch takes black text at full brightness and white text when dimmed, and modelling it per-zone will silently fail the contrast gate.
+
+**Done when:** all 22 (palette × zone × luminance-state) pairings meet 4.5:1, asserted individually so a failure names the offender; the CVD palette's zone pairs meet ΔE ≥ 20 normal and ≥ 15 dimmed under all three simulations; dimmed variants of both palettes are mutually distinguishable; adding a zone without a colour fails to compile.
+
+<a id="t-024"></a>
+### T-024 — Sample packing
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-009 |
+| **Satisfies** | AC-FR-D-2-1, AC-FR-D-2-4, ADR-007 |
+| **Touches** | `Core/Sources/ORModels/Packing/**`, `Core/Tests/ORModelsTests/PackingTests.swift` |
+
+`PackedSamples` columnar encode/decode per `design.md` §9.2, with the stated per-column resolutions and missing-value sentinels.
+
+**Done when:** a 5 400-sample run packs to under 1 MB uncompressed; decode∘encode is identity within each column's resolution; NaN rolling-pace and 0-bpm heart rate survive as "missing"; a property test covers round-trip over random inputs; decode of a 90-minute run completes in under 10 ms.
+
+<a id="t-025"></a>
+### T-025 — Zone timeline RLE
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-009 |
+| **Satisfies** | AC-FR-D-2-3 |
+| **Touches** | `Core/Sources/ORModels/Timeline/**`, `Core/Tests/ORModelsTests/TimelineTests.swift` |
+
+Run-length-encoded `[ZoneSpan]` with encode, decode, and time-in-zone aggregation.
+
+**Done when:** a 3 600-sample constant-zone run encodes to one span; decode reproduces the input exactly; time-in-zone totals equal total duration.
+
+<a id="t-026"></a>
+### T-026 — Run envelope
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-024, T-025, T-018 |
+| **Satisfies** | AC-FR-E-1-3, AC-FR-E-1-4, ADR-009 |
+| **Touches** | `Core/Sources/ORModels/Envelope/**`, `Core/Tests/ORModelsTests/EnvelopeTests.swift` |
+
+`RunEnvelope` per `design.md` §9.1 with schema versioning, plus a decoder that rejects unknown major versions with a typed error rather than throwing a decoding failure.
+
+**Done when:** round-trips through JSON and gzip; a version-2 payload decoded by version-1 code yields `.unsupportedSchema` and does not crash; profile and configuration snapshots are preserved verbatim.
+
+<a id="t-027"></a>
+### T-027 — VDOT and Riegel
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-007 |
+| **Satisfies** | AC-FR-G-2-2, AC-FR-G-2-3, AC-FR-I-1-2 |
+| **Touches** | `Core/Sources/ORTraining/Fitness/**`, `Core/Tests/ORTrainingTests/FitnessTests.swift` |
+
+Riegel prediction with exponent 1.06, VDOT-style fitness scoring, and derivation of Easy / Marathon / Threshold / Interval / Repetition paces.
+
+**Done when:** Riegel reproduces published worked examples within 1%; a 20:00 5 k derives training paces matching published VDOT tables within 3 s/mi; extrapolation beyond 3× the source distance is flagged low-confidence.
+
+<a id="t-028"></a>
+### T-028 — Personal-best sweep
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-024 |
+| **Satisfies** | AC-FR-F-3-4 |
+| **Touches** | `Core/Sources/ORStats/Bests/**`, `Core/Tests/ORStatsTests/BestsTests.swift` |
+
+O(n) two-pointer sweep finding the fastest rolling segment of each benchmark distance within a run.
+
+**Done when:** a synthetic 10 k containing a deliberately fast 5 k reports that 5 k as the best effort; runs shorter than a benchmark report no best for it; performance is linear — a 5 400-sample run sweeps all six distances in under 5 ms.
+
+<a id="t-029"></a>
+### T-029 — Aggregate statistics
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-026, T-028 |
+| **Satisfies** | FR-F-3 |
+| **Touches** | `Core/Sources/ORStats/Aggregates/**`, `Core/Tests/ORStatsTests/AggregateTests.swift` |
+
+Incremental aggregate application (lifetime, year, month, week), weekly series generation, and a `rebuildAll` path.
+
+**Done when:** applying 1 000 runs incrementally produces the same totals as `rebuildAll`; week boundaries respect the user's first-day-of-week; incremental application of one run is O(1); removing a run correctly reverses its contribution.
+
+<a id="t-030"></a>
+### T-030 — Test fixtures
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-010 |
+| **Satisfies** | §16.2 of `design.md` |
+| **Touches** | `Fixtures/*.json` |
+
+Author all seven fixtures from `design.md` §16.2. Generate synthetically but realistically: include GPS noise, heart-rate drift, and altitude noise consistent with real hardware. `tempo-5mi-rolling` must reproduce the memo's observed shape — opening faster than target, drifting slower, crossing target near halfway.
+
+**Done when:** all seven exist and load; each is documented in `Fixtures/README.md` with what it exercises; each produces the intended engine behaviour when replayed.
+
+<a id="t-031"></a>
+### T-031 — Engine integration and golden tests
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-011…T-021, T-030 |
+| **Satisfies** | AC-FR-A-1-6, FR-A-*, FR-B-*, FR-C-* |
+| **Touches** | `Core/Sources/ORPace/Engine/**`, `Core/Tests/ORPaceTests/GoldenTests.swift`, `Fixtures/golden/**` |
+
+Assemble `RunEngine.tick` per `design.md` §5.7, wiring the pipeline in order. Generate and commit goldens for all seven fixtures. Write the golden test harness.
+
+**Done when:** all seven fixtures pass against committed goldens; `hilly-10k` demonstrably shifts its target on climbs; `gps-dropout-tunnel` degrades to pedometer without a zone flap; `boundary-oscillation` produces at most one zone change; running the suite twice produces identical output; the PR body documents each golden.
+
+<a id="t-032"></a>
+### T-032 — Core property test suite
+
+| | |
+|---|---|
+| **Wave** | 1 |
+| **Depends on** | T-031 |
+| **Satisfies** | §16.3 of `design.md` |
+| **Touches** | `Core/Tests/PropertyTests/**` |
+
+Implement every property from the `design.md` §16.3 table. Hand-rolled generators — no external dependency (T-001 forbids them).
+
+**Done when:** all twelve properties are implemented and passing with at least 1 000 cases each; each names the requirement it defends; the suite runs in under 60 s; a deliberately introduced off-by-one in the hysteresis logic is caught.
+
+---
+
+## Wave 2 — Modern watch app
+
+Depends on Wave 1. T-033…T-037 are sequential (they build the sensor stack); T-038…T-046 are largely parallel once T-037 lands.
+
+<a id="t-033"></a>
+### T-033 — HealthKit workout session controller (Modern)
+
+| | |
+|---|---|
+| **Wave** | 2 |
+| **Depends on** | T-005, T-009 |
+| **Satisfies** | AC-FR-D-1-1…4, AC-FR-D-1-7, DEG-8 |
+| **Touches** | `Apps/WatchModern/Sources/Sensors/Workout/**` |
+
+`HKWorkoutSession` + `HKLiveWorkoutBuilder` lifecycle: authorization, start, pause, resume, end, save with route. Handle authorization denial by running locally with a clear indication.
+
+**Done when:** a workout starts, records, and saves a readable `HKWorkout`; pause/resume produce correct active time; denial path records locally and states so; unit-tested against a HealthKit protocol fake.
+
+<a id="t-034"></a>
+### T-034 — Location and motion providers (Modern)
+
+| | |
+|---|---|
+| **Wave** | 2 |
+| **Depends on** | T-005 |
+| **Satisfies** | AC-FR-A-1-2, AC-FR-A-1-3, AC-FR-A-4-1, DEG-1, DEG-2, DEG-3, DEG-10, NFR-16 |
+| **Touches** | `Apps/WatchModern/Sources/Sensors/Location/**`, `Apps/WatchModern/Sources/Sensors/Motion/**` |
+
+`CLLocationManager` configured for fitness, `CMAltimeter` relative altitude, `CMPedometer` fallback. Emit normalized `Core` value types only.
+
+**Done when:** location samples convert correctly to `LocationSample`; altimeter unavailability is reported through `SensorCapabilities` rather than crashing; pedometer fallback engages after 10 s without usable GPS; indoor mode uses pedometer distance and disables grade.
+
+<a id="t-035"></a>
+### T-035 — Distance fusion (Modern)
+
+| | |
+|---|---|
+| **Wave** | 2 |
+| **Depends on** | T-033, T-034 |
+| **Satisfies** | §8.2 of `design.md`, DEG-1 |
+| **Touches** | `Apps/WatchModern/Sources/Sensors/Fusion/**` |
+
+Fuse HealthKit, CoreLocation, and pedometer distance in the priority order from `design.md` §8.2, emitting one monotonic `cumulativeDistance` and recording the active source.
+
+**Done when:** cumulative distance is monotonically non-decreasing under all source-switch sequences; a source switch never causes a jump greater than 5 m; the active source appears in the sample record.
+
+<a id="t-036"></a>
+### T-036 — Sensor feed adapter (Modern)
+
+| | |
+|---|---|
+| **Wave** | 2 |
+| **Depends on** | T-035 |
+| **Satisfies** | AC-FR-K-1-2, §8 of `design.md` |
+| **Touches** | `Apps/WatchModern/Sources/Sensors/Feed/**`, `Apps/WatchModern/Tests/FeedTests.swift` |
+
+Implement `RunSensorFeed`, emitting `EngineInput` at 1 Hz.
+
+**Done when:** the adapter replays all seven shared fixtures into the engine and matches the same goldens `Core` uses — this is the tier-equivalence test (AC-FR-K-1-2); `SensorCapabilities` reports correctly per device.
+
+<a id="t-037"></a>
+### T-037 — Run controller (Modern)
+
+| | |
+|---|---|
+| **Wave** | 2 |
+| **Depends on** | T-036, T-031 |
+| **Satisfies** | FR-D-1, FR-D-2, NFR-8 |
+| **Touches** | `Apps/WatchModern/Sources/Run/Controller/**` |
+
+The `@Observable` object owning the feed, engine, sample store, and haptics; exposing `RunState` to views.
+
+**Done when:** a simulated run drives state end to end; pause/resume/end work; samples accumulate at 1 Hz; zone changes propagate to observers; no timer, location update, or wake lock remains active once the session ends (NFR-8), asserted by a test that ends a run and checks every subscription is torn down.
+
+<a id="t-038"></a>
+### T-038 — Sample store and durability (Modern)
+
+| | |
+|---|---|
+| **Wave** | 2 |
+| **Depends on** | T-037, T-024 |
+| **Satisfies** | FR-D-6 (all ACs), DEG-6, NFR-12 |
+| **Touches** | `Apps/WatchModern/Sources/Run/Store/**` |
+
+Append-only sample capture with atomic flush every 30 s, orphan detection on launch, and a storage precondition before starting a run.
+
+**Done when:** a simulated crash loses at most 30 s; the orphan is detected on next launch and offered for save or discard; a full-storage condition refuses the run with a clear message rather than starting and failing later.
+
+<a id="t-039"></a>
+### T-039 — Design system (Modern)
+
+| | |
+|---|---|
+| **Wave** | 2 |
+| **Depends on** | T-023 |
+| **Satisfies** | FR-J-1, AC-FR-A-6-6 |
+| **Touches** | `Apps/WatchModern/Sources/DesignSystem/**` |
+
+Bridge `ORColor` palettes to SwiftUI `Color`, the SF Symbol glyph set, typography, and `isLuminanceReduced` handling.
+
+**Done when:** every zone renders its exact palette hex; luminance-reduced state selects dimmed variants; `Reduce Motion` cross-fades instead of animating; no colour literal appears outside `ORColor`.
+
+<a id="t-040"></a>
+### T-040 — Metrics view (Modern)
+
+| | |
+|---|---|
+| **Wave** | 2 |
+| **Depends on** | T-037, T-039 |
+| **Satisfies** | FR-A-6 (all ACs), FR-J-1 |
+| **Touches** | `Apps/WatchModern/Sources/Run/Views/Metrics/**` |
+
+The full-screen zone-coloured metrics page from `design.md` §12.2, with the five-metric stack, glyph, caption, signed delta, and hill indicator.
+
+**Done when:** the background fills edge to edge with no inset; all five metrics render without truncation at 40 mm and at the largest Dynamic Type size; heart rate shows `--` after a 10 s dropout; colour transitions take 400 ms; snapshot tests cover every zone × palette × luminance state.
+
+<a id="t-041"></a>
+### T-041 — Controls page and End flow (Modern)
+
+| | |
+|---|---|
+| **Wave** | 2 |
+| **Depends on** | T-037, T-039 |
+| **Satisfies** | AC-FR-A-6-9, AC-FR-D-1-3, CON-1 |
+| **Touches** | `Apps/WatchModern/Sources/Run/Views/Controls/**` |
+
+The paged layout from `design.md` §12.1 with Controls, Metrics, and Now Playing; Pause / Resume / End / Lap on Controls.
+
+**Done when:** swiping right reveals Controls; End saves and returns to the start screen; the crown press is never relied upon anywhere; a UI test covers start → run → pause → resume → end.
+
+<a id="t-042"></a>
+### T-042 — Haptics (Modern)
+
+| | |
+|---|---|
+| **Wave** | 2 |
+| **Depends on** | T-037, T-021 |
+| **Satisfies** | FR-B-1 (all ACs) |
+| **Touches** | `Apps/WatchModern/Sources/Run/Haptics/**` |
+
+Map `AlertCommand` to distinct `WKHapticType` patterns; verify background delivery during an active session.
+
+**Done when:** the three alert kinds are audibly and tactilely distinct on hardware; haptics fire with the app backgrounded during a workout; disabling pace haptics in settings leaves interval haptics working; verified on device and recorded in the manual protocol.
+
+<a id="t-043"></a>
+### T-043 — Warning screen (Modern)
+
+| | |
+|---|---|
+| **Wave** | 2 |
+| **Depends on** | T-040, T-042 |
+| **Satisfies** | FR-B-2 (all ACs) |
+| **Touches** | `Apps/WatchModern/Sources/Run/Views/Warning/**` |
+
+The full-screen warning from `design.md` §12.3: direction, current, target, signed delta; 4 s auto-dismiss; tap or crown rotation dismisses; never shown while dimmed; step transitions take priority.
+
+**Done when:** all six FR-B-2 ACs have a test; dismissal returns to the prior scroll position; a warning raised while dimmed is dropped, not queued.
+
+<a id="t-044"></a>
+### T-044 — Interval UI and transitions (Modern)
+
+| | |
+|---|---|
+| **Wave** | 2 |
+| **Depends on** | T-040, T-019 |
+| **Satisfies** | FR-C-2, FR-C-3, FR-C-6, AC-FR-C-4-5 |
+| **Touches** | `Apps/WatchModern/Sources/Intervals/Views/**` |
+
+Step header, rep counter, distance-remaining, final-100 m countdown, the 3 s transition screen, tap-to-advance, Double Tap, crown detent, and the undo affordance.
+
+**Done when:** a simulated 4×1000 m shows correct rep numbers and transitions; tap advances only open-goal steps; Double Tap works on a Series 9 simulator; undo appears for 5 s and restores state; the countdown appears in the final 100 m.
+
+<a id="t-045"></a>
+### T-045 — VO2 max mode UI (Modern)
+
+| | |
+|---|---|
+| **Wave** | 2 |
+| **Depends on** | T-044, T-020 |
+| **Satisfies** | FR-C-4 (all ACs) |
+| **Touches** | `Apps/WatchModern/Sources/Intervals/VO2Max/**` |
+
+The no-colour VO2 max screen with the full metric stack plus step, rep, and distance-remaining.
+
+**Done when:** the background is neutral at every pace; no pace haptic ever fires; transition haptics do; a snapshot test proves no zone colour appears under any pace input.
+
+<a id="t-046"></a>
+### T-046 — Start screen and run selection (Modern)
+
+| | |
+|---|---|
+| **Wave** | 2 |
+| **Depends on** | T-039, T-018 |
+| **Satisfies** | FR-A-7 |
+| **Touches** | `Apps/WatchModern/Sources/App/Start/**` |
+
+Five run types, target and band preview, per-run target adjustment, and a slot for today's planned workout.
+
+**Done when:** a run starts in two taps for the default type; adjusting the target does not mutate the stored profile; every run type is reachable and starts correctly.
+
+<a id="t-047"></a>
+### T-047 — Watch settings (Modern)
+
+| | |
+|---|---|
+| **Wave** | 2 |
+| **Depends on** | T-046 |
+| **Satisfies** | AC-FR-B-1-7, AC-FR-C-3-3, AC-FR-J-2-3, AC-FR-I-1-4 |
+| **Touches** | `Apps/WatchModern/Sources/App/Settings/**` |
+
+Pace haptics toggle, crown-detent-advance toggle, palette selection, units.
+
+**Done when:** each setting persists across launches, takes effect immediately, and syncs from the phone profile.
+
+---
+
+## Wave 3 — Sync and the iPhone hub
+
+Runs concurrently with Wave 2 after Wave 1. T-048…T-051 are the transport; T-052 onward are the app.
+
+<a id="t-048"></a>
+### T-048 — Watch transport
+
+| | |
+|---|---|
+| **Wave** | 3 |
+| **Depends on** | T-026, T-038 |
+| **Satisfies** | AC-FR-E-1-1, AC-FR-E-1-2, AC-FR-E-1-5, DEG-7 |
+| **Touches** | `Apps/WatchModern/Sources/Transport/**` |
+
+`WCSession.transferFile` of a gzipped `RunEnvelope`, a pending queue retained until ACK, and eviction that never drops an unacknowledged payload in favour of an acknowledged one.
+
+**Done when:** a run enqueues with the phone unreachable and transfers on reconnect; ACK deletes the payload; the eviction policy is unit-tested including the unacknowledged-priority rule; the queue survives app relaunch.
+
+<a id="t-049"></a>
+### T-049 — Phone transport and ingest
+
+| | |
+|---|---|
+| **Wave** | 3 |
+| **Depends on** | T-026, T-053 |
+| **Satisfies** | AC-FR-E-1-3, AC-FR-E-1-4, AC-FR-E-1-7, NFR-13 |
+| **Touches** | `Apps/iPhone/Sources/Transport/**` |
+
+Receive, validate, upsert by `runID`, update aggregates, ACK. Unknown major schema versions produce a message, never a crash.
+
+**Done when:** duplicate delivery creates exactly one record; a version-2 payload is rejected gracefully; end-to-end delivery completes within 60 s of reachability in an integration test.
+
+<a id="t-050"></a>
+### T-050 — Profile and plan downlink
+
+| | |
+|---|---|
+| **Wave** | 3 |
+| **Depends on** | T-048, T-049 |
+| **Satisfies** | AC-FR-I-1-6, AC-FR-G-1-3, AC-FR-A-7-4 |
+| **Touches** | `Apps/WatchModern/Sources/Transport/Downlink/**`, `Apps/iPhone/Sources/Transport/Downlink/**` |
+
+`updateApplicationContext` carrying profile and upcoming planned workouts.
+
+**Done when:** a profile edit on the phone reaches the watch; the watch operates correctly on the last-synced profile with the phone off; today's planned workout appears on the watch start screen.
+
+<a id="t-051"></a>
+### T-051 — HealthKit backfill
+
+| | |
+|---|---|
+| **Wave** | 3 |
+| **Depends on** | T-049 |
+| **Satisfies** | AC-FR-E-1-6, DEG-4 |
+| **Touches** | `Apps/iPhone/Sources/Health/**` |
+
+Reconstruct a degraded `RunRecord` from an `HKWorkout` when no sidecar arrives, flagged `isDegraded`.
+
+**Done when:** a run with a deleted payload still appears with distance, duration, heart rate, and route; the detail view states what is missing rather than rendering an empty chart; backfill never overwrites a complete record.
+
+<a id="t-052"></a>
+### T-052 — iPhone app shell
+
+| | |
+|---|---|
+| **Wave** | 3 |
+| **Depends on** | T-005 |
+| **Satisfies** | §13.1 of `design.md` |
+| **Touches** | `Apps/iPhone/Sources/App/**` |
+
+Five-tab structure, navigation, launch, and onboarding entry.
+
+**Done when:** all five tabs exist and navigate; the app launches to Runs; empty states render.
+
+<a id="t-053"></a>
+### T-053 — SwiftData store
+
+| | |
+|---|---|
+| **Wave** | 3 |
+| **Depends on** | T-052, T-026 |
+| **Satisfies** | §9.3 of `design.md`, R-8 |
+| **Touches** | `Apps/iPhone/Sources/Persistence/**` |
+
+The schema from `design.md` §9.3 with `.externalStorage` blobs, repository types, and a migration plan from v1.
+
+**Done when:** all models persist and fetch; sample blobs live in external storage, verified by inspecting the store; a 1 000-run fetch for the list view does not page in blobs; repository types are unit-tested against an in-memory container.
+
+<a id="t-054"></a>
+### T-054 — Run list
+
+| | |
+|---|---|
+| **Wave** | 3 |
+| **Depends on** | T-053 |
+| **Satisfies** | FR-F-1 (all ACs) |
+| **Touches** | `Apps/iPhone/Sources/Features/RunList/**` |
+
+Newest-first list with type, distance, duration, average pace, heart rate; filters by type and date range; empty state.
+
+**Done when:** 1 000 seeded runs scroll at 60 fps, asserted by a performance test; filters work in combination; the empty state explains how to record a first run.
+
+<a id="t-055"></a>
+### T-055 — Chart downsampling
+
+| | |
+|---|---|
+| **Wave** | 3 |
+| **Depends on** | T-024 |
+| **Satisfies** | AC-FR-F-2-8, NFR-4 |
+| **Touches** | `Core/Sources/ORStats/Downsample/**`, `Core/Tests/ORStatsTests/DownsampleTests.swift` |
+
+Largest-triangle-three-buckets downsampling to at most 1 000 points.
+
+**Done when:** 5 400 points reduce to 1 000 preserving visible peaks and troughs; first and last points are always retained; it runs in under 5 ms; a property test confirms output length never exceeds the threshold.
+
+<a id="t-056"></a>
+### T-056 — Pace and heart-rate charts
+
+| | |
+|---|---|
+| **Wave** | 3 |
+| **Depends on** | T-053, T-055 |
+| **Satisfies** | FR-F-2, AC-FR-F-2-1, AC-FR-F-2-2, AC-FR-F-2-9 |
+| **Touches** | `Apps/iPhone/Sources/Features/RunDetail/Charts/Pace/**` |
+
+Swift Charts pace-over-distance with the target curve and shaded band, heart rate on a shared axis, and a distance/time axis toggle.
+
+**Done when:** the band renders as a shaded region matching the run's actual configuration snapshot; VoiceOver reads underlying values; the chart is legible in greyscale.
+
+<a id="t-057"></a>
+### T-057 — Elevation and grade chart
+
+| | |
+|---|---|
+| **Wave** | 3 |
+| **Depends on** | T-056 |
+| **Satisfies** | AC-FR-F-2-3, AC-FR-A-4-8 |
+| **Touches** | `Apps/iPhone/Sources/Features/RunDetail/Charts/Elevation/**` |
+
+Elevation profile with raw and grade-adjusted target overlaid where adjustment applied.
+
+**Done when:** a `hilly-10k`-derived record shows the adjusted target diverging on climbs; runs without altimeter data hide the overlay rather than showing a flat line.
+
+<a id="t-058"></a>
+### T-058 — Time in zone
+
+| | |
+|---|---|
+| **Wave** | 3 |
+| **Depends on** | T-053, T-025 |
+| **Satisfies** | AC-FR-F-2-4 |
+| **Touches** | `Apps/iPhone/Sources/Features/RunDetail/Zones/**` |
+
+Stacked bar plus a table in seconds and percentage.
+
+**Done when:** percentages sum to 100 ± 0.1; zone colours match the user's selected palette; the table is VoiceOver-navigable.
+
+<a id="t-059"></a>
+### T-059 — Splits and step table
+
+| | |
+|---|---|
+| **Wave** | 3 |
+| **Depends on** | T-053 |
+| **Satisfies** | AC-FR-F-2-5, AC-FR-F-2-6 |
+| **Touches** | `Apps/iPhone/Sources/Features/RunDetail/Splits/**` |
+
+Per-mile/km splits and, for structured workouts, a per-rep table.
+
+**Done when:** splits respect the unit preference; a 4×1000 m run shows four work reps with correct distance, time, average pace, and heart rate; a partial final split is labelled as partial.
+
+<a id="t-060"></a>
+### T-060 — Route map
+
+| | |
+|---|---|
+| **Wave** | 3 |
+| **Depends on** | T-053 |
+| **Satisfies** | AC-FR-F-2-7 |
+| **Touches** | `Apps/iPhone/Sources/Features/RunDetail/Map/**` |
+
+MapKit polyline coloured by zone.
+
+**Done when:** the route renders coloured by zone; runs without a route hide the map; the map is omitted from any diagnostic export (NFR-17).
+
+<a id="t-061"></a>
+### T-061 — Global statistics
+
+| | |
+|---|---|
+| **Wave** | 3 |
+| **Depends on** | T-029, T-053 |
+| **Satisfies** | FR-F-3 (all ACs), NFR-5 |
+| **Touches** | `Apps/iPhone/Sources/Features/Statistics/**` |
+
+Lifetime and periodic totals, 52-week chart, personal bests.
+
+**Done when:** the screen renders in under 300 ms with 1 000 runs, asserted by a performance test; totals match a `rebuildAll` recomputation; personal bests reflect in-run segments, not just whole runs.
+
+<a id="t-062"></a>
+### T-062 — Profile and onboarding
+
+| | |
+|---|---|
+| **Wave** | 3 |
+| **Depends on** | T-053, T-027 |
+| **Satisfies** | FR-I-1 (all ACs), AC-FR-J-2-3, DEG-9, R-6 |
+| **Touches** | `Apps/iPhone/Sources/Features/Profile/**`, `Apps/iPhone/Sources/Features/Onboarding/**` |
+
+Onboarding: units, palette choice, pace derivation from a race result or recent runs, and a medical disclaimer. Profile: per-type target paces, band tuning, curve editing, overrides.
+
+**Done when:** paces derive correctly from a race result; every derived pace is overridable; the palette choice is offered during onboarding, not buried; the pace-suggestion flow after five runs requires explicit confirmation; the disclaimer is acknowledged before plan generation is reachable.
+
+---
+
+## Wave 4 — Legacy watch app
+
+Depends on Wave 2 (as the reference implementation) and Wave 3 (for transport). **No file in this wave may be shared with `Apps/WatchModern`** (AC-FR-K-1-4).
+
+<a id="t-063"></a>
+### T-063 — Legacy sensor stack
+
+| | |
+|---|---|
+| **Wave** | 4 |
+| **Depends on** | T-005, T-036 |
+| **Satisfies** | AC-FR-K-1-1, AC-FR-A-4-1 |
+| **Touches** | `Apps/WatchLegacy/Sources/Sensors/**` |
+
+The full sensor stack against watchOS 8 APIs: `HKWorkoutSession`, `HKLiveWorkoutBuilder`, `CLLocationManager`, `CMAltimeter`, `CMPedometer`, and distance fusion. Series 3 has the barometric altimeter, so grade adjustment is in scope.
+
+**Done when:** builds against the watchOS 8 SDK with zero `#available`; grade adjustment functions; `SensorCapabilities` reports no always-on and no Double Tap.
+
+<a id="t-064"></a>
+### T-064 — Legacy feed adapter and tier equivalence
+
+| | |
+|---|---|
+| **Wave** | 4 |
+| **Depends on** | T-063 |
+| **Satisfies** | AC-FR-K-1-2 |
+| **Touches** | `Apps/WatchLegacy/Sources/Sensors/Feed/**`, `Apps/WatchLegacy/Tests/FeedTests.swift` |
+
+Implement `RunSensorFeed` for Legacy and run the **same shared fixtures against the same goldens** used by `Core` and by T-036.
+
+**Done when:** all seven fixtures produce output identical to the Modern tier and to the committed goldens; any divergence fails only this tier's CI job.
+
+<a id="t-065"></a>
+### T-065 — Legacy run controller
+
+| | |
+|---|---|
+| **Wave** | 4 |
+| **Depends on** | T-064 |
+| **Satisfies** | FR-D-1, FR-D-2, FR-D-6 |
+| **Touches** | `Apps/WatchLegacy/Sources/Run/Controller/**`, `Apps/WatchLegacy/Sources/Run/Store/**` |
+
+`ObservableObject`-based controller and the sample store with 30 s flush and orphan recovery. Record step boundaries as `HKWorkoutEvent(.segment)` — the watchOS 8 equivalent of the Modern tier's native activities (AC-FR-D-1-6).
+
+**Done when:** a simulated run drives state end to end; crash recovery loses at most 30 s; segment events appear in the saved workout.
+
+<a id="t-066"></a>
+### T-066 — Legacy design system
+
+| | |
+|---|---|
+| **Wave** | 4 |
+| **Depends on** | T-023 |
+| **Satisfies** | FR-J-1, AC-FR-A-6-8 |
+| **Touches** | `Apps/WatchLegacy/Sources/DesignSystem/**` |
+
+The same palettes bridged to watchOS 8 SwiftUI. No always-on handling — Series 3 has no such hardware.
+
+**Done when:** every zone renders its exact palette hex; contrast is verified by the same `ORColor` tests; the correct zone colour restores within 500 ms of wrist raise.
+
+<a id="t-067"></a>
+### T-067 — Legacy metrics view
+
+| | |
+|---|---|
+| **Wave** | 4 |
+| **Depends on** | T-065, T-066 |
+| **Satisfies** | FR-A-6 |
+| **Touches** | `Apps/WatchLegacy/Sources/Run/Views/Metrics/**` |
+
+The metrics page for the 38 mm and 42 mm Series 3 displays — a tighter layout than Modern.
+
+**Done when:** all five metrics render without truncation at 38 mm; the background fills edge to edge; snapshot tests cover every zone at both case sizes.
+
+<a id="t-068"></a>
+### T-068 — Legacy controls, warnings, haptics
+
+| | |
+|---|---|
+| **Wave** | 4 |
+| **Depends on** | T-067, T-021 |
+| **Satisfies** | FR-B-1, FR-B-2, AC-FR-A-6-9 |
+| **Touches** | `Apps/WatchLegacy/Sources/Run/Views/Controls/**`, `Apps/WatchLegacy/Sources/Run/Views/Warning/**`, `Apps/WatchLegacy/Sources/Run/Haptics/**` |
+
+Paged layout, warning screen, and haptics on watchOS 8.
+
+**Done when:** parity with T-041/T-043 minus always-on behaviour; background haptics verified on Series 3 hardware.
+
+<a id="t-069"></a>
+### T-069 — Legacy interval and VO2 max UI
+
+| | |
+|---|---|
+| **Wave** | 4 |
+| **Depends on** | T-068, T-019, T-020 |
+| **Satisfies** | FR-C-2, FR-C-3, FR-C-4, FR-C-6 |
+| **Touches** | `Apps/WatchLegacy/Sources/Intervals/**` |
+
+Interval and VO2 max screens. Manual advance by tap and crown detent only — no Double Tap on Series 3.
+
+**Done when:** a simulated 4×1000 m behaves identically to Modern; the VO2 max screen shows no colour; tap advances only open-goal steps.
+
+<a id="t-070"></a>
+### T-070 — Legacy start screen and settings
+
+| | |
+|---|---|
+| **Wave** | 4 |
+| **Depends on** | T-066 |
+| **Satisfies** | FR-A-7, AC-FR-B-1-7, AC-FR-J-2-3 |
+| **Touches** | `Apps/WatchLegacy/Sources/App/**` |
+
+**Done when:** parity with T-046/T-047 minus Double Tap settings.
+
+<a id="t-071"></a>
+### T-071 — Legacy transport
+
+| | |
+|---|---|
+| **Wave** | 4 |
+| **Depends on** | T-065, T-049 |
+| **Satisfies** | FR-E-1 |
+| **Touches** | `Apps/WatchLegacy/Sources/Transport/**` |
+
+WatchConnectivity uplink and downlink on watchOS 8, emitting the identical `RunEnvelope`.
+
+**Done when:** a Legacy-produced envelope is ingested by the phone indistinguishably from a Modern one except for `deviceTier`; the same integration tests pass.
+
+<a id="t-072"></a>
+### T-072 — Legacy performance validation
+
+| | |
+|---|---|
+| **Wave** | 4 |
+| **Depends on** | T-069, T-071 |
+| **Satisfies** | NFR-1, NFR-2, NFR-3 |
+| **Touches** | `Apps/WatchLegacy/Tests/PerformanceTests.swift`, `Tools/manual-test-protocol.md` |
+
+Validate the performance NFRs on actual Series 3 hardware — the slowest device the product supports and the one where the 1 Hz pipeline is most at risk.
+
+**Done when:** zone evaluation is under 5 ms per tick on device; the run screen holds its refresh without dropped frames; launch to start screen is under 2 s; results are recorded in the manual protocol.
+
+---
+
+## Wave 5 — Planning (P1)
+
+<a id="t-073"></a>
+### T-073 — Plan generator core
+
+| | |
+|---|---|
+| **Wave** | 5 |
+| **Depends on** | T-027 |
+| **Satisfies** | FR-G-2, AC-FR-G-2-1, AC-FR-G-2-4 |
+| **Touches** | `Core/Sources/ORTraining/Generator/**`, `Core/Tests/ORTrainingTests/GeneratorTests.swift` |
+
+Periodization into base / build / peak / taper per `design.md` §14.2, producing a week-by-week schedule.
+
+**Done when:** a 12-week half-marathon plan produces 12 weeks with correct phase proportions; phases scale sensibly for plans from 4 to 24 weeks.
+
+<a id="t-074"></a>
+### T-074 — Plan safety constraints
+
+| | |
+|---|---|
+| **Wave** | 5 |
+| **Depends on** | T-073 |
+| **Satisfies** | AC-FR-G-2-5…9, R-6 |
+| **Touches** | `Core/Sources/ORTraining/Constraints/**`, `Core/Tests/PropertyTests/PlanPropertyTests.swift` |
+
+Enforce every invariant from `design.md` §14.3, each with a property test over generated inputs.
+
+**Done when:** no generated plan, over 1 000 randomized inputs, violates the 10% rule, the down-week rule, the rest-day rule, the long-run proportion, taper monotonicity, or the consecutive-quality-days rule.
+
+<a id="t-075"></a>
+### T-075 — Infeasibility handling
+
+| | |
+|---|---|
+| **Wave** | 5 |
+| **Depends on** | T-074 |
+| **Satisfies** | AC-FR-G-2-10 |
+| **Touches** | `Core/Sources/ORTraining/Feasibility/**`, `Core/Tests/ORTrainingTests/FeasibilityTests.swift` |
+
+Return `.infeasible(reason:suggestions:)` rather than an unsafe plan, with the nearest achievable date or distance.
+
+**Done when:** "marathon in 3 weeks from 5 mpw" returns infeasible with a concrete suggestion; a property test confirms the generator never returns a plan violating T-074's constraints — it returns infeasible instead.
+
+<a id="t-076"></a>
+### T-076 — Plan UI
+
+| | |
+|---|---|
+| **Wave** | 5 |
+| **Depends on** | T-075, T-053 |
+| **Satisfies** | AC-FR-G-2-11, FR-G-3 |
+| **Touches** | `Apps/iPhone/Sources/Features/Plan/**` |
+
+Plan creation, week-by-week display, today's-workout card, adherence over the trailing 4 weeks, regenerate / shift / delete.
+
+**Done when:** a plan generates and displays; today's card shows a one-line summary like `4 × 1000 m` or `4 mi easy`; rest days say so; regenerating preserves run history; adherence computes correctly.
+
+<a id="t-077"></a>
+### T-077 — Single-run scheduling
+
+| | |
+|---|---|
+| **Wave** | 5 |
+| **Depends on** | T-053 |
+| **Satisfies** | AC-FR-G-1-1, AC-FR-G-1-3 |
+| **Touches** | `Apps/iPhone/Sources/Features/Plan/Schedule/**` |
+
+Schedule an individual run on a future date and push it to the watch.
+
+**Done when:** a scheduled run appears on the watch start screen on the correct day and starts with the right configuration.
+
+<a id="t-078"></a>
+### T-078 — Custom workout builder
+
+| | |
+|---|---|
+| **Wave** | 5 |
+| **Depends on** | T-018, T-053 |
+| **Satisfies** | AC-FR-G-1-2, AC-FR-G-1-4 |
+| **Touches** | `Apps/iPhone/Sources/Features/Plan/Builder/**` |
+
+Compose arbitrary steps and repeat blocks with validation.
+
+**Done when:** the memo's canonical workout is buildable in the UI; invalid plans are rejected with a specific message; a built plan runs correctly on the watch.
+
+<a id="t-079"></a>
+### T-079 — Planned-workout completion matching
+
+| | |
+|---|---|
+| **Wave** | 5 |
+| **Depends on** | T-076, T-049 |
+| **Satisfies** | AC-FR-G-3-4 |
+| **Touches** | `Apps/iPhone/Sources/Features/Plan/Matching/**` |
+
+Mark a planned workout complete when a matching run is ingested.
+
+**Done when:** a run on the planned day of the planned type marks it complete; a clearly different run does not; matching is unit-tested against edge cases including two runs in one day.
+
+<a id="t-080"></a>
+### T-080 — Pace suggestion from history
+
+| | |
+|---|---|
+| **Wave** | 5 |
+| **Depends on** | T-027, T-029 |
+| **Satisfies** | AC-FR-I-1-5 |
+| **Touches** | `Apps/iPhone/Sources/Features/Profile/Suggestions/**` |
+
+After five runs of a type, offer an updated target pace requiring explicit confirmation.
+
+**Done when:** the suggestion appears only at five or more runs; declining changes nothing; accepting updates the profile and syncs to the watch.
+
+---
+
+## Wave 6 — Routes and laps (P2)
+
+<a id="t-081"></a>
+### T-081 — Route storage
+
+| | |
+|---|---|
+| **Wave** | 6 |
+| **Depends on** | T-060 |
+| **Satisfies** | AC-FR-H-1-1, AC-FR-H-1-2 |
+| **Touches** | `Apps/iPhone/Sources/Features/Library/Routes/**` |
+
+Save a completed run's route with a name, distance, and elevation gain.
+
+**Done when:** a route saves and lists; its distance and elevation match the source run.
+
+<a id="t-082"></a>
+### T-082 — Route matching and comparison
+
+| | |
+|---|---|
+| **Wave** | 6 |
+| **Depends on** | T-081 |
+| **Satisfies** | AC-FR-H-1-2, AC-FR-H-1-3 |
+| **Touches** | `Core/Sources/ORStats/RouteMatch/**`, `Apps/iPhone/Sources/Features/Library/Routes/Compare/**` |
+
+Detect that a new run took a saved route (Fréchet-style similarity with a tolerance) and compare efforts over time.
+
+**Done when:** a repeat of a saved route is detected; a different route is not; the comparison view shows every past effort with pace and time.
+
+<a id="t-083"></a>
+### T-083 — Saved laps
+
+| | |
+|---|---|
+| **Wave** | 6 |
+| **Depends on** | T-081 |
+| **Satisfies** | FR-H-2 (all ACs) |
+| **Touches** | `Apps/iPhone/Sources/Features/Library/Laps/**` |
+
+Designate a route as a lap and compose a route as a lap × *n*, with derived distance and elevation.
+
+**Done when:** a lap × 4 reports 4× the distance and elevation; the composed route is usable as the distance basis for a planned run.
+
+<a id="t-084"></a>
+### T-084 — Library UI
+
+| | |
+|---|---|
+| **Wave** | 6 |
+| **Depends on** | T-083, T-078 |
+| **Satisfies** | FR-H-1, FR-H-2 |
+| **Touches** | `Apps/iPhone/Sources/Features/Library/**` |
+
+The Library tab bringing routes, laps, and custom workouts together.
+
+**Done when:** all three are browsable, editable, and deletable, with deletion never orphaning a run record.
+
+<a id="t-085"></a>
+### T-085 — Strides preset
+
+| | |
+|---|---|
+| **Wave** | 6 |
+| **Depends on** | T-018 |
+| **Satisfies** | Q-5 of `design.md` |
+| **Touches** | `Core/Sources/ORIntervals/Presets/**` |
+
+Strides as a built-in Interval preset — short, fast reps with generous recovery — resolving open question Q-5.
+
+**Done when:** the preset exists and runs; if its ergonomics prove poor in the manual protocol, a follow-up task promotes it to a run type.
+
+<a id="t-086"></a>
+### T-086 — Data export
+
+| | |
+|---|---|
+| **Wave** | 6 |
+| **Depends on** | T-053 |
+| **Satisfies** | NFR-17 |
+| **Touches** | `Apps/iPhone/Sources/Features/Profile/Export/**` |
+
+Export run data as JSON and GPX, with route data excluded by default and an explicit opt-in to include it.
+
+**Done when:** export produces valid GPX importable elsewhere; routes are excluded unless explicitly opted in; the opt-in states plainly what is being shared.
+
+---
+
+## Wave 7 — Hardening and release
+
+<a id="t-087"></a>
+### T-087 — Degraded-mode coverage
+
+| | |
+|---|---|
+| **Wave** | 7 |
+| **Depends on** | T-047, T-062 |
+| **Satisfies** | DEG-1, DEG-2, DEG-3, DEG-4, DEG-5, DEG-6, DEG-7, DEG-8, DEG-9, DEG-10, CON-5 |
+| **Touches** | `Apps/*/Sources/**/Degradation/**`, `Core/Tests/DegradationTests/**` |
+
+Confirm every degraded mode from `requirements.md` §8 is handled and surfaced, with a test per mode.
+
+**Done when:** each of the ten modes has a named test proving the required behaviour; each surfaces a clear message rather than a raw error; no degraded mode causes data loss.
+
+<a id="t-088"></a>
+### T-088 — Low-power mode
+
+| | |
+|---|---|
+| **Wave** | 7 |
+| **Depends on** | T-087 |
+| **Satisfies** | DEG-5, NFR-7 |
+| **Touches** | `Apps/WatchModern/Sources/Run/LowPower/**`, `Apps/WatchLegacy/Sources/Run/LowPower/**` |
+
+Offer reduced GPS duty cycle and 0.2 Hz sampling below 10% battery, keeping colour and haptics.
+
+**Done when:** the offer appears at the threshold; enabling it reduces consumption by at least 30%, measured on device; colour and haptics keep working.
+
+<a id="t-089"></a>
+### T-089 — Accessibility audit
+
+| | |
+|---|---|
+| **Wave** | 7 |
+| **Depends on** | T-062, T-070 |
+| **Satisfies** | FR-J-3 (all ACs) |
+| **Touches** | `Apps/*/Sources/**` (accessibility modifiers only), `Tools/manual-test-protocol.md` |
+
+VoiceOver labels everywhere, zone-change announcements, Reduce Motion, largest Dynamic Type.
+
+**Done when:** every interactive element is labelled; zone changes announce; Reduce Motion cross-fades; every screen is usable at the largest Dynamic Type size; a VoiceOver walkthrough of the critical flow is recorded in the manual protocol.
+
+<a id="t-090"></a>
+### T-090 — Localization pass
+
+| | |
+|---|---|
+| **Wave** | 7 |
+| **Depends on** | T-089 |
+| **Satisfies** | NFR-23, NFR-24 |
+| **Touches** | `Apps/*/Resources/**`, all files containing user-facing strings |
+
+Extract every string to catalogs; eliminate concatenation; verify units everywhere including charts and VoiceOver.
+
+**Done when:** no user-facing string literal remains in view code; a pseudolocalization build shows no truncation or concatenation artefacts; unit preference is respected in every surface.
+
+<a id="t-091"></a>
+### T-091 — Performance baselines
+
+| | |
+|---|---|
+| **Wave** | 7 |
+| **Depends on** | T-061, T-072 |
+| **Satisfies** | NFR-1…NFR-5 |
+| **Touches** | `Apps/*/Tests/PerformanceTests/**`, `.github/workflows/apps.yml` |
+
+XCTest performance baselines for every performance NFR, wired into CI so regressions fail the build.
+
+**Done when:** each of NFR-1 through NFR-5 has a baseline test; baselines are committed; a deliberately introduced 2× slowdown fails CI.
+
+<a id="t-092"></a>
+### T-092 — Manual test protocol
+
+| | |
+|---|---|
+| **Wave** | 7 |
+| **Depends on** | T-088 |
+| **Satisfies** | §16.6 of `design.md`, NFR-6, NFR-7 |
+| **Touches** | `Tools/manual-test-protocol.md` |
+
+The written protocol for what CI cannot check: GPS accuracy against a measured course, battery over a 60-minute GPS run, haptic perceptibility while running, always-on legibility in direct sunlight, and the tap-to-advance gesture with sweaty hands and in rain.
+
+**Done when:** the protocol covers every item from `design.md` §16.6; it names the required hardware (one Series 3, one Series 7 or later); it has a results template attached to the release PR.
+
+<a id="t-093"></a>
+### T-093 — Open-source readiness
+
+| | |
+|---|---|
+| **Wave** | 7 |
+| **Depends on** | T-091 |
+| **Satisfies** | G-5, NFR-20, NFR-22 |
+| **Touches** | `README.md`, `CONTRIBUTING.md`, `.github/ISSUE_TEMPLATE/**`, `.github/PULL_REQUEST_TEMPLATE.md`, `docs/adr/**` |
+
+Contributor guide, architecture overview, issue and PR templates, and ADRs extracted into `docs/adr/`. The bug-report template asks for a fixture where possible — turning reports directly into tests.
+
+**Done when:** a contributor unfamiliar with the project builds and runs the full suite from a clean clone in under 15 minutes using only the README, verified by someone who has not worked on it.
+
+<a id="t-094"></a>
+### T-094 — Release checklist
+
+| | |
+|---|---|
+| **Wave** | 7 |
+| **Depends on** | T-092, T-093 |
+| **Satisfies** | CON-2, R-1 |
+| **Touches** | `docs/release-checklist.md` |
+
+The release process, including App Store submission for both bundle IDs, the Xcode-version pin rationale, and the documented trigger and response for the Legacy sunset.
+
+**Done when:** the checklist is complete and has been executed once end to end; the Legacy sunset trigger (`legacy.yml` failing because runners no longer carry Xcode 26) has a written response plan.
+
+---
+
+## Appendix A — Parallelization guide
+
+Maximum concurrency per wave, assuming no shared paths:
+
+| Wave | Concurrent tasks | Critical path |
+|---|---|---|
+| 0 | T-002…T-006 after T-001; T-007 → T-008/T-009 → T-010 | T-001 → T-007 → T-009 → T-010 |
+| 1 | T-011…T-030 nearly all parallel (20 agents viable) | T-018 → T-019 → T-031 → T-032 |
+| 2 | T-038…T-047 after T-037 | T-033 → T-035 → T-036 → T-037 → T-040 |
+| 3 | T-054…T-061 after T-053 | T-052 → T-053 → T-056 → T-061 |
+| 4 | T-066…T-070 after T-065 | T-063 → T-064 → T-065 → T-067 |
+| 5 | T-077, T-078, T-080 parallel to T-073…T-076 | T-073 → T-074 → T-075 → T-076 |
+| 6 | T-085, T-086 parallel to T-081…T-084 | T-081 → T-082 → T-083 → T-084 |
+| 7 | T-089, T-090 parallel to T-087, T-088 | T-087 → T-088 → T-092 → T-094 |
+
+**Wave 1 is where concurrency pays.** Twenty independent tasks, each owning one directory with its own tests, no shared state. It is also the wave where correctness matters most, which is why every task there carries objective numeric completion criteria rather than "works correctly".
+
+## Appendix B — Definition of done (applies to every task)
+
+1. All named tests pass locally and in CI.
+2. `gates.yml` passes — no availability conditionals in watch targets, no Apple imports in `Core`, traceability intact, SwiftLint clean.
+3. `Core` line coverage has not dropped below 85%.
+4. New tunables live in `PaceEngineConfiguration`, not inline.
+5. Public API has doc comments explaining *why*, not just *what*.
+6. The PR body names the requirement IDs satisfied.
+7. Nothing outside the task's `Touches` list was modified.
+8. Any golden regeneration is justified in the PR body.
+
+## Appendix C — Requirement coverage
+
+Verified mechanically by [T-004](#t-004). Every P0 requirement has at least one covering task:
+
+| Epic | Requirements | Covering tasks |
+|---|---|---|
+| A — Pace management | FR-A-1…7 | T-011…T-017, T-031, T-036, T-037, T-040, T-046, T-064, T-067 |
+| B — Alerts | FR-B-1, FR-B-2 | T-021, T-042, T-043, T-068 |
+| C — Intervals & VO2 max | FR-C-1…6 | T-018, T-019, T-020, T-044, T-045, T-069 |
+| D — Lifecycle & capture | FR-D-1, FR-D-2, FR-D-6 | T-024, T-025, T-033, T-037, T-038, T-065 |
+| E — Sync | FR-E-1 | T-026, T-048, T-049, T-050, T-051, T-071 |
+| F — Statistics hub | FR-F-1…3 | T-028, T-029, T-053…T-061 |
+| G — Planning | FR-G-1…3 | T-073…T-080 |
+| H — Routes & laps | FR-H-1, FR-H-2 | T-081…T-084 |
+| I — Profile | FR-I-1 | T-062, T-080, T-050 |
+| J — Accessibility | FR-J-1…3 | T-022, T-023, T-039, T-066, T-089 |
+| K — Legacy parity | FR-K-1 | T-003, T-063…T-072 |
+| Non-functional | NFR-1…24 | T-002, T-003, T-004, T-072, T-086…T-093 |
