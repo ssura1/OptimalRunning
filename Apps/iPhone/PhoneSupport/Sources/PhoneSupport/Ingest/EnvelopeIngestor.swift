@@ -134,6 +134,14 @@ public struct EnvelopeIngestor {
             let previous = try runs.record(for: envelope.runID)
                 .map { (summary: $0.summary, startedAt: $0.startedAt) }
 
+            // A degraded placeholder for the same HealthKit workout is superseded by this
+            // payload and must go *before* the real record lands. It carries a different
+            // `runID` — one this app invented when the sidecar was still missing — so the
+            // upsert cannot find it, and leaving it behind would have the store holding two
+            // records for one run with every lifetime total counting it twice (T-051).
+            let supersededPlaceholder = try BackfillService(context: context)
+                .removeSupersededPlaceholder(for: envelope)
+
             try runs.upsert(envelope)
 
             // Re-delivery must not double-count. Removing the previous contribution and
@@ -141,6 +149,12 @@ public struct EnvelopeIngestor {
             // revised (a sidecar replacing a degraded backfill).
             if let previous {
                 try aggregates.remove(summary: previous.summary, startedAt: previous.startedAt)
+            }
+            if let supersededPlaceholder {
+                try aggregates.remove(
+                    summary: supersededPlaceholder.summary,
+                    startedAt: supersededPlaceholder.startedAt
+                )
             }
             try aggregates.apply(
                 summary: envelope.summary,
