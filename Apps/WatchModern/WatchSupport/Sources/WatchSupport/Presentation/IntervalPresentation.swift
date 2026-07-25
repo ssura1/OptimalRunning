@@ -14,6 +14,9 @@ public enum IntervalPresentation {
 
     /// `WORK · REP 3/4 · 340 m to go`, or `nil` for an unstructured run.
     ///
+    /// Rep numbers come straight from `ResolvedStep.repIndex`, which is already one-based;
+    /// nothing is added to it.
+    ///
     /// Each segment is dropped rather than padded when it does not apply: an
     /// un-repeated warmup reads `WARM UP · 340 m to go`, and an open-goal step with no
     /// end in sight reads just `WARM UP`. Rendering `REP 1/1` or `— m to go` would be
@@ -24,7 +27,7 @@ public enum IntervalPresentation {
         var segments = [RunStrings.stepKind(step.kind)]
 
         if step.isRepeated {
-            segments.append("REP \(step.repIndex + 1)/\(step.repCount)")
+            segments.append("REP \(step.repIndex)/\(step.repCount)")
         }
         if let remaining = remainingText(for: state, unit: unit) {
             segments.append(remaining)
@@ -59,9 +62,14 @@ public enum IntervalPresentation {
     }
 
     /// `REP 3/4`, for the VO2 max stack where the step kind is already the header.
+    ///
+    /// `ResolvedStep.repIndex` is **one-based** — `WorkoutPlan.flatten` numbers reps from 1,
+    /// and the declaration says so. This originally added 1 to it, displaying "REP 2/4" for
+    /// the first rep and "REP 5/4" for the last; the test that should have caught it
+    /// hand-built `repIndex: 0`, a value the real resolver never produces.
     public static func repText(for state: StepState) -> String? {
         guard let step = state.step, step.isRepeated else { return nil }
-        return "REP \(step.repIndex + 1)/\(step.repCount)"
+        return "REP \(step.repIndex)/\(step.repCount)"
     }
 
     /// Whether a tap on the metrics page should advance the step.

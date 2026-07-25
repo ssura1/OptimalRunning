@@ -199,8 +199,10 @@ final class MetricsScreenTests: XCTestCase {
         let step = StepState(
             phase: .running,
             step: ResolvedStep(
+                // `repIndex` is one-based, matching what `WorkoutPlan.flatten` emits — so rep 3
+                // of 4 is `repIndex: 3`, not 2.
                 index: 2, kind: .work, goal: .distance(metres: 1_000),
-                target: nil, repIndex: 2, repCount: 4
+                target: nil, repIndex: 3, repCount: 4
             ),
             stepDistanceMetres: 660,
             stepActiveSeconds: 150,
