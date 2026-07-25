@@ -7,6 +7,13 @@
 # and the two CLIs (ORReplay, ORSelfCheck) are excluded: they exist to exercise the
 # engine, and counting them would let a contributor raise the number without testing
 # anything.
+#
+# Runs on macOS and on Linux, which it previously did not. Two macOS-only assumptions
+# had gone unnoticed because the only place this was ever run by hand was a Mac:
+# `xcrun`, which does not exist off macOS, and `python3`, which the `swift:6.1`
+# container has no copy of. The gate therefore failed with exit 127 on every CI run
+# since it was written. The summariser is now a Swift script — the one interpreter a
+# Swift project can assume — and llvm-cov is located rather than assumed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -27,55 +34,26 @@ else
   OBJ="$BIN/OptimalRunnerCorePackageTests.xctest"
 fi
 
-# Written to a real file rather than passed via `python3 -c`, because the summary
-# formatting needs literal double quotes inside f-strings, and threading those through
-# a shell-quoted `-c` argument is exactly the kind of escaping trap that looks right
-# and silently isn't (which is what happened here the first time).
-SUMMARIZE="$(mktemp -t coverage-gate-summarize.XXXXXX.py)"
-trap 'rm -f "$SUMMARIZE"' EXIT
+if [ ! -e "$OBJ" ]; then
+  echo "::error::no test binary at $OBJ — run: swift test --package-path Core --enable-code-coverage"
+  exit 1
+fi
 
-cat > "$SUMMARIZE" <<'PY'
-import json
-import re
-import sys
+# Locate llvm-cov. On macOS it comes via xcrun; on Linux it ships beside `swift` in the
+# toolchain, which is not always on PATH — hence the third candidate.
+if command -v xcrun >/dev/null 2>&1; then
+  LLVM_COV=(xcrun llvm-cov)
+elif command -v llvm-cov >/dev/null 2>&1; then
+  LLVM_COV=(llvm-cov)
+elif [ -x "$(dirname "$(command -v swift)")/llvm-cov" ]; then
+  LLVM_COV=("$(dirname "$(command -v swift)")/llvm-cov")
+else
+  echo "::error::llvm-cov not found — tried xcrun, PATH, and the Swift toolchain directory"
+  exit 1
+fi
 
-targets_pattern, minimum_str = sys.argv[1], sys.argv[2]
-minimum = float(minimum_str)
-
-data = json.load(sys.stdin)
-pattern = re.compile(r"/Core/Sources/(" + targets_pattern + r")/")
-
-covered = 0
-total = 0
-rows: dict[str, tuple[int, int]] = {}
-
-for f in data["data"][0]["files"]:
-    m = pattern.search(f["filename"])
-    if not m:
-        continue
-    lines = f["summary"]["lines"]
-    covered += lines["covered"]
-    total += lines["count"]
-    target = m.group(1)
-    c, n = rows.get(target, (0, 0))
-    rows[target] = (c + lines["covered"], n + lines["count"])
-
-header = f'{"target":<14}{"covered":>9}{"lines":>8}{"pct":>8}'
-print(header)
-for target in sorted(rows):
-    c, n = rows[target]
-    pct = 100.0 * c / n if n else 100.0
-    print(f'{target:<14}{c:>9}{n:>8}{pct:>7.1f}%')
-
-pct = 100.0 * covered / total if total else 0.0
-print("-" * len(header))
-print(f'{"TOTAL":<14}{covered:>9}{total:>8}{pct:>7.1f}%')
-
-if pct < minimum:
-    print(f"::error::Core coverage {pct:.1f}% is below the required {minimum:.0f}% (NFR-18)")
-    sys.exit(1)
-print(f"ok: Core coverage {pct:.1f}% meets the {minimum:.0f}% gate")
-PY
-
-xcrun llvm-cov export -summary-only -instr-profile "$PROF" "$OBJ" 2>/dev/null \
-  | python3 "$SUMMARIZE" "$PRODUCT_TARGETS" "$MIN"
+# Note the absence of `2>/dev/null`. Silencing llvm-cov is what let this script report a
+# confusing "python3: command not found" instead of the real problem for as long as it did;
+# a coverage gate that hides its own tooling errors is worse than no gate.
+"${LLVM_COV[@]}" export -summary-only -instr-profile "$PROF" "$OBJ" \
+  | swift Tools/coverage-summarize.swift "$PRODUCT_TARGETS" "$MIN"
