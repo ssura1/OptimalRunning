@@ -21,6 +21,7 @@ public struct PaceEngineConfiguration: Codable, Sendable, Hashable {
     public var sync: SyncConfiguration
     public var presentation: PresentationConfiguration
     public var degradation: DegradationConfiguration
+    public var stats: StatsConfiguration
     public var bands: [RunType: PaceBand]
     public var curves: [RunType: TargetPaceCurve]
 
@@ -35,6 +36,7 @@ public struct PaceEngineConfiguration: Codable, Sendable, Hashable {
         sync: SyncConfiguration = .init(),
         presentation: PresentationConfiguration = .init(),
         degradation: DegradationConfiguration = .init(),
+        stats: StatsConfiguration = .init(),
         bands: [RunType: PaceBand] = PaceEngineConfiguration.defaultBands,
         curves: [RunType: TargetPaceCurve] = PaceEngineConfiguration.defaultCurves
     ) {
@@ -48,6 +50,7 @@ public struct PaceEngineConfiguration: Codable, Sendable, Hashable {
         self.sync = sync
         self.presentation = presentation
         self.degradation = degradation
+        self.stats = stats
         self.bands = bands
         self.curves = curves
     }
@@ -95,6 +98,7 @@ public struct PaceEngineConfiguration: Codable, Sendable, Hashable {
         try sync.validate()
         try presentation.validate()
         try degradation.validate()
+        try stats.validate()
 
         for (runType, band) in bands where !band.isWellFormed {
             throw ConfigurationError.malformedBand(runType: runType)
@@ -409,5 +413,33 @@ public struct DegradationConfiguration: Codable, Sendable, Hashable {
         try requireInRange(degradedBandWideningFactor, 1...5, "degradation.degradedBandWideningFactor")
         try requireInRange(lowPowerBatteryThreshold, 0...1, "degradation.lowPowerBatteryThreshold")
         try requireInRange(lowPowerSampleIntervalSeconds, 0.1...60, "degradation.lowPowerSampleIntervalSeconds")
+    }
+}
+
+// MARK: - Statistics
+
+/// Tunables for deriving a run's totals from its samples (T-053, FR-F-2, FR-F-3).
+public struct StatsConfiguration: Codable, Sendable, Hashable {
+
+    /// Rise that must accumulate before it counts toward elevation gain.
+    ///
+    /// Not noise-reduction pedantry — without it the figure is simply wrong. A barometric
+    /// altimeter is accurate to about a metre but jitters continuously, and a naive sum of
+    /// positive per-sample deltas over a 5 400-sample run integrates that jitter into
+    /// hundreds of metres of climb that never happened. The runner then sees a flat park
+    /// loop reported as hilly, and every grade-adjusted comparison built on top inherits
+    /// the error. 1 m sits just above the sensor's own resolution.
+    public var elevationGainThresholdMetres: Double = 1.0
+
+    /// Longest gap between samples still treated as continuous when accumulating active
+    /// time. A larger gap means the recording was interrupted, and counting it would
+    /// credit the runner with time they did not run.
+    public var maxSampleGapSeconds: Double = 5.0
+
+    public init() {}
+
+    public func validate() throws {
+        try requireInRange(elevationGainThresholdMetres, 0...50, "stats.elevationGainThresholdMetres")
+        try requireInRange(maxSampleGapSeconds, 1...120, "stats.maxSampleGapSeconds")
     }
 }
