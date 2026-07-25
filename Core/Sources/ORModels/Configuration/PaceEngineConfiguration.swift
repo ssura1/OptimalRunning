@@ -326,6 +326,16 @@ public struct CaptureConfiguration: Codable, Sendable, Hashable {
     /// Maximum data loss window on unexpected termination (AC-FR-D-6-4).
     public var flushIntervalSeconds: Double = 30
     public var heartRateStaleSeconds: Double = 10
+    /// Free space a run is refused below, rather than started and failed partway
+    /// through with samples already lost (DEG-6).
+    ///
+    /// 8 MiB against a worst case well under 1 MiB: a three-hour run at 1 Hz is
+    /// ~10 800 samples, and a `RunSample` packs to tens of bytes (§9.2), so the
+    /// headroom is deliberate. The number that matters is not "enough for the run"
+    /// but "enough that watchOS is not already evicting caches underneath us", and a
+    /// threshold set to the theoretical minimum would let a run start onto a volume
+    /// with no room for the atomic replace's temporary copy.
+    public var minimumFreeBytesToStart: Int64 = 8 * 1024 * 1024
 
     public init() {}
 
@@ -333,6 +343,11 @@ public struct CaptureConfiguration: Codable, Sendable, Hashable {
         try requireInRange(sampleIntervalSeconds, 0.1...10, "capture.sampleIntervalSeconds")
         try requireInRange(flushIntervalSeconds, 1...300, "capture.flushIntervalSeconds")
         try requireInRange(heartRateStaleSeconds, 1...120, "capture.heartRateStaleSeconds")
+        guard minimumFreeBytesToStart > 0 else {
+            throw ConfigurationError.inconsistent(
+                field: "capture.minimumFreeBytesToStart", reason: "must be positive"
+            )
+        }
     }
 }
 
@@ -362,12 +377,18 @@ public struct PresentationConfiguration: Codable, Sendable, Hashable {
     public var colourTransitionSeconds: Double = 0.4
     /// Dimmed-variant opacity for secondary metrics under always-on (AC-FR-A-6-6).
     public var alwaysOnSecondaryOpacity: Double = 0.4
+    /// Pace-warning auto-dismiss (AC-FR-B-2-2, which marks it tunable).
+    public var warningAutoDismissSeconds: Double = 4
+    /// Step-transition screen duration (design.md §12.4).
+    public var transitionScreenSeconds: Double = 3
 
     public init() {}
 
     public func validate() throws {
         try requireInRange(colourTransitionSeconds, 0...5, "presentation.colourTransitionSeconds")
         try requireInRange(alwaysOnSecondaryOpacity, 0...1, "presentation.alwaysOnSecondaryOpacity")
+        try requireInRange(warningAutoDismissSeconds, 0.5...30, "presentation.warningAutoDismissSeconds")
+        try requireInRange(transitionScreenSeconds, 0.5...30, "presentation.transitionScreenSeconds")
     }
 }
 

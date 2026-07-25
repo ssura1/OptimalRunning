@@ -33,6 +33,61 @@ public struct EngineOutput: Sendable {
     public let degradations: Set<DegradationFlag>
     public let sample: RunSample
 
+    /// Memberwise initializer, made public for the app tiers.
+    ///
+    /// During a run only `RunEngine.tick` produces these, and nothing else should. But
+    /// a tier's presentation layer has to be checkable against a specific zone — "does
+    /// every zone render a glyph?", "does VO2 max stay neutral at `tooFast`?" — and
+    /// SwiftUI previews need a value with no engine behind them at all. Reaching those
+    /// states by driving a real engine would mean searching for input that lands on each
+    /// zone, which tests presentation through the engine's own correctness rather than
+    /// independently of it.
+    public init(
+        zone: PaceZone,
+        rollingPace: Pace?,
+        averagePace: Pace?,
+        rawTarget: Pace?,
+        effectiveTarget: Pace?,
+        gradeFactor: PaceRatio,
+        smoothedGrade: Double,
+        isGradeSignificant: Bool,
+        isGradeAvailable: Bool,
+        isGPSDegraded: Bool,
+        isStationary: Bool,
+        isSettling: Bool,
+        progress: Double,
+        activeElapsed: TimeInterval,
+        cumulativeDistance: Double,
+        heartRate: Double?,
+        step: StepState,
+        stepTransition: StepTransition?,
+        alert: AlertCommand?,
+        degradations: Set<DegradationFlag>,
+        sample: RunSample
+    ) {
+        self.zone = zone
+        self.rollingPace = rollingPace
+        self.averagePace = averagePace
+        self.rawTarget = rawTarget
+        self.effectiveTarget = effectiveTarget
+        self.gradeFactor = gradeFactor
+        self.smoothedGrade = smoothedGrade
+        self.isGradeSignificant = isGradeSignificant
+        self.isGradeAvailable = isGradeAvailable
+        self.isGPSDegraded = isGPSDegraded
+        self.isStationary = isStationary
+        self.isSettling = isSettling
+        self.progress = progress
+        self.activeElapsed = activeElapsed
+        self.cumulativeDistance = cumulativeDistance
+        self.heartRate = heartRate
+        self.step = step
+        self.stepTransition = stepTransition
+        self.alert = alert
+        self.degradations = degradations
+        self.sample = sample
+    }
+
     /// Signed difference from target in seconds per the given unit — the delta the
     /// run screen renders alongside the zone glyph (AC-FR-J-1-2).
     public func signedDelta(in unit: UnitPreference) -> Double? {
