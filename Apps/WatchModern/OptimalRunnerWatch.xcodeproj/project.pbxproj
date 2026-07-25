@@ -1,0 +1,477 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1E43823824A08FED43D21ECB /* ORModels in Frameworks */ = {isa = PBXBuildFile; productRef = 933088B0D7319B29CB179D4C /* ORModels */; };
+		5EFE32D9B64ACFDF44DBB379 /* ORModels in Frameworks */ = {isa = PBXBuildFile; productRef = FB51CBEB750C812ED760BB40 /* ORModels */; };
+		B368854B92D5497448CC5FA0 /* StartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA05693525B434DE3127B704 /* StartView.swift */; };
+		B961D536BD39DD5FC4A4586C /* ScaffoldingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D25954A6566063F148F63C5C /* ScaffoldingTests.swift */; };
+		C18673B0FCAB06D69EADFA38 /* ORIntervals in Frameworks */ = {isa = PBXBuildFile; productRef = 61A1CEEEDD60F1E319120778 /* ORIntervals */; };
+		D3FD99923FE3F80756A6D410 /* ORStats in Frameworks */ = {isa = PBXBuildFile; productRef = 236D2CA2BA3C69219DF74CEA /* ORStats */; };
+		D950F82B1D21B663DC5B271D /* ORPace in Frameworks */ = {isa = PBXBuildFile; productRef = 9AC78EC3E45236AAC547D742 /* ORPace */; };
+		E48F79C9967D59F8B83C76F3 /* ORAlerts in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1A9990B17CDAD5CA32D350 /* ORAlerts */; };
+		F21D3090EEB0CBF2378B2E62 /* ORColor in Frameworks */ = {isa = PBXBuildFile; productRef = F661844D21F8A428860470F0 /* ORColor */; };
+		F54FA8410BDC8F6665FD256C /* OptimalRunnerWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C21A00BD6CC9191ACFA21943 /* OptimalRunnerWatchApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		283A2B8DDAC212B854FE24D9 /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = ../../Core; sourceTree = SOURCE_ROOT; };
+		59282B6A1367D22A9F8C9342 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		5C7D6AC7BADC500AC0354065 /* OptimalRunnerWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OptimalRunnerWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9A48874ABD325D798D632FE1 /* OptimalRunnerWatchTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OptimalRunnerWatchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C21A00BD6CC9191ACFA21943 /* OptimalRunnerWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptimalRunnerWatchApp.swift; sourceTree = "<group>"; };
+		D25954A6566063F148F63C5C /* ScaffoldingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaffoldingTests.swift; sourceTree = "<group>"; };
+		FA05693525B434DE3127B704 /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		8A6FE4CED21DD8C64649CDF4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5EFE32D9B64ACFDF44DBB379 /* ORModels in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D2F00DC49C474F7CE4717E27 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1E43823824A08FED43D21ECB /* ORModels in Frameworks */,
+				D950F82B1D21B663DC5B271D /* ORPace in Frameworks */,
+				C18673B0FCAB06D69EADFA38 /* ORIntervals in Frameworks */,
+				E48F79C9967D59F8B83C76F3 /* ORAlerts in Frameworks */,
+				D3FD99923FE3F80756A6D410 /* ORStats in Frameworks */,
+				F21D3090EEB0CBF2378B2E62 /* ORColor in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		104A787C7986AB1B3729D04D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5C7D6AC7BADC500AC0354065 /* OptimalRunnerWatch.app */,
+				9A48874ABD325D798D632FE1 /* OptimalRunnerWatchTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		19EEE99CAA065B0D45336638 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				59282B6A1367D22A9F8C9342 /* Info.plist */,
+				C21A00BD6CC9191ACFA21943 /* OptimalRunnerWatchApp.swift */,
+				FA05693525B434DE3127B704 /* StartView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		358FD6ADE7B2510400C95C4B = {
+			isa = PBXGroup;
+			children = (
+				6F5FE9FC96B0B58C8C261087 /* Packages */,
+				DEA9C27E90D276FE6A627B46 /* Sources */,
+				CB118C7DFB26E543E57B4832 /* Tests */,
+				104A787C7986AB1B3729D04D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		6F5FE9FC96B0B58C8C261087 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				283A2B8DDAC212B854FE24D9 /* Core */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		CB118C7DFB26E543E57B4832 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				D25954A6566063F148F63C5C /* ScaffoldingTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		DEA9C27E90D276FE6A627B46 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				19EEE99CAA065B0D45336638 /* App */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		577428BC388D421A2D722F90 /* OptimalRunnerWatchTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D4FE22526DE789A76C56C44A /* Build configuration list for PBXNativeTarget "OptimalRunnerWatchTests" */;
+			buildPhases = (
+				D50E2A5AFECE4069A72541B3 /* Sources */,
+				8A6FE4CED21DD8C64649CDF4 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OptimalRunnerWatchTests;
+			packageProductDependencies = (
+				FB51CBEB750C812ED760BB40 /* ORModels */,
+			);
+			productName = OptimalRunnerWatchTests;
+			productReference = 9A48874ABD325D798D632FE1 /* OptimalRunnerWatchTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		7F42C7E93C2C9AF7FFDEDA14 /* OptimalRunnerWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3299211CC1B55EC7E111D769 /* Build configuration list for PBXNativeTarget "OptimalRunnerWatch" */;
+			buildPhases = (
+				FD076DE1EFB14D73FF0810FF /* Sources */,
+				D2F00DC49C474F7CE4717E27 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OptimalRunnerWatch;
+			packageProductDependencies = (
+				933088B0D7319B29CB179D4C /* ORModels */,
+				9AC78EC3E45236AAC547D742 /* ORPace */,
+				61A1CEEEDD60F1E319120778 /* ORIntervals */,
+				4C1A9990B17CDAD5CA32D350 /* ORAlerts */,
+				236D2CA2BA3C69219DF74CEA /* ORStats */,
+				F661844D21F8A428860470F0 /* ORColor */,
+			);
+			productName = OptimalRunnerWatch;
+			productReference = 5C7D6AC7BADC500AC0354065 /* OptimalRunnerWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A2467C4D064D702852CF2F9A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 6B0D30A34D4F7EF398886D47 /* Build configuration list for PBXProject "OptimalRunnerWatch" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 358FD6ADE7B2510400C95C4B;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				661C4D1F1734C5CC605D3614 /* XCLocalSwiftPackageReference "../../Core" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 104A787C7986AB1B3729D04D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7F42C7E93C2C9AF7FFDEDA14 /* OptimalRunnerWatch */,
+				577428BC388D421A2D722F90 /* OptimalRunnerWatchTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D50E2A5AFECE4069A72541B3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B961D536BD39DD5FC4A4586C /* ScaffoldingTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FD076DE1EFB14D73FF0810FF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F54FA8410BDC8F6665FD256C /* OptimalRunnerWatchApp.swift in Sources */,
+				B368854B92D5497448CC5FA0 /* StartView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		3813FBAA6950927C418A356C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		7CE202143F001C2B7773FBA0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = Sources/App/Info.plist;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.optimalrunner.watch;
+				PRODUCT_NAME = OptimalRunner;
+				SDKROOT = watchos;
+				SKIP_INSTALL = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		830C7D4077B277A8357A3824 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.optimalrunner.OptimalRunnerWatchTests;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "";
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		C416A647A2333530F53606E9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = Sources/App/Info.plist;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.optimalrunner.watch;
+				PRODUCT_NAME = OptimalRunner;
+				SDKROOT = watchos;
+				SKIP_INSTALL = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		D2AD869A7747F787C1EB1D94 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		F6A192A5B6E0B1CE964FE277 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.optimalrunner.OptimalRunnerWatchTests;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "";
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		3299211CC1B55EC7E111D769 /* Build configuration list for PBXNativeTarget "OptimalRunnerWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7CE202143F001C2B7773FBA0 /* Debug */,
+				C416A647A2333530F53606E9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		6B0D30A34D4F7EF398886D47 /* Build configuration list for PBXProject "OptimalRunnerWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D2AD869A7747F787C1EB1D94 /* Debug */,
+				3813FBAA6950927C418A356C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D4FE22526DE789A76C56C44A /* Build configuration list for PBXNativeTarget "OptimalRunnerWatchTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				830C7D4077B277A8357A3824 /* Debug */,
+				F6A192A5B6E0B1CE964FE277 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		661C4D1F1734C5CC605D3614 /* XCLocalSwiftPackageReference "../../Core" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Core;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		236D2CA2BA3C69219DF74CEA /* ORStats */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORStats;
+		};
+		4C1A9990B17CDAD5CA32D350 /* ORAlerts */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORAlerts;
+		};
+		61A1CEEEDD60F1E319120778 /* ORIntervals */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORIntervals;
+		};
+		933088B0D7319B29CB179D4C /* ORModels */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORModels;
+		};
+		9AC78EC3E45236AAC547D742 /* ORPace */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORPace;
+		};
+		F661844D21F8A428860470F0 /* ORColor */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORColor;
+		};
+		FB51CBEB750C812ED760BB40 /* ORModels */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORModels;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A2467C4D064D702852CF2F9A /* Project object */;
+}

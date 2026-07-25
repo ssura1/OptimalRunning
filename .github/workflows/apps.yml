@@ -1,10 +1,15 @@
 name: Apps
 
-# Simulator builds and tests for the iPhone and Modern watch targets.
+# Simulator builds and tests for the iPhone and Modern watch projects (T-006).
 #
-# The Xcode projects are created by T-005, which needs a machine with Xcode installed.
-# Until then each job no-ops rather than failing, so the repository stays green and the
-# absence is visible in the log rather than as a permanent red cross.
+# The simulator destination is resolved at runtime rather than hardcoded to a
+# specific device+OS pair. GitHub's macos-15 runner image's exact bundled
+# simulators change over time as Apple/GitHub update Xcode, and pinning a pair
+# that happens to be missing fails the whole job with "no matching destination" —
+# which is exactly what happened locally against this same device name (Apple
+# Watch Series 9) when only Series 11 simulators were actually provisioned.
+# Picking whatever's installed for the right platform is more robust than betting
+# on a specific model surviving the runner's next image update.
 on:
   push:
   pull_request:
@@ -17,39 +22,46 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: iPhone (iOS 17)
+          - name: iPhone (iOS 17+)
             project: Apps/iPhone/OptimalRunner.xcodeproj
             scheme: OptimalRunner
-            destination: 'platform=iOS Simulator,name=iPhone 15,OS=17.5'
-          - name: Watch Modern (watchOS 10)
+            simctlPlatform: iOS
+            deviceNameFilter: 'iPhone'
+          - name: Watch Modern (watchOS 10+)
             project: Apps/WatchModern/OptimalRunnerWatch.xcodeproj
             scheme: OptimalRunnerWatch
-            destination: 'platform=watchOS Simulator,name=Apple Watch Series 9 (45mm),OS=10.5'
+            simctlPlatform: watchOS
+            deviceNameFilter: 'Watch'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check the project exists
-        id: probe
+      - name: Resolve an available simulator
+        id: sim
         run: |
-          if [ -d "${{ matrix.project }}" ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::${{ matrix.project }} does not exist yet (created by T-005) — skipping"
-          fi
+          set -euo pipefail
+          # First available device + runtime matching the platform, from simctl's
+          # own JSON — no assumption about which model or OS version is present.
+          RESULT=$(xcrun simctl list devices available -j \
+            | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)
+          platform = "${{ matrix.simctlPlatform }}"
+          name_filter = "${{ matrix.deviceNameFilter }}"
+          for runtime, devices in data["devices"].items():
+              if platform not in runtime:
+                  continue
+              for device in devices:
+                  if name_filter in device["name"] and device.get("isAvailable", True):
+                      print(device["name"])
+                      sys.exit(0)
+          sys.exit(1)
+          ')
+          echo "device=$RESULT" >> "$GITHUB_OUTPUT"
+          echo "Resolved simulator: $RESULT"
 
-      - name: Build for testing
-        if: steps.probe.outputs.present == 'true'
+      - name: Build and test
         run: |
-          xcodebuild build-for-testing \
+          xcodebuild test \
             -project "${{ matrix.project }}" \
             -scheme "${{ matrix.scheme }}" \
-            -destination "${{ matrix.destination }}"
-
-      - name: Test without building
-        if: steps.probe.outputs.present == 'true'
-        run: |
-          xcodebuild test-without-building \
-            -project "${{ matrix.project }}" \
-            -scheme "${{ matrix.scheme }}" \
-            -destination "${{ matrix.destination }}"
+            -destination "platform=${{ matrix.simctlPlatform }} Simulator,name=${{ steps.sim.outputs.device }}"

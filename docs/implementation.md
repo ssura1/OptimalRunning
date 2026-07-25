@@ -158,13 +158,13 @@ Add HealthKit, location, and motion usage descriptions with text explaining *why
 | **Wave** | 0 |
 | **Depends on** | T-005 |
 | **Satisfies** | NFR-18 |
-| **Touches** | `.github/workflows/apps.yml`, `.github/workflows/legacy.yml` |
+| **Touches** | `.github/workflows/apps.yml` |
 
-`apps.yml`: matrix over iPhone (iOS 17 simulator) and WatchModern (watchOS 10 simulator), using `build-for-testing` + `test-without-building`.
+`apps.yml`: matrix over iPhone (iOS 17 simulator) and WatchModern (watchOS 10 simulator), using `build-for-testing` + `test`.
 
-`legacy.yml`: pinned to Xcode 26 via `maxim-lobanov/setup-xcode`, with a comment citing [CON-2](./requirements.md#con-2) explaining the pin and what to do when it starts failing.
+**`legacy.yml` is out of scope for this task and this MVP.** It has nothing to build against — `Apps/WatchLegacy` does not exist until Wave 4 — so creating it here would be no-op CI for a target that isn't there, which is the exact thing a reviewer would (rightly) flag. It moves to Wave 4, alongside whichever task first creates `Apps/WatchLegacy` (see the note at the top of that wave).
 
-**Done when:** both workflows run green against the empty projects; the Xcode pin is present with its explanatory comment.
+**Done when:** the workflow runs green against the real iPhone and WatchModern projects — build *and* test, not build-for-testing alone, now that the projects genuinely exist (T-005) and have a passing scaffolding test each.
 
 <a id="t-007"></a>
 ### T-007 — Units and pace primitives
@@ -979,6 +979,8 @@ Onboarding: units, palette choice, pace derivation from a race result or recent 
 ## Wave 4 — Legacy watch app
 
 Depends on Wave 2 (as the reference implementation) and Wave 3 (for transport). **No file in this wave may be shared with `Apps/WatchModern`** (AC-FR-K-1-4).
+
+**`legacy.yml` is created in this wave**, deferred here from T-006 (Wave 0) because it has nothing to build against until `Apps/WatchLegacy` exists. Add it — pinned to Xcode 26 via `maxim-lobanov/setup-xcode`, with a comment citing [CON-2](./requirements.md#con-2) — as part of whichever task in this wave first produces a buildable `Apps/WatchLegacy` project.
 
 <a id="t-063"></a>
 ### T-063 — Legacy sensor stack
