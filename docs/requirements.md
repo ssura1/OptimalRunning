@@ -329,6 +329,8 @@ The expected pace is a function of progress, not a constant. It is defined by a 
 | AC-FR-B-1-7 | THE SYSTEM SHALL allow pace haptics to be disabled entirely in settings without disabling interval haptics. |
 | AC-FR-B-1-8 | GIVEN a one-hour simulated run that oscillates across the `tooFast` boundary every 25 s, THE SYSTEM SHALL fire no more than 60 haptics. |
 
+> **Errata — "oscillates … every 25 s" is ambiguous, and design.md and implementation.md picked different readings of it.** It can mean either (a) a full oscillation cycle of 25 s, so ~12.5 s spent in `tooFast` per excursion — under the 20 s dwell, so the dwell timer never completes and **zero** alerts fire; or (b) a full 25 s spent in `tooFast` per excursion — over the dwell, so it *does* fire, and the 60 s cooldown then bounds the hourly count well under 60. `design.md` §7's arithmetic explanation assumes reading (a); `implementation.md` T-021's Done-when states the reading-(a) outcome ("fires zero alerts") as if it were the only correct one. Both readings satisfy the AC's literal text — "no more than 60" — and both are exercised in `Core/Sources/ORConformance/IntervalChecks.swift`'s `AlertPolicy` suite. The reading-independent guarantee, proved as a general property over *any* zone sequence rather than this one scenario, is `alert count ≤ duration ÷ cooldown` (see `design.md` §16.3); that is what actually backs this AC, and it holds regardless of which reading of "every 25 s" a reader has in mind.
+
 <a id="fr-b-2--the-warning-screen"></a>
 #### FR-B-2 — The warning screen
 

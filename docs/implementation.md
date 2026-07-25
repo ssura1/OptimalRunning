@@ -204,7 +204,9 @@ Implement `Pace`, `PaceRatio`, `UnitPreference`, and formatting helpers per `des
 | **Satisfies** | AC-FR-A-7-1, AC-FR-I-1-1 |
 | **Touches** | `Core/Sources/ORModels/Domain/**`, `Core/Tests/ORModelsTests/DomainTests.swift` |
 
-`RunType`, `StepKind`, `StepGoal`, `PaceZone`, `RunnerProfile`, `SensorCapabilities`, `DegradationFlag`, `LocationSample`, `EngineInput`, `EngineOutput`, `RunSample`.
+`RunType`, `StepKind`, `StepGoal`, `PaceZone`, `RunnerProfile`, `SensorCapabilities`, `DegradationFlag`, `LocationSample`, `EngineInput`, `RunSample`.
+
+**Not `EngineOutput`** — see [ADR-011](./design.md#adr-011). It embeds `StepState`/`StepTransition` (`ORIntervals`) and `AlertCommand` (`ORAlerts`), so it cannot live in `ORModels` without creating a dependency cycle; it is built alongside `RunEngine` in T-031 instead.
 
 **Done when:** all types are `Codable, Sendable, Hashable`; `PaceZone` has all six cases; JSON round-trip tests pass for every type.
 
@@ -252,9 +254,9 @@ Implement `RollingPaceEstimator` per `design.md` §5.1: distance-windowed at 200
 | **Wave** | 1 |
 | **Depends on** | T-008 |
 | **Satisfies** | FR-A-2 (all ACs) |
-| **Touches** | `Core/Sources/ORPace/TargetCurve/**`, `Core/Tests/ORPaceTests/TargetCurveTests.swift` |
+| **Touches** | `Core/Sources/ORModels/Configuration/**`, `Core/Tests/ORPaceTests/ConformanceTests.swift` |
 
-Implement `TargetPaceCurve` and the three presets from `design.md` §5.3.
+Implement `TargetPaceCurve` and the three presets from `design.md` §5.3. Lives in `ORModels`, not `ORPace/TargetCurve` — see [ADR-011](./design.md#adr-011): `PaceEngineConfiguration.curves: [RunType: TargetPaceCurve]` requires it.
 
 **Done when:** Tempo yields 8:00 at progress 0.5 and 8:07 at progress 1.0 from an 8:00 base; Easy is flat at every progress; Long yields 8:00 at 0.6 and 8:19 at 1.0; progress-0 with no plan yields no drift; a property test confirms drift is monotonic in progress.
 
@@ -308,9 +310,9 @@ Implement the Minetti polynomial and the attenuated, clamped factor from `design
 | **Wave** | 1 |
 | **Depends on** | T-008 |
 | **Satisfies** | FR-A-3 (all ACs) |
-| **Touches** | `Core/Sources/ORPace/Zones/**`, `Core/Tests/ORPaceTests/ZoneTests.swift` |
+| **Touches** | `Core/Sources/ORPace/Zones/**`, `Core/Sources/ORModels/Configuration/**`, `Core/Tests/ORPaceTests/ConformanceTests.swift` |
 
-Six-zone classifier with four asymmetric thresholds and 0.5% boundary hysteresis, per `design.md` §5.5.
+Six-zone classifier with four asymmetric thresholds and 0.5% boundary hysteresis, per `design.md` §5.5. The classifier logic (`ZoneClassifier`) lives in `ORPace/Zones`; the `PaceBand` type it consumes, and the three preset bands, live in `ORModels/Configuration` alongside `PaceEngineConfiguration.bands` — see [ADR-011](./design.md#adr-011). The hysteresis margin itself is `ZoneConfiguration.hysteresis`, also in `ORModels/Configuration` (§4 of `design.md` and NFR-21).
 
 **Done when:** the three preset band tables are encoded as tests; a pace oscillating within 0.4% of a boundary produces at most one zone change over 1 000 ticks; a property test confirms zone monotonicity in pace; all six zones are reachable.
 
@@ -336,9 +338,11 @@ Run-level (400 m / 90 s) and step-level (100 m) settling windows forcing `neutra
 | **Wave** | 1 |
 | **Depends on** | T-009 |
 | **Satisfies** | FR-C-1 (all ACs) |
-| **Touches** | `Core/Sources/ORIntervals/Plan/**`, `Core/Tests/ORIntervalsTests/PlanTests.swift` |
+| **Touches** | `Core/Sources/ORModels/Domain/**`, `Core/Sources/ORIntervals/Plan/**`, `Core/Sources/ORIntervals/Presets/**`, `Core/Tests/ORIntervalsTests/ConformanceTests.swift` |
 
-`WorkoutPlan`, `PlanElement`, `Step`, repeat blocks, flattening to `[ResolvedStep]` with rep indices, validation, and the built-in presets including the memo's canonical VO2 max workout.
+`WorkoutPlan`, `PlanElement`, `WorkoutStep` (named to avoid ambiguity with `Step` as an identifier), `StepTarget`, `ResolvedStep`, `StepSummary`, repeat blocks, flattening to `[ResolvedStep]` with rep indices, validation, and the built-in presets including the memo's canonical VO2 max workout.
+
+**Split across two modules, not one** — see [ADR-011](./design.md#adr-011). The data types themselves live in `ORModels/Domain/WorkoutPlan.swift`, because `RunEnvelope.plan: WorkoutPlan?` requires `WorkoutPlan` to live wherever `RunEnvelope` does. The behaviour — `resolvedSteps()` flattening and `validate(config:)` — is a genuine consumer of `IntervalConfiguration`, so it lives as an extension in `ORIntervals/Plan/PlanResolution.swift`. The built-in presets (`WorkoutPresets`, including the canonical VO2 max workout) live in `ORIntervals/Presets/`.
 
 **Done when:** the canonical workout flattens to exactly 10 resolved steps with correct rep indices; repeat counts 1–40 and distances 100 m–42 195 m are accepted and outside those rejected; validation rejects an empty plan; the plan round-trips through JSON.
 
@@ -382,7 +386,7 @@ Encode the Interval-vs-VO2max distinction from `design.md` §6.3 as a pure polic
 
 Dwell/cooldown machine per `design.md` §7.
 
-**Done when:** 20 s continuous in `tooFast` fires exactly one alert; a 19 s excursion fires none; a second alert within the 60 s cooldown is suppressed while the opposite direction still fires; the AC-FR-B-1-8 oscillation scenario fires zero alerts; suppression works for settling, pause, VO2 max, and the user setting; a property test bounds alert count by `T / cooldown`.
+**Done when:** 20 s continuous in `tooFast` fires exactly one alert; a 19 s excursion fires none; a second alert within the 60 s cooldown is suppressed while the opposite direction still fires; a sub-dwell oscillation (each excursion shorter than the 20 s dwell) fires zero alerts, and a full-dwell oscillation with 25 s per excursion fires but stays cooldown-bounded well under 60/hour — both are readings of AC-FR-B-1-8's "oscillates … every 25 s" and both must be covered (see the errata note on that AC in `requirements.md`); suppression works for settling, pause, VO2 max, and the user setting; a property test bounds alert count by `T / cooldown` for arbitrary zone sequences, which is the reading-independent guarantee the AC actually rests on.
 
 <a id="t-022"></a>
 ### T-022 — Colour maths
@@ -520,7 +524,7 @@ Author all seven fixtures from `design.md` §16.2. Generate synthetically but re
 | **Satisfies** | AC-FR-A-1-6, FR-A-*, FR-B-*, FR-C-* |
 | **Touches** | `Core/Sources/ORPace/Engine/**`, `Core/Tests/ORPaceTests/GoldenTests.swift`, `Fixtures/golden/**` |
 
-Assemble `RunEngine.tick` per `design.md` §5.7, wiring the pipeline in order. Generate and commit goldens for all seven fixtures. Write the golden test harness.
+Assemble `RunEngine.tick` per `design.md` §5.7, wiring the pipeline in order. `EngineOutput` is defined here, alongside `RunEngine` — not in `ORModels/Domain` with `EngineInput` (T-009); see [ADR-011](./design.md#adr-011). Generate and commit goldens for all seven fixtures. Write the golden test harness.
 
 **Done when:** all seven fixtures pass against committed goldens; `hilly-10k` demonstrably shifts its target on climbs; `gps-dropout-tunnel` degrades to pedometer without a zone flap; `boundary-oscillation` produces at most one zone change; running the suite twice produces identical output; the PR body documents each golden.
 

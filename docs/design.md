@@ -203,6 +203,17 @@ Short, dated, and stated with their trade-offs. These exist so a future contribu
 
 **Why.** Route and health data are among the most sensitive categories a phone holds. Not transmitting them is the strongest privacy guarantee available and removes an entire class of security requirements from a volunteer-maintained open-source project. iCloud sync is a candidate for 2.0.
 
+<a id="adr-011"></a>
+### ADR-011 — A type lives in `ORModels` if `PaceEngineConfiguration` or `RunEnvelope` reference it, regardless of which section of this document introduces it
+
+**Decision.** `WorkoutPlan`, `PlanElement`, `WorkoutStep`, `ResolvedStep`, `StepTarget`, `StepSummary`, `PaceBand`, and `TargetPaceCurve` (including `TargetPaceCurve`'s own `drift(at:)` / `targetPace(base:progress:)` methods) all live in `Core/Sources/ORModels`, not in `ORIntervals` or `ORPace` as §5–§6's narrative placement and `implementation.md`'s original `Touches` fields implied. `EngineOutput` is the mirror-image exception: it lives in `ORPace/Engine`, not in `ORModels/Domain` alongside `EngineInput`, despite §5.7 and T-009 grouping them together.
+
+**Why.** `PaceEngineConfiguration` holds `bands: [RunType: PaceBand]` and `curves: [RunType: TargetPaceCurve]`; `RunEnvelope` holds `plan: WorkoutPlan?`. Both `PaceEngineConfiguration` and `RunEnvelope` must live in `ORModels` — they are wire-format types with no behaviour, sitting at the bottom of the dependency graph so every other module can read and validate them. Swift's package dependency graph is a DAG: `ORIntervals` and `ORPace` already depend on `ORModels` (ADR-001's module list), so `ORModels` cannot depend back on either of them. A type referenced by a bottom-of-graph type must therefore itself live at the bottom of the graph, whichever section of this document first introduces it in prose.
+
+`EngineOutput` runs the other way: it embeds `StepState` / `StepTransition` (`ORIntervals`) and `AlertCommand` (`ORAlerts`), so it cannot live in `ORModels` without creating the cycle those two modules already forbid. It lives in `ORPace/Engine/RunEngine.swift`, next to the engine that actually produces it.
+
+**Consequence.** Reading a task's `Touches` field in `implementation.md` is not sufficient to find where a given type lives — check this ADR first for the eight types it names. `PaceEngineConfiguration` itself was always correctly scoped to `ORModels` (T-008); only the types *it holds* moved. Behaviour tied to those types split the same way: `TargetPaceCurve.drift(at:)` is data-shaped (pure math on the struct's own fields) and moved with its type into `ORModels`; `WorkoutPlan`'s flattening and validation (`resolvedSteps()`, `validate(config:)`) is genuinely engine behaviour — it consumes `IntervalConfiguration` and produces the runtime step list — and stayed in `ORIntervals/Plan/PlanResolution.swift` as an extension on the `ORModels`-defined type, which is the normal pattern for attaching behaviour to a lower-level type from a higher one.
+
 ---
 
 ## 3. Repository layout
@@ -221,20 +232,27 @@ OptimalRunning/
 ├── Core/                           # SPM package — pure Swift. Builds & tests on Linux.
 │   ├── Package.swift
 │   ├── Sources/
-│   │   ├── ORModels/               # value types, wire DTOs, Codable envelopes
-│   │   ├── ORPace/                 # rolling pace, target curve, grade, zones, hysteresis
-│   │   ├── ORIntervals/            # workout plan model + step state machine
+│   │   ├── ORModels/               # value types, wire DTOs, Codable envelopes — including
+│   │   │                           #   WorkoutPlan, PaceBand and TargetPaceCurve; see ADR-011
+│   │   ├── ORPace/                 # rolling pace, grade, zone/hysteresis logic, RunEngine
+│   │   │                           #   (EngineOutput lives here, not in ORModels; ADR-011)
+│   │   ├── ORIntervals/            # step state machine; WorkoutPlan resolution & validation
+│   │   │                           #   as an extension on the ORModels-defined type
 │   │   ├── ORAlerts/               # dwell/cooldown alert policy
-│   │   ├── ORTraining/             # VDOT, Riegel, plan generation
+│   │   ├── ORTraining/             # VDOT, Riegel, plan generation — not built yet (M5)
 │   │   ├── ORStats/                # aggregates, personal bests, time-in-zone
-│   │   └── ORColor/                # palette definitions + contrast/CVD math (no UI)
+│   │   ├── ORColor/                # palette definitions + contrast/CVD math (no UI)
+│   │   ├── ORConformance/          # shared assertion suite — see §16.4
+│   │   ├── ORReplay/               # golden-fixture CLI (T-010)
+│   │   └── ORSelfCheck/            # runs ORConformance without XCTest — see §16.5
 │   └── Tests/
 │       ├── ORPaceTests/
 │       ├── ORIntervalsTests/
-│       ├── ORTrainingTests/
+│       ├── ORTrainingTests/        # not built yet (M5)
 │       ├── ORStatsTests/
 │       ├── ORColorTests/
-│       └── Fixtures/               # recorded traces + golden outputs
+│       ├── PropertyTests/          # golden replay + property suites
+│       └── TestSupport/            # locates the repo-root Fixtures/ directory
 │
 ├── Apps/
 │   ├── iPhone/
@@ -242,21 +260,29 @@ OptimalRunning/
 │   │   └── Sources/{App,Features,Persistence,Health,Transport,DesignSystem}
 │   ├── WatchModern/                # watchOS 10.0+ — Series 4 and later
 │   │   └── Sources/{App,Run,Intervals,Sensors,Transport,DesignSystem}
-│   └── WatchLegacy/                # watchOS 8.0 — Series 3 only
+│   └── WatchLegacy/                # watchOS 8.0 — Series 3 only. Deferred past this MVP.
 │       └── Sources/{App,Run,Intervals,Sensors,Transport,DesignSystem}
 │
-├── Fixtures/                       # shared recorded traces (JSON), used by all test targets
+├── Fixtures/                       # shared recorded traces (JSON), used by all test targets.
+│   │                               #   Repo root, not under Core/, so Apps/* test targets can
+│   │                               #   read the same files the Core suite does (AC-FR-K-1-2).
 │   ├── tempo-5mi-rolling.json
 │   ├── intervals-4x1000.json
 │   ├── hilly-10k.json
 │   ├── gps-dropout-tunnel.json
-│   └── treadmill-indoor.json
+│   ├── treadmill-indoor.json
+│   ├── stop-start-traffic.json
+│   ├── boundary-oscillation.json
+│   └── golden/                     # committed expected output, one file per fixture above
 │
 ├── Tools/
 │   ├── check-no-availability.sh    # CON-3 gate
 │   ├── check-core-imports.sh       # ADR-001 gate
+│   ├── check-no-network.sh         # NFR-14 / NFR-15 gate
 │   ├── check-traceability.swift    # requirement ↔ task gate
-│   └── replay/                     # CLI: replay a fixture through the engine
+│   └── coverage-gate.sh            # NFR-18 gate
+│                                   # the fixture-replay CLI is Core/Sources/ORReplay, an SPM
+│                                   #   executable target, not a script under Tools/
 │
 └── .github/workflows/
     ├── core.yml                    # Linux, fast
@@ -482,7 +508,7 @@ Defaults (AC-FR-A-3-4):
 
 Easy's asymmetry is the point: the fast side is tight because running easy days too hard is the error that actually costs people their training; the slow side is loose because running easy days slower is nearly free.
 
-**Hysteresis** (AC-FR-A-3-6/7). Each boundary is widened by `h = 0.005` in the direction that would *keep* the current zone:
+**Hysteresis** (AC-FR-A-3-6/7). Each boundary is widened by `h`, sourced from `ZoneConfiguration.hysteresis` (default 0.005, i.e. 0.5% — NFR-21, `Core/Sources/ORModels/Configuration/PaceEngineConfiguration.swift`), in the direction that would *keep* the current zone:
 
 ```swift
 func classify(ratio: Double, band: PaceBand, previous: PaceZone, h: Double) -> PaceZone {
@@ -649,7 +675,9 @@ Transitions:
 4. During cooldown → suppress alerts of that direction; the opposite direction may still fire.
 5. `suppressed` is true during the settling window, while paused, in VO2 max mode, and when the user has disabled pace haptics (AC-FR-B-1-4/7).
 
-The AC-FR-B-1-8 bound falls out arithmetically: with a 60 s cooldown, one hour admits at most 60 alerts of a given direction, and the 20 s dwell means a signal oscillating every 25 s never accumulates enough continuous time to fire at all.
+The general bound falls out arithmetically and holds for *any* zone sequence, not just AC-FR-B-1-8's specific scenario: with a 60 s cooldown, one hour admits at most `3600 / 60 = 60` alerts of a given direction. This is what `Properties` asserts (§16.3, "Alert bound").
+
+**On AC-FR-B-1-8's exact wording.** "Oscillates … every 25 s" is ambiguous between two readings, and this document originally picked one without saying so — see the errata note on AC-FR-B-1-8 in `requirements.md` for the full resolution. Short version: if each excursion into `tooFast` lasts ~12.5 s (a 25 s full cycle), it stays under the 20 s dwell and fires zero times; if each excursion lasts a full 25 s, it clears the dwell and fires, cooldown-bounded to well under 60/hour. Both are true, both satisfy the AC's literal "no more than 60", and both are exercised in `IntervalChecks.alertPolicy()`.
 
 **Haptic mapping.** `tooFast` → a descending "slow down" pattern; `tooSlow` → an ascending "speed up" pattern; step transitions → a distinct notification pattern. The three are deliberately dissimilar so they are distinguishable without looking (AC-FR-B-1-3, AC-FR-C-2-2).
 
