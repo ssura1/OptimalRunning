@@ -556,7 +556,7 @@ Depends on Wave 1. T-033…T-037 are sequential (they build the sensor stack); T
 | **Wave** | 2 |
 | **Depends on** | T-005, T-009 |
 | **Satisfies** | AC-FR-D-1-1…4, AC-FR-D-1-7, DEG-8 |
-| **Touches** | `Apps/WatchModern/Sources/Sensors/Workout/**` |
+| **Touches** | `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Workout/**` (orchestration + the `WorkoutBackend` seam), `Apps/WatchModern/Sources/Sensors/Workout/**` (the `HKWorkoutSession` conformer) — see [ADR-012](./design.md#adr-012) |
 
 `HKWorkoutSession` + `HKLiveWorkoutBuilder` lifecycle: authorization, start, pause, resume, end, save with route. Handle authorization denial by running locally with a clear indication.
 
@@ -570,7 +570,7 @@ Depends on Wave 1. T-033…T-037 are sequential (they build the sensor stack); T
 | **Wave** | 2 |
 | **Depends on** | T-005 |
 | **Satisfies** | AC-FR-A-1-2, AC-FR-A-1-3, AC-FR-A-4-1, DEG-1, DEG-2, DEG-3, DEG-10, NFR-16 |
-| **Touches** | `Apps/WatchModern/Sources/Sensors/Location/**`, `Apps/WatchModern/Sources/Sensors/Motion/**` |
+| **Touches** | `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Location/**` (the GPS-drought tracker), `Apps/WatchModern/Sources/Sensors/Feed/**` (the `CLLocationManager` / `CMAltimeter` / `CMPedometer` glue, which is in the feed rather than in separate provider files) — see [ADR-012](./design.md#adr-012) |
 
 `CLLocationManager` configured for fitness, `CMAltimeter` relative altitude, `CMPedometer` fallback. Emit normalized `Core` value types only.
 
@@ -584,7 +584,7 @@ Depends on Wave 1. T-033…T-037 are sequential (they build the sensor stack); T
 | **Wave** | 2 |
 | **Depends on** | T-033, T-034 |
 | **Satisfies** | §8.2 of `design.md`, DEG-1 |
-| **Touches** | `Apps/WatchModern/Sources/Sensors/Fusion/**` |
+| **Touches** | `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Fusion/**` — see [ADR-012](./design.md#adr-012) |
 
 Fuse HealthKit, CoreLocation, and pedometer distance in the priority order from `design.md` §8.2, emitting one monotonic `cumulativeDistance` and recording the active source.
 
@@ -598,7 +598,7 @@ Fuse HealthKit, CoreLocation, and pedometer distance in the priority order from 
 | **Wave** | 2 |
 | **Depends on** | T-035 |
 | **Satisfies** | AC-FR-K-1-2, §8 of `design.md` |
-| **Touches** | `Apps/WatchModern/Sources/Sensors/Feed/**`, `Apps/WatchModern/Tests/FeedTests.swift` |
+| **Touches** | `Core/Sources/ORModels/Sensors/**` (the protocol declaration — see §8 of `design.md`), `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Fusion/SensorPipeline.swift`, `Apps/WatchModern/Sources/Sensors/Feed/**`, `Apps/WatchModern/WatchSupport/Tests/WatchSupportTests/TierEquivalenceTests.swift` — see [ADR-012](./design.md#adr-012) |
 
 Implement `RunSensorFeed`, emitting `EngineInput` at 1 Hz.
 
@@ -612,7 +612,7 @@ Implement `RunSensorFeed`, emitting `EngineInput` at 1 Hz.
 | **Wave** | 2 |
 | **Depends on** | T-036, T-031 |
 | **Satisfies** | FR-D-1, FR-D-2, NFR-8 |
-| **Touches** | `Apps/WatchModern/Sources/Run/Controller/**` |
+| **Touches** | `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Run/RunSessionModel.swift` — see [ADR-012](./design.md#adr-012) |
 
 The `@Observable` object owning the feed, engine, sample store, and haptics; exposing `RunState` to views.
 
@@ -626,7 +626,7 @@ The `@Observable` object owning the feed, engine, sample store, and haptics; exp
 | **Wave** | 2 |
 | **Depends on** | T-037, T-024 |
 | **Satisfies** | FR-D-6 (all ACs), DEG-6, NFR-12 |
-| **Touches** | `Apps/WatchModern/Sources/Run/Store/**` |
+| **Touches** | `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Storage/**` — see [ADR-012](./design.md#adr-012) |
 
 Append-only sample capture with atomic flush every 30 s, orphan detection on launch, and a storage precondition before starting a run.
 
@@ -640,7 +640,7 @@ Append-only sample capture with atomic flush every 30 s, orphan detection on lau
 | **Wave** | 2 |
 | **Depends on** | T-023 |
 | **Satisfies** | FR-J-1, AC-FR-A-6-6 |
-| **Touches** | `Apps/WatchModern/Sources/DesignSystem/**` |
+| **Touches** | `Apps/WatchModern/Sources/DesignSystem/**` (the SwiftUI `Color` bridge and typography), `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Presentation/**` (swatch, glyph and string resolution) — see [ADR-012](./design.md#adr-012) |
 
 Bridge `ORColor` palettes to SwiftUI `Color`, the SF Symbol glyph set, typography, and `isLuminanceReduced` handling.
 
@@ -654,7 +654,7 @@ Bridge `ORColor` palettes to SwiftUI `Color`, the SF Symbol glyph set, typograph
 | **Wave** | 2 |
 | **Depends on** | T-037, T-039 |
 | **Satisfies** | FR-A-6 (all ACs), FR-J-1 |
-| **Touches** | `Apps/WatchModern/Sources/Run/Views/Metrics/**` |
+| **Touches** | `Apps/WatchModern/Sources/Run/Views/Metrics/**`, `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Presentation/MetricsScreen.swift` — see [ADR-012](./design.md#adr-012) |
 
 The full-screen zone-coloured metrics page from `design.md` §12.2, with the five-metric stack, glyph, caption, signed delta, and hill indicator.
 
@@ -668,7 +668,7 @@ The full-screen zone-coloured metrics page from `design.md` §12.2, with the fiv
 | **Wave** | 2 |
 | **Depends on** | T-037, T-039 |
 | **Satisfies** | AC-FR-A-6-9, AC-FR-D-1-3, CON-1 |
-| **Touches** | `Apps/WatchModern/Sources/Run/Views/Controls/**` |
+| **Touches** | `Apps/WatchModern/Sources/Run/Views/Controls/**`, `Apps/WatchModern/Sources/Run/Views/RunPagerView.swift` |
 
 The paged layout from `design.md` §12.1 with Controls, Metrics, and Now Playing; Pause / Resume / End / Lap on Controls.
 
@@ -682,7 +682,7 @@ The paged layout from `design.md` §12.1 with Controls, Metrics, and Now Playing
 | **Wave** | 2 |
 | **Depends on** | T-037, T-021 |
 | **Satisfies** | FR-B-1 (all ACs) |
-| **Touches** | `Apps/WatchModern/Sources/Run/Haptics/**` |
+| **Touches** | `Apps/WatchModern/Sources/Run/Haptics/**` (the `WKHapticType` mapping), `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Run/HapticDispatcher.swift` — see [ADR-012](./design.md#adr-012) |
 
 Map `AlertCommand` to distinct `WKHapticType` patterns; verify background delivery during an active session.
 
@@ -696,7 +696,7 @@ Map `AlertCommand` to distinct `WKHapticType` patterns; verify background delive
 | **Wave** | 2 |
 | **Depends on** | T-040, T-042 |
 | **Satisfies** | FR-B-2 (all ACs) |
-| **Touches** | `Apps/WatchModern/Sources/Run/Views/Warning/**` |
+| **Touches** | `Apps/WatchModern/Sources/Run/Views/Warning/**`, `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Run/AlertPresenter.swift` — see [ADR-012](./design.md#adr-012) |
 
 The full-screen warning from `design.md` §12.3: direction, current, target, signed delta; 4 s auto-dismiss; tap or crown rotation dismisses; never shown while dimmed; step transitions take priority.
 
@@ -710,11 +710,23 @@ The full-screen warning from `design.md` §12.3: direction, current, target, sig
 | **Wave** | 2 |
 | **Depends on** | T-040, T-019 |
 | **Satisfies** | FR-C-2, FR-C-3, FR-C-6, AC-FR-C-4-5 |
-| **Touches** | `Apps/WatchModern/Sources/Intervals/Views/**` |
+| **Touches** | `Apps/WatchModern/Sources/Intervals/Views/**`, `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Presentation/IntervalPresentation.swift` — see [ADR-012](./design.md#adr-012) |
 
 Step header, rep counter, distance-remaining, final-100 m countdown, the 3 s transition screen, tap-to-advance, Double Tap, crown detent, and the undo affordance.
 
 **Done when:** a simulated 4×1000 m shows correct rep numbers and transitions; tap advances only open-goal steps; Double Tap works on a Series 9 simulator; undo appears for 5 s and restores state; the countdown appears in the final 100 m.
+
+> **Deviation — Double Tap is not implemented, and cannot be under this MVP's constraints.** Three requirements of this plan are jointly unsatisfiable:
+>
+> 1. T-044 asks for Double Tap as a manual-advance gesture.
+> 2. T-005 pins `Apps/WatchModern` to a **watchOS 10.0** deployment target.
+> 3. [CON-3](./requirements.md#con-3) forbids availability conditionals in a watch target, mechanically enforced by `Tools/check-no-availability.sh`.
+>
+> The explicit opt-in — `handGestureShortcut(.primaryAction)` — is **watchOS 11.0+**. Under watchOS 10 the system routes Double Tap to a view's prominent primary *button*, and the metrics page's advance affordance is a full-screen tap target rather than a button, so there is nothing for it to bind to. Calling the API anyway fails the build; guarding it with `#available` fails the gate.
+>
+> **Shipped state:** tap-to-advance and the opt-in crown detent (AC-FR-C-3-3) both work; Double Tap does not. Nothing silently half-works, and `SensorCapabilities.supportsDoubleTap` is reported `true` because there is no public API to query the sensor — see the note in `LiveSensorFeed`.
+>
+> **The three ways out, for whoever picks this up:** raise the deployment target to watchOS 11 (drops Series 4–8 hardware, contradicting T-005); restructure manual advance as a prominent primary `Button` so watchOS 10 routes the gesture to it natively (fits CON-3, costs the full-screen tap target that AC-FR-C-3 wants); or accept the omission and strike Double Tap from T-044 and AC-FR-C-3. This is a product decision, not an implementation one, so it is recorded rather than resolved.
 
 <a id="t-045"></a>
 ### T-045 — VO2 max mode UI (Modern)
@@ -724,11 +736,15 @@ Step header, rep counter, distance-remaining, final-100 m countdown, the 3 s tra
 | **Wave** | 2 |
 | **Depends on** | T-044, T-020 |
 | **Satisfies** | FR-C-4 (all ACs) |
-| **Touches** | `Apps/WatchModern/Sources/Intervals/VO2Max/**` |
+| **Touches** | `Apps/WatchModern/Sources/Intervals/Views/IntervalOverlays.swift` (`VO2MaxStepStack`) — no separate `VO2Max/` directory, because the no-colour behaviour is resolved in `MetricsScreen` rather than by a parallel view; see the T-045 note below |
 
 The no-colour VO2 max screen with the full metric stack plus step, rep, and distance-remaining.
 
 **Done when:** the background is neutral at every pace; no pace haptic ever fires; transition haptics do; a snapshot test proves no zone colour appears under any pace input.
+
+> **Note — implemented as data, not as a parallel screen.** There is no separate VO2 max view and no `if runType == .vo2max` anywhere in the view layer. `MetricsScreen.make` asks `RunTypeSemantics.permitsColouring` and resolves the **neutral** swatch for any run type that does not permit colouring; `WorkoutPresets.vo2Max4x1000()` carries `target: nil` on every step, so there is no target to judge against in the first place. VO2 max therefore cannot "collapse into Interval's behaviour" through a missed branch, because there is no branch to miss.
+>
+> **On the "snapshot test".** Not implemented as a snapshot. `MetricsScreenTests.testVO2MaxRendersTheNeutralSwatchAtEveryZone` asserts the exact resolved swatch equals the palette's neutral swatch for **every** `PaceZone` under **both** palettes, and `testIntervalModeStillColoursUnlikeVO2Max` asserts Interval does colour under identical input. That is a stronger guarantee than a snapshot at less cost: it covers all twelve combinations rather than the handful a snapshot suite would capture, it names the reason on failure instead of showing an image diff, and it needs no simulator or recorded baselines. `ScaffoldingTests.testVO2MaxNeverColoursOnWatchOS` repeats the check compiled for watchOS.
 
 <a id="t-046"></a>
 ### T-046 — Start screen and run selection (Modern)
@@ -738,7 +754,7 @@ The no-colour VO2 max screen with the full metric stack plus step, rep, and dist
 | **Wave** | 2 |
 | **Depends on** | T-039, T-018 |
 | **Satisfies** | FR-A-7 |
-| **Touches** | `Apps/WatchModern/Sources/App/Start/**` |
+| **Touches** | `Apps/WatchModern/Sources/App/Start/**`, `Apps/WatchModern/Sources/App/AppCoordinator.swift`, `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Presentation/StartScreenModel.swift` — see [ADR-012](./design.md#adr-012) |
 
 Five run types, target and band preview, per-run target adjustment, and a slot for today's planned workout.
 
@@ -752,7 +768,7 @@ Five run types, target and band preview, per-run target adjustment, and a slot f
 | **Wave** | 2 |
 | **Depends on** | T-046 |
 | **Satisfies** | AC-FR-B-1-7, AC-FR-C-3-3, AC-FR-J-2-3, AC-FR-I-1-4 |
-| **Touches** | `Apps/WatchModern/Sources/App/Settings/**` |
+| **Touches** | `Apps/WatchModern/Sources/App/Settings/**`, `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Settings/SettingsStore.swift` — see [ADR-012](./design.md#adr-012) |
 
 Pace haptics toggle, crown-detent-advance toggle, palette selection, units.
 

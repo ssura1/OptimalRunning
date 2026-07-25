@@ -16,32 +16,118 @@ enforced by `Tools/check-no-availability.sh`.
 
 ```sh
 xcodegen generate   # regenerate the .xcodeproj after editing project.yml
+
+# The fast loop — the tier's logic, no simulator, ~2 s. Run this first.
+swift test --package-path WatchSupport
+
+# The platform loop — the same logic compiled for watchOS, plus the app build.
 xcodebuild test -project OptimalRunnerWatch.xcodeproj -scheme OptimalRunnerWatch \
   -destination 'platform=watchOS Simulator,name=Apple Watch Series 11 (46mm)'
 ```
 
-## The test target is unhosted, and `@testable import` does not work
+Building for a **device** destination needs a signing team and will fail without one;
+the simulator destination above needs none, and is what CI uses.
+
+## The test target is unhosted, and no import of the app module works at all
 
 `OptimalRunnerWatchTests` does not run inside the app's process (see the note in
 `project.yml`) — a hosted test bundle's `TEST_HOST` fails to resolve for this
-single-target watchOS app under the Xcode version this was built against. Tried
-linking the app target without embedding it, too; `@testable import
-OptimalRunnerWatch` still fails to resolve as a module dependency either way. This is
-a real platform limitation, not a missing setting.
+single-target watchOS app under the Xcode version this was built against. Confirmed
+empirically, not assumed: neither `@testable import OptimalRunnerWatch` nor even a
+plain `import OptimalRunnerWatch` resolves, with or without `embed: false` on the
+dependency. Every combination fails with "Unable to resolve module dependency" —
+this is a real Xcode/watchOS limitation for unhosted single-target watch apps, not a
+missing setting.
 
-**Practical consequence:** anything in this target that needs unit-level testing must
-be `public` and reachable through a plain `import`, not `internal` behind
-`@testable`. In practice this should rarely bind — per ADR-001 the judgement logic
-worth testing in isolation belongs in `Core`, which has no such restriction.
+**The fix: `WatchSupport`, a local Swift package, not app-target source.** Any logic
+in this tier worth unit-testing — distance fusion, sensor-to-`Core`-type mapping,
+anything framework-free — lives in `Apps/WatchModern/WatchSupport/`, a small local
+SPM package. Both the app target and `OptimalRunnerWatchTests` import it as a
+`package:` dependency, exactly the way both already import `Core`, and that
+resolves fine — the limitation is specific to importing another *target in the same
+Xcode project*, not to package dependencies. `Sources/App/StartView.swift` stays a
+thin SwiftUI shell with no testable logic of its own, consistent with ADR-001 one
+level down: the app target converts sensor events and renders `Core`'s output,
+`WatchSupport` does the framework-free translation work in between, and only glue
+code that must directly touch HealthKit/CoreLocation/CoreMotion APIs lives
+untested-by-XCTest in the app target itself (verified instead by the manual
+protocol below). This is [ADR-012](../../docs/design.md#adr-012).
+
+### Why `Tests/` still exists, given `swift test` covers `WatchSupport`
+
+The package suite runs on the macOS host: fast, simulator-free, and proving behaviour on
+the wrong platform. `Tests/` runs a thin slice of the same logic **compiled for watchOS**,
+which is where platform divergence actually appears. It has already earned its keep once:
+`SampleStore`'s free-space query originally used
+`volumeAvailableCapacityForImportantUsageKey`, which compiles on macOS and **does not
+exist on watchOS**. `swift test` cannot see that class of bug by construction.
+
+## Manual verification protocol
+
+Everything below is **not covered by any automated test** and must be checked by hand on
+a simulator or a device before this tier can be called done. This list is deliberately
+explicit rather than folded into a claim of coverage.
+
+### Requires physical hardware
+
+| What | Why automation cannot reach it | Requirement |
+|---|---|---|
+| The three haptic patterns are tactilely distinct | "Feels different on a wrist" is not assertable. Tests prove three *different* `WKHapticType`s are requested; only a wrist proves they are distinguishable. | AC-FR-B-1-3, AC-FR-C-2-2 |
+| Haptics fire with the app backgrounded mid-workout | Needs a real `HKWorkoutSession` holding a background assertion with the screen asleep. The simulator does not model this. | AC-FR-B-1-6 |
+| Always-on dimmed rendering | The simulator does not enter the true always-on state; `isLuminanceReduced` can be forced, but the actual dimmed panel cannot. | AC-FR-A-6-6 |
+| GPS acquisition, drift and real dropout | Simulated locations are clean. Street-canyon multipath and tunnel loss are the conditions DEG-1 exists for. | DEG-1, AC-FR-A-1-2 |
+| Altimeter and pedometer readings | No simulator barometer or step counter. | DEG-2, DEG-10 |
+| HealthKit authorization, save, and the route write | Needs an interactively-authorized store; the simulator's HealthKit is limited and CI has no way to grant it. | AC-FR-D-1-1…4 |
+| Battery drain over a real run | NFR territory; only measurable on hardware. | NFR-8 (in practice) |
+| Crown rotation dismissing a warning | The gesture cannot be synthesised meaningfully. Presenter logic *is* tested; the input path is not. | AC-FR-B-2-3 |
+
+### Requires a simulator, but not hardware
+
+| What | Why | Requirement |
+|---|---|---|
+| Five metrics legible at 40 mm at the largest Dynamic Type size, no truncation | Layout under real font metrics. The view uses `minimumScaleFactor` and scales rather than truncating, but "legible" is a judgement. | AC-FR-A-6-5 |
+| Edge-to-edge fill with no inset or letterbox on a curved display | Visual. | AC-FR-A-6-1 |
+| Swipe-right reveals Controls; End returns to the start screen | The paged interaction itself. Model transitions are tested; the gesture is not. | AC-FR-A-6-9 |
+| The 400 ms colour cross-fade looks smooth rather than flashing | Timing is configuration-driven and asserted; perceived smoothness is not. | AC-FR-A-6-3 |
+| Dismissing a warning returns to the prior scroll position | Scroll position is `ScrollViewReader` state with no model behind it. Deliberately **not** claimed as covered. | AC-FR-B-2-4 |
+| Full start → run → pause → resume → end journey as a UI test | Not yet written. The equivalent sequence is covered at model level in `RunSessionModelTests`. | T-041 |
+
+### Known gap, not a verification item
+
+**Double Tap is not implemented.** T-044 asks for it, but the opt-in API is watchOS 11+
+while this target is watchOS 10 and CON-3 forbids the availability check that would bridge
+them. See the deviation note under T-044 in `docs/implementation.md` for the three ways
+out. Tap-to-advance and the opt-in crown detent both work.
 
 ## Layout
 
 | Directory | Owns |
 |---|---|
-| `Sources/App` | App entry point, start screen |
-| `Sources/Run` | Metrics/colour screen, warning screen, Controls page |
-| `Sources/Intervals` | Structured-workout and VO2 Max UI |
-| `Sources/Sensors` | HealthKit / CoreLocation / CoreMotion adapters implementing `RunSensorFeed` |
+| `Sources/App` | Entry point, `AppCoordinator` (what persists between runs), start screen, settings |
+| `Sources/Run` | Metrics page, warning/transition overlay, Controls page, the pager, haptic player |
+| `Sources/Intervals` | Countdown, undo affordance, VO2 max step stack |
+| `Sources/Sensors` | HealthKit / CoreLocation / CoreMotion glue implementing `RunSensorFeed` — thin, untested-by-XCTest, on the manual protocol |
 | `Sources/Transport` | WatchConnectivity sync — not yet built (Wave 3) |
-| `Sources/DesignSystem` | `ORColor` bridged to SwiftUI, including the CVD-safe palette toggle |
-| `Tests/` | XCTest target — see the unhosted-testing note above |
+| `Sources/DesignSystem` | `ORColor` bridged to SwiftUI, typography, animation. The **only** place a colour is named |
+| `WatchSupport/` | Local SPM package — the tier's logic, unit-tested by `swift test` ([ADR-012](../../docs/design.md#adr-012)) |
+| `Tests/` | watchOS XCTest target — platform smoke suite, see above |
+
+### Where the tier's logic lives
+
+| `WatchSupport` file | Owns | Task |
+|---|---|---|
+| `Fusion/DistanceFusion.swift` | Source priority, monotonicity, the 5 m switch bound | T-035 |
+| `Fusion/SensorPipeline.swift` | Raw readings → `EngineInput`; indoor exclusions | T-034, T-036 |
+| `Fusion/SensorInputBuilder.swift` | The `EngineInput` construction itself | T-036 |
+| `Location/GPSAvailabilityTracker.swift` | How long a fix drought lasts before the pedometer takes over | T-034 |
+| `Workout/WorkoutSessionController.swift` | Session lifecycle and active-time accounting | T-033 |
+| `Workout/WorkoutBackend.swift` | The HealthKit seam, so the above is testable | T-033 |
+| `Storage/SampleStore.swift` | Append-only capture, atomic flush, orphan detection, storage gate | T-038 |
+| `Run/RunSessionModel.swift` | The object owning feed + engine + store + haptics | T-037 |
+| `Run/AlertPresenter.swift` | What interruption is on screen and for how long | T-043 |
+| `Run/HapticDispatcher.swift` | `AlertCommand` → pattern | T-042 |
+| `Presentation/MetricsScreen.swift` | Every string, swatch, glyph and opacity on the metrics page | T-039, T-040, T-045 |
+| `Presentation/IntervalPresentation.swift` | Step header, countdown, rep text | T-044 |
+| `Presentation/StartScreenModel.swift` | Run selection, band preview, per-run target adjustment | T-046 |
+| `Presentation/RunStrings.swift` | The tier's display strings (`Core` ships caption keys only) | T-039 |
+| `Settings/SettingsStore.swift` | Profile persistence | T-047 |

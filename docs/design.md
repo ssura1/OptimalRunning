@@ -214,6 +214,19 @@ Short, dated, and stated with their trade-offs. These exist so a future contribu
 
 **Consequence.** Reading a task's `Touches` field in `implementation.md` is not sufficient to find where a given type lives — check this ADR first for the eight types it names. `PaceEngineConfiguration` itself was always correctly scoped to `ORModels` (T-008); only the types *it holds* moved. Behaviour tied to those types split the same way: `TargetPaceCurve.drift(at:)` is data-shaped (pure math on the struct's own fields) and moved with its type into `ORModels`; `WorkoutPlan`'s flattening and validation (`resolvedSteps()`, `validate(config:)`) is genuinely engine behaviour — it consumes `IntervalConfiguration` and produces the runtime step list — and stayed in `ORIntervals/Plan/PlanResolution.swift` as an extension on the `ORModels`-defined type, which is the normal pattern for attaching behaviour to a lower-level type from a higher one.
 
+<a id="adr-012"></a>
+### ADR-012 — Each watch tier's testable logic lives in a local `WatchSupport` package, not in its app target
+
+**Decision.** Everything in `Apps/WatchModern` worth unit-testing — distance fusion, the sensor pipeline, the run session model, the alert presenter, the presentation models, the settings store — lives in `Apps/WatchModern/WatchSupport/`, a local Swift package. The app target holds only code that must touch a framework directly: the HealthKit backend, the CoreLocation/CoreMotion feed, the WatchKit haptic player, and the SwiftUI views.
+
+**Why.** Not a preference — a platform constraint, confirmed empirically rather than assumed. `OptimalRunnerWatchTests` is an unhosted watchOS test bundle (a hosted one's `TEST_HOST` does not reliably resolve for a single-target watchOS app), and from it **neither** `@testable import OptimalRunnerWatch` **nor** a plain `import OptimalRunnerWatch` resolves — every combination, with and without `embed: false` on the dependency, fails with "Unable to resolve module dependency". A `package:` dependency resolves fine, exactly as `Core` already does. So app-target code is not merely awkward to test from that target; it is unreachable.
+
+Without this split, the choice would be between untested tier logic and making it `public` inside an app target that still cannot be imported. With it, the tier's logic is testable by `swift test` in seconds with no simulator, which is what makes the AC-FR-K-1-2 tier-equivalence replay practical to run on every push.
+
+**Why not in `Core`.** ADR-001 scopes `Core` to judgement logic shared by *every* tier. How one tier orchestrates its own sensors is not shared — ADR-002 is explicit that the two watch tiers share no sensor code — so moving fusion into `Core` would put tier-specific behaviour in the module whose entire value is being tier-agnostic.
+
+**Consequence.** As with ADR-011, a Wave 2 task's `Touches` field is not sufficient to locate code: paths written as `Apps/WatchModern/Sources/Sensors/Fusion/**` resolve to `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Fusion/**`. The Wave 2 task table records the actual paths. The package declares a `watchOS 10 / macOS 14` platform floor because its view models use the `Observable` macro; the macOS floor exists only so `swift test` can host it, and `Core` stays platform-unconstrained and Linux-testable.
+
 ---
 
 ## 3. Repository layout
@@ -338,6 +351,16 @@ public struct PaceRatio: Hashable, Comparable, Codable, Sendable {
 ```
 
 **Every tunable constant lives in `PaceEngineConfiguration`** (NFR-21), a single `Codable` struct with a documented default and a validated range per field. Nothing in the engine reads a literal.
+
+Wave 2 added three fields to satisfy NFR-21 for values the requirements already marked tunable but no configuration type yet held:
+
+| Field | Default | Why it is here | Requirement |
+|---|---|---|---|
+| `capture.minimumFreeBytesToStart` | 8 MiB | The storage precondition a run is refused below | DEG-6 |
+| `presentation.warningAutoDismissSeconds` | 4 | AC-FR-B-2-2 marks the dismissal explicitly tunable | AC-FR-B-2-2 |
+| `presentation.transitionScreenSeconds` | 3 | The §12.4 transition screen's duration, alongside it | §12.4 |
+
+**What NFR-21 does *not* cover, and why.** Two constants in the watch tier are deliberately not routed through `PaceEngineConfiguration`: `DistanceFusion.priorityOrder` (§8.2's source ranking) and `DistanceFusion.maxSwitchJumpMetres` (the 5 m switch bound from `implementation.md` T-035). NFR-21 governs *tunables* — values a runner, a profile, or a deployment might legitimately vary. These are correctness bounds the specification fixes, and exposing them as configuration would imply a supported 50 m jump setting or a supported pedometer-first ordering, neither of which exists. They are declared once each, in the type that enforces them, with the reasoning recorded at the declaration.
 
 ---
 
@@ -692,12 +715,13 @@ The general bound falls out arithmetically and holds for *any* zone sequence, no
 `Core` declares what it needs; each tier supplies it. This is the seam that makes ADR-002 work.
 
 ```swift
+@MainActor
 public protocol RunSensorFeed: AnyObject {
     var onSample: ((EngineInput) -> Void)? { get set }
     func start(activity: RunActivityKind) throws
     func pause()
     func resume()
-    func stop() async throws -> WorkoutSummary
+    func stop() async throws -> RunSummary
     var capabilities: SensorCapabilities { get }
 }
 
@@ -709,6 +733,13 @@ public struct SensorCapabilities: Sendable {
     public let supportsDoubleTap: Bool
 }
 ```
+
+Declared in `Core/Sources/ORModels/Sensors/RunSensorFeed.swift`, alongside `RunActivityKind`. Two corrections to the sketch above, both made during Wave 2 (T-036) and both worth knowing:
+
+- **`RunSummary`, not `WorkoutSummary`.** No `WorkoutSummary` type exists or needs to: `RunSummary` (§9.1) already carries exactly the whole-run totals a feed can report, and adding a near-duplicate would leave two types for one concept and an ambiguity about which one a caller should build.
+- **`@MainActor`.** The protocol as sketched does not compile under Swift 6's strict concurrency: `stop()` is `async` on a non-`Sendable` class-bound protocol, so an isolated caller would be sending a non-`Sendable` value across domains. Main-actor isolation is the resolution that matches reality — a feed is owned for the lifetime of a run screen, the watchOS APIs behind it deliver on the main queue already, and it makes each tick an ordered synchronous call. The ordering is load-bearing, not cosmetic: `ActiveClock` credits a full interval whenever two ticks arrive out of order, so unordered delivery would inflate active time.
+
+**Nothing in Wave 0 or Wave 1 declared this protocol.** T-036 and T-064 both say "implement `RunSensorFeed`" and no earlier task creates it — a gap in the task graph rather than in the design, since AC-FR-K-1-2's tier equivalence depends on both tiers satisfying *one* declaration. It is now declared once, in `ORModels`, where §8's opening sentence always implied it belonged.
 
 ### 8.1 Tier divergence matrix
 
