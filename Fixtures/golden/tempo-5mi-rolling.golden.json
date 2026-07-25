@@ -1,0 +1,27 @@
+{
+  "alerts" : [
+
+  ],
+  "degradations" : [
+
+  ],
+  "finalActiveElapsed" : 2399,
+  "finalCumulativeDistance" : 8029.889916472347,
+  "fixture" : "tempo-5mi-rolling",
+  "sampleCount" : 2400,
+  "transitions" : [
+
+  ],
+  "zoneTimeline" : [
+    {
+      "durationSeconds" : 90,
+      "startSeconds" : 0,
+      "zone" : 5
+    },
+    {
+      "durationSeconds" : 2310,
+      "startSeconds" : 90,
+      "zone" : 2
+    }
+  ]
+}

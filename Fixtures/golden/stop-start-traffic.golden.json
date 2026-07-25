@@ -1,0 +1,72 @@
+{
+  "alerts" : [
+
+  ],
+  "degradations" : [
+
+  ],
+  "finalActiveElapsed" : 1499,
+  "finalCumulativeDistance" : 3669.168141397304,
+  "fixture" : "stop-start-traffic",
+  "sampleCount" : 1500,
+  "transitions" : [
+
+  ],
+  "zoneTimeline" : [
+    {
+      "durationSeconds" : 90,
+      "startSeconds" : 0,
+      "zone" : 5
+    },
+    {
+      "durationSeconds" : 173,
+      "startSeconds" : 90,
+      "zone" : 2
+    },
+    {
+      "durationSeconds" : 39,
+      "startSeconds" : 263,
+      "zone" : 5
+    },
+    {
+      "durationSeconds" : 261,
+      "startSeconds" : 302,
+      "zone" : 2
+    },
+    {
+      "durationSeconds" : 39,
+      "startSeconds" : 563,
+      "zone" : 5
+    },
+    {
+      "durationSeconds" : 261,
+      "startSeconds" : 602,
+      "zone" : 2
+    },
+    {
+      "durationSeconds" : 39,
+      "startSeconds" : 863,
+      "zone" : 5
+    },
+    {
+      "durationSeconds" : 261,
+      "startSeconds" : 902,
+      "zone" : 2
+    },
+    {
+      "durationSeconds" : 39,
+      "startSeconds" : 1163,
+      "zone" : 5
+    },
+    {
+      "durationSeconds" : 261,
+      "startSeconds" : 1202,
+      "zone" : 2
+    },
+    {
+      "durationSeconds" : 37,
+      "startSeconds" : 1463,
+      "zone" : 5
+    }
+  ]
+}

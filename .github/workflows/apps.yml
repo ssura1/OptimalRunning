@@ -1,0 +1,55 @@
+name: Apps
+
+# Simulator builds and tests for the iPhone and Modern watch targets.
+#
+# The Xcode projects are created by T-005, which needs a machine with Xcode installed.
+# Until then each job no-ops rather than failing, so the repository stays green and the
+# absence is visible in the log rather than as a permanent red cross.
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: iPhone (iOS 17)
+            project: Apps/iPhone/OptimalRunner.xcodeproj
+            scheme: OptimalRunner
+            destination: 'platform=iOS Simulator,name=iPhone 15,OS=17.5'
+          - name: Watch Modern (watchOS 10)
+            project: Apps/WatchModern/OptimalRunnerWatch.xcodeproj
+            scheme: OptimalRunnerWatch
+            destination: 'platform=watchOS Simulator,name=Apple Watch Series 9 (45mm),OS=10.5'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the project exists
+        id: probe
+        run: |
+          if [ -d "${{ matrix.project }}" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::${{ matrix.project }} does not exist yet (created by T-005) — skipping"
+          fi
+
+      - name: Build for testing
+        if: steps.probe.outputs.present == 'true'
+        run: |
+          xcodebuild build-for-testing \
+            -project "${{ matrix.project }}" \
+            -scheme "${{ matrix.scheme }}" \
+            -destination "${{ matrix.destination }}"
+
+      - name: Test without building
+        if: steps.probe.outputs.present == 'true'
+        run: |
+          xcodebuild test-without-building \
+            -project "${{ matrix.project }}" \
+            -scheme "${{ matrix.scheme }}" \
+            -destination "${{ matrix.destination }}"

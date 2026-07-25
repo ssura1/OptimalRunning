@@ -1,0 +1,128 @@
+{
+  "alerts" : [
+    {
+      "atSeconds" : 300,
+      "kind" : "stepTransition"
+    },
+    {
+      "atSeconds" : 532,
+      "kind" : "stepTransition"
+    },
+    {
+      "atSeconds" : 923,
+      "kind" : "stepTransition"
+    },
+    {
+      "atSeconds" : 1154,
+      "kind" : "stepTransition"
+    },
+    {
+      "atSeconds" : 1544,
+      "kind" : "stepTransition"
+    },
+    {
+      "atSeconds" : 1777,
+      "kind" : "stepTransition"
+    },
+    {
+      "atSeconds" : 2166,
+      "kind" : "stepTransition"
+    },
+    {
+      "atSeconds" : 2398,
+      "kind" : "stepTransition"
+    },
+    {
+      "atSeconds" : 2788,
+      "kind" : "stepTransition"
+    }
+  ],
+  "degradations" : [
+
+  ],
+  "finalActiveElapsed" : 2999,
+  "finalCumulativeDistance" : 9447.23862994375,
+  "fixture" : "intervals-4x1000",
+  "sampleCount" : 3000,
+  "transitions" : [
+    {
+      "atCumulativeDistance" : 850.9024310648713,
+      "atSeconds" : 300,
+      "completedDistanceMetres" : 848.1030031613785,
+      "fromIndex" : 0,
+      "toIndex" : 1,
+      "wasAutomatic" : false
+    },
+    {
+      "atCumulativeDistance" : 1852.7794815650532,
+      "atSeconds" : 532,
+      "completedDistanceMetres" : 1000,
+      "fromIndex" : 1,
+      "toIndex" : 2,
+      "wasAutomatic" : true
+    },
+    {
+      "atCumulativeDistance" : 2852.205531642171,
+      "atSeconds" : 923,
+      "completedDistanceMetres" : 1000,
+      "fromIndex" : 2,
+      "toIndex" : 3,
+      "wasAutomatic" : true
+    },
+    {
+      "atCumulativeDistance" : 3852.1597808677298,
+      "atSeconds" : 1154,
+      "completedDistanceMetres" : 1000,
+      "fromIndex" : 3,
+      "toIndex" : 4,
+      "wasAutomatic" : true
+    },
+    {
+      "atCumulativeDistance" : 4851.9463141310625,
+      "atSeconds" : 1544,
+      "completedDistanceMetres" : 1000,
+      "fromIndex" : 4,
+      "toIndex" : 5,
+      "wasAutomatic" : true
+    },
+    {
+      "atCumulativeDistance" : 5855.099008082028,
+      "atSeconds" : 1777,
+      "completedDistanceMetres" : 1000,
+      "fromIndex" : 5,
+      "toIndex" : 6,
+      "wasAutomatic" : true
+    },
+    {
+      "atCumulativeDistance" : 6852.766733292726,
+      "atSeconds" : 2166,
+      "completedDistanceMetres" : 1000,
+      "fromIndex" : 6,
+      "toIndex" : 7,
+      "wasAutomatic" : true
+    },
+    {
+      "atCumulativeDistance" : 7851.037249730605,
+      "atSeconds" : 2398,
+      "completedDistanceMetres" : 1000,
+      "fromIndex" : 7,
+      "toIndex" : 8,
+      "wasAutomatic" : true
+    },
+    {
+      "atCumulativeDistance" : 8852.096719752479,
+      "atSeconds" : 2788,
+      "completedDistanceMetres" : 1000,
+      "fromIndex" : 8,
+      "toIndex" : 9,
+      "wasAutomatic" : true
+    }
+  ],
+  "zoneTimeline" : [
+    {
+      "durationSeconds" : 3000,
+      "startSeconds" : 0,
+      "zone" : 5
+    }
+  ]
+}

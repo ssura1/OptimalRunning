@@ -1,0 +1,36 @@
+{
+  "alerts" : [
+    {
+      "atSeconds" : 1492,
+      "kind" : "workoutComplete"
+    }
+  ],
+  "degradations" : [
+    "gpsDegraded"
+  ],
+  "finalActiveElapsed" : 1499,
+  "finalCumulativeDistance" : 5028.597015991063,
+  "fixture" : "gps-dropout-tunnel",
+  "sampleCount" : 1500,
+  "transitions" : [
+    {
+      "atCumulativeDistance" : 5005.1868084942325,
+      "atSeconds" : 1492,
+      "completedDistanceMetres" : 5000,
+      "fromIndex" : 0,
+      "wasAutomatic" : true
+    }
+  ],
+  "zoneTimeline" : [
+    {
+      "durationSeconds" : 90,
+      "startSeconds" : 0,
+      "zone" : 5
+    },
+    {
+      "durationSeconds" : 1410,
+      "startSeconds" : 90,
+      "zone" : 2
+    }
+  ]
+}

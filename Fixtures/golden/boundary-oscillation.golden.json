@@ -1,0 +1,37 @@
+{
+  "alerts" : [
+
+  ],
+  "degradations" : [
+
+  ],
+  "finalActiveElapsed" : 1499,
+  "finalCumulativeDistance" : 4926.998080566707,
+  "fixture" : "boundary-oscillation",
+  "sampleCount" : 1500,
+  "transitions" : [
+
+  ],
+  "zoneTimeline" : [
+    {
+      "durationSeconds" : 90,
+      "startSeconds" : 0,
+      "zone" : 5
+    },
+    {
+      "durationSeconds" : 119,
+      "startSeconds" : 90,
+      "zone" : 2
+    },
+    {
+      "durationSeconds" : 731,
+      "startSeconds" : 209,
+      "zone" : 3
+    },
+    {
+      "durationSeconds" : 560,
+      "startSeconds" : 940,
+      "zone" : 2
+    }
+  ]
+}

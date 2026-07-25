@@ -1,0 +1,32 @@
+name: Gates
+
+# Structural invariants that are cheap to check and expensive to lose. Each of these
+# encodes a decision that would otherwise erode one well-intentioned commit at a time.
+on:
+  push:
+  pull_request:
+
+jobs:
+  gates:
+    name: Architecture and privacy gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Core imports no Apple frameworks (ADR-001)
+        run: Tools/check-core-imports.sh
+
+      - name: No availability conditionals in watch targets (CON-3, AC-FR-K-1-5)
+        run: Tools/check-no-availability.sh
+
+      - name: No networking or telemetry (NFR-14, NFR-15)
+        run: Tools/check-no-network.sh
+
+  traceability:
+    name: Requirements trace to tasks
+    runs-on: ubuntu-latest
+    container: swift:6.1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every P0 requirement has a covering task
+        run: swift Tools/check-traceability.swift

@@ -1,0 +1,39 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Heart shape -->
+  <path d="M100,180
+           C40,140 10,100 10,65
+           C10,30 40,10 65,10
+           C85,10 95,25 100,40
+           C105,25 115,10 135,10
+           C160,10 190,30 190,65
+           C190,100 160,140 100,180
+           Z"
+        fill="#E63946"/>
+
+  <!-- Running man, white, centered inside heart -->
+  <g transform="translate(48,45) scale(1.1)"
+     fill="none"
+     stroke="#FFFFFF"
+     stroke-width="9"
+     stroke-linecap="round"
+     stroke-linejoin="round">
+
+    <!-- Head -->
+    <circle cx="58" cy="18" r="9" fill="#FFFFFF" stroke="none"/>
+
+    <!-- Torso -->
+    <path d="M54,30 L44,55"/>
+
+    <!-- Back arm (trailing) -->
+    <path d="M52,32 L30,45"/>
+
+    <!-- Front arm (reaching forward) -->
+    <path d="M52,32 L68,40 L80,32"/>
+
+    <!-- Front leg (bent, knee forward) -->
+    <path d="M44,55 L58,68 L50,90"/>
+
+    <!-- Back leg (trailing, kicked up) -->
+    <path d="M44,55 L25,68 L15,55"/>
+  </g>
+</svg>

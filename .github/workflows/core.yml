@@ -1,0 +1,37 @@
+name: Core
+
+# The fast lane. Runs the entire engine test suite on a Linux container, which is
+# possible only because ADR-001 keeps Core free of Apple frameworks — and is roughly
+# ten times cheaper per minute than a macOS runner, with far lower queue latency.
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Build, test and gate coverage
+    runs-on: ubuntu-latest
+    container: swift:6.1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: swift build --package-path Core
+
+      # Runs without XCTest, so it also works on a machine that has only the Swift
+      # toolchain. Kept as a separate step so a conformance failure is distinguishable
+      # from a build failure at a glance.
+      - name: Conformance suite
+        run: swift run --package-path Core ORSelfCheck
+
+      # Goldens are committed. A diff here is either a real regression or an intended
+      # behaviour change that should have been accompanied by a regenerated golden and
+      # a justification in the PR body.
+      - name: Golden fixtures
+        run: swift run --package-path Core ORReplay verify
+
+      - name: Test
+        run: swift test --package-path Core --enable-code-coverage
+
+      - name: Coverage gate (NFR-18)
+        run: Tools/coverage-gate.sh 85
