@@ -58,6 +58,8 @@ let package = Package(
                 // colour *science and data*, not UI — the SwiftUI `Color` bridge is
                 // the app target's job (T-039).
                 .product(name: "ORColor", package: "Core"),
+                // RunSummaryBuilder, for the envelope's denormalized totals (T-048).
+                .product(name: "ORStats", package: "Core"),
             ]
         ),
         .testTarget(
