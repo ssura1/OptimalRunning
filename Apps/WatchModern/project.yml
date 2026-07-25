@@ -16,6 +16,16 @@ options:
 packages:
   Core:
     path: ../../Core
+  # Pure Swift, framework-free logic that belongs to this watch tier specifically
+  # (distance fusion, sensor-to-Core mapping) but not to Core itself — ADR-001
+  # scopes Core to engine judgement logic, not per-tier sensor orchestration. Lives
+  # as its own local package, not app-target source, because a real Xcode
+  # limitation (confirmed empirically, not assumed) means neither `@testable
+  # import OptimalRunnerWatch` nor even a plain `import OptimalRunnerWatch` resolve
+  # from the unhosted test target — see the note on OptimalRunnerWatchTests below.
+  # A `package:` dependency resolves fine either way, the same as Core does.
+  WatchSupport:
+    path: WatchSupport
 
 targets:
   OptimalRunnerWatch:
@@ -37,6 +47,8 @@ targets:
         product: ORStats
       - package: Core
         product: ORColor
+      - package: WatchSupport
+        product: WatchSupport
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.optimalrunner.watch
@@ -91,13 +103,13 @@ targets:
   # that rather than fighting it, and is what Xcode's own watchOS App template does
   # by default.
   #
-  # Deliberately does NOT depend on the OptimalRunnerWatch target. A link-only,
-  # non-embedded dependency was tried and still fails to resolve for `@testable
-  # import` under this configuration ("Unable to resolve module dependency") — a
-  # real Xcode/watchOS limitation, not a missing setting here. Practical
-  # consequence: anything under Apps/WatchModern that needs unit-level testing must
-  # be `public`, not `internal` behind `@testable`. See the note in
-  # Tests/ScaffoldingTests.swift.
+  # Deliberately does NOT depend on the OptimalRunnerWatch target itself — confirmed
+  # empirically that neither `@testable import OptimalRunnerWatch` nor even a plain
+  # `import OptimalRunnerWatch` resolve here ("Unable to resolve module dependency"),
+  # with or without `embed: false`. Real Xcode/watchOS limitation, not a missing
+  # setting. Testable logic that would otherwise live in the app target instead
+  # lives in the local WatchSupport package (see `packages:` above), which resolves
+  # fine as a `package:` dependency, the same way Core does.
   OptimalRunnerWatchTests:
     type: bundle.unit-test
     platform: watchOS
@@ -107,6 +119,14 @@ targets:
     dependencies:
       - package: Core
         product: ORModels
+      # EngineOutput, for building the presentation cases this target checks.
+      - package: Core
+        product: ORPace
+      # Palettes and affordances, for the contrast and redundant-encoding checks.
+      - package: Core
+        product: ORColor
+      - package: WatchSupport
+        product: WatchSupport
     settings:
       base:
         SWIFT_VERSION: "6.0"

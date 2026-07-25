@@ -7,26 +7,53 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		05931037F801C0B05320E778 /* WatchSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 225152576C200649EA4EF0E5 /* WatchSupport */; };
+		1C704BFC9A101B2B58F5DCA7 /* HealthKitWorkoutBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7984EA8C6039A6F351338DF8 /* HealthKitWorkoutBackend.swift */; };
 		1E43823824A08FED43D21ECB /* ORModels in Frameworks */ = {isa = PBXBuildFile; productRef = 933088B0D7319B29CB179D4C /* ORModels */; };
+		32891786765634A2849BF6F1 /* IntervalOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE116A8A26EA33E4DC2E0CCB /* IntervalOverlays.swift */; };
 		5EFE32D9B64ACFDF44DBB379 /* ORModels in Frameworks */ = {isa = PBXBuildFile; productRef = FB51CBEB750C812ED760BB40 /* ORModels */; };
-		B368854B92D5497448CC5FA0 /* StartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA05693525B434DE3127B704 /* StartView.swift */; };
+		66618DA2B7B43F7E8E9763A6 /* WatchHapticPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21334C770F0DC25D5E029350 /* WatchHapticPlayer.swift */; };
+		69598134B5A72265C42D9807 /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B370EA59F1C47A355EE44C /* AppCoordinator.swift */; };
+		711771D58F27A7B3B8D77A99 /* WatchSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 37788ED294C71B67D97DE156 /* WatchSupport */; };
+		76CA24DAF9D934E6EEE72C0D /* WarningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C60649EC4261BC14259053AD /* WarningView.swift */; };
+		7E71B4DDB12C33A280FCF36D /* ORPace in Frameworks */ = {isa = PBXBuildFile; productRef = 564AC54E6493B56859394936 /* ORPace */; };
+		992C9E9981482FDD4204E6F7 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30BFE3DE7385B3E5055B39C9 /* SettingsView.swift */; };
+		9E700D787AEE0D74B61C5BEB /* StartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B99547A9FC9FE0F9F087B97E /* StartView.swift */; };
+		A528563D0A0556A725E2E8BF /* RunPagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01550337263EC4BC6B20E2E0 /* RunPagerView.swift */; };
+		A9891A46DB3BE3B7762680EB /* ORColor in Frameworks */ = {isa = PBXBuildFile; productRef = 4C2B3075E5924240E3DD7766 /* ORColor */; };
+		AED43E83CDB6EE142FC23727 /* ControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F315ABAA7E24E174749453E /* ControlsView.swift */; };
+		B0969C46F68A1817B4C7732D /* MetricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B3F35891DCA10543D84A423 /* MetricsView.swift */; };
 		B961D536BD39DD5FC4A4586C /* ScaffoldingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D25954A6566063F148F63C5C /* ScaffoldingTests.swift */; };
 		C18673B0FCAB06D69EADFA38 /* ORIntervals in Frameworks */ = {isa = PBXBuildFile; productRef = 61A1CEEEDD60F1E319120778 /* ORIntervals */; };
 		D3FD99923FE3F80756A6D410 /* ORStats in Frameworks */ = {isa = PBXBuildFile; productRef = 236D2CA2BA3C69219DF74CEA /* ORStats */; };
 		D950F82B1D21B663DC5B271D /* ORPace in Frameworks */ = {isa = PBXBuildFile; productRef = 9AC78EC3E45236AAC547D742 /* ORPace */; };
+		DB4E20FD00B7EAABEE406E87 /* ZoneStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED6D2E8B3C1B764908D237C /* ZoneStyle.swift */; };
+		DC67AAF9EC758BD1E3E8CD2F /* LiveSensorFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B9337875CFCEE686312E1C /* LiveSensorFeed.swift */; };
 		E48F79C9967D59F8B83C76F3 /* ORAlerts in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1A9990B17CDAD5CA32D350 /* ORAlerts */; };
 		F21D3090EEB0CBF2378B2E62 /* ORColor in Frameworks */ = {isa = PBXBuildFile; productRef = F661844D21F8A428860470F0 /* ORColor */; };
 		F54FA8410BDC8F6665FD256C /* OptimalRunnerWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C21A00BD6CC9191ACFA21943 /* OptimalRunnerWatchApp.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		01550337263EC4BC6B20E2E0 /* RunPagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunPagerView.swift; sourceTree = "<group>"; };
+		21334C770F0DC25D5E029350 /* WatchHapticPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHapticPlayer.swift; sourceTree = "<group>"; };
 		283A2B8DDAC212B854FE24D9 /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = ../../Core; sourceTree = SOURCE_ROOT; };
+		2ED6D2E8B3C1B764908D237C /* ZoneStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneStyle.swift; sourceTree = "<group>"; };
+		30BFE3DE7385B3E5055B39C9 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		3259271ABBB02C605058376C /* WatchSupport */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WatchSupport; path = WatchSupport; sourceTree = SOURCE_ROOT; };
 		59282B6A1367D22A9F8C9342 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		5C7D6AC7BADC500AC0354065 /* OptimalRunnerWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OptimalRunnerWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5F315ABAA7E24E174749453E /* ControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlsView.swift; sourceTree = "<group>"; };
+		68B370EA59F1C47A355EE44C /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
+		74B9337875CFCEE686312E1C /* LiveSensorFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSensorFeed.swift; sourceTree = "<group>"; };
+		7984EA8C6039A6F351338DF8 /* HealthKitWorkoutBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitWorkoutBackend.swift; sourceTree = "<group>"; };
 		9A48874ABD325D798D632FE1 /* OptimalRunnerWatchTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OptimalRunnerWatchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9B3F35891DCA10543D84A423 /* MetricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricsView.swift; sourceTree = "<group>"; };
+		AE116A8A26EA33E4DC2E0CCB /* IntervalOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntervalOverlays.swift; sourceTree = "<group>"; };
+		B99547A9FC9FE0F9F087B97E /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
 		C21A00BD6CC9191ACFA21943 /* OptimalRunnerWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptimalRunnerWatchApp.swift; sourceTree = "<group>"; };
+		C60649EC4261BC14259053AD /* WarningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarningView.swift; sourceTree = "<group>"; };
 		D25954A6566063F148F63C5C /* ScaffoldingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaffoldingTests.swift; sourceTree = "<group>"; };
-		FA05693525B434DE3127B704 /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -35,6 +62,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				5EFE32D9B64ACFDF44DBB379 /* ORModels in Frameworks */,
+				7E71B4DDB12C33A280FCF36D /* ORPace in Frameworks */,
+				A9891A46DB3BE3B7762680EB /* ORColor in Frameworks */,
+				05931037F801C0B05320E778 /* WatchSupport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -48,12 +78,30 @@
 				E48F79C9967D59F8B83C76F3 /* ORAlerts in Frameworks */,
 				D3FD99923FE3F80756A6D410 /* ORStats in Frameworks */,
 				F21D3090EEB0CBF2378B2E62 /* ORColor in Frameworks */,
+				711771D58F27A7B3B8D77A99 /* WatchSupport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		04D349131A8467C29268F825 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				AE116A8A26EA33E4DC2E0CCB /* IntervalOverlays.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		05C0860A25E0A004610B0E69 /* Run */ = {
+			isa = PBXGroup;
+			children = (
+				544E84E15049E149C73B3419 /* Haptics */,
+				86A3F3874FD139214901059E /* Views */,
+			);
+			path = Run;
+			sourceTree = "<group>";
+		};
 		104A787C7986AB1B3729D04D /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -66,11 +114,21 @@
 		19EEE99CAA065B0D45336638 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				68B370EA59F1C47A355EE44C /* AppCoordinator.swift */,
 				59282B6A1367D22A9F8C9342 /* Info.plist */,
 				C21A00BD6CC9191ACFA21943 /* OptimalRunnerWatchApp.swift */,
-				FA05693525B434DE3127B704 /* StartView.swift */,
+				90ADD3D12B2B5E6CE4337B90 /* Settings */,
+				EF07916990DEC8A54940ADF8 /* Start */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		2CB5EDC86523877D06B857BF /* Intervals */ = {
+			isa = PBXGroup;
+			children = (
+				04D349131A8467C29268F825 /* Views */,
+			);
+			path = Intervals;
 			sourceTree = "<group>";
 		};
 		358FD6ADE7B2510400C95C4B = {
@@ -83,12 +141,81 @@
 			);
 			sourceTree = "<group>";
 		};
+		4EA947F3B8A8CD2F922583A0 /* Sensors */ = {
+			isa = PBXGroup;
+			children = (
+				F3DFDF5075696D5E68A642EE /* Feed */,
+				BC89F3526880A6C758DC4451 /* Workout */,
+			);
+			path = Sensors;
+			sourceTree = "<group>";
+		};
+		544E84E15049E149C73B3419 /* Haptics */ = {
+			isa = PBXGroup;
+			children = (
+				21334C770F0DC25D5E029350 /* WatchHapticPlayer.swift */,
+			);
+			path = Haptics;
+			sourceTree = "<group>";
+		};
+		6E091DE71B50BF06BCE6EA7B /* Warning */ = {
+			isa = PBXGroup;
+			children = (
+				C60649EC4261BC14259053AD /* WarningView.swift */,
+			);
+			path = Warning;
+			sourceTree = "<group>";
+		};
 		6F5FE9FC96B0B58C8C261087 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
 				283A2B8DDAC212B854FE24D9 /* Core */,
+				3259271ABBB02C605058376C /* WatchSupport */,
 			);
 			name = Packages;
+			sourceTree = "<group>";
+		};
+		86A3F3874FD139214901059E /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				01550337263EC4BC6B20E2E0 /* RunPagerView.swift */,
+				9E88646321E973F2FD206679 /* Controls */,
+				F20E90B31555E4B3E3CA6C3A /* Metrics */,
+				6E091DE71B50BF06BCE6EA7B /* Warning */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		90ADD3D12B2B5E6CE4337B90 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				30BFE3DE7385B3E5055B39C9 /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		9833B0386C9F25E886279DF2 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				2ED6D2E8B3C1B764908D237C /* ZoneStyle.swift */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		9E88646321E973F2FD206679 /* Controls */ = {
+			isa = PBXGroup;
+			children = (
+				5F315ABAA7E24E174749453E /* ControlsView.swift */,
+			);
+			path = Controls;
+			sourceTree = "<group>";
+		};
+		BC89F3526880A6C758DC4451 /* Workout */ = {
+			isa = PBXGroup;
+			children = (
+				7984EA8C6039A6F351338DF8 /* HealthKitWorkoutBackend.swift */,
+			);
+			path = Workout;
 			sourceTree = "<group>";
 		};
 		CB118C7DFB26E543E57B4832 /* Tests */ = {
@@ -103,8 +230,36 @@
 			isa = PBXGroup;
 			children = (
 				19EEE99CAA065B0D45336638 /* App */,
+				9833B0386C9F25E886279DF2 /* DesignSystem */,
+				2CB5EDC86523877D06B857BF /* Intervals */,
+				05C0860A25E0A004610B0E69 /* Run */,
+				4EA947F3B8A8CD2F922583A0 /* Sensors */,
 			);
 			path = Sources;
+			sourceTree = "<group>";
+		};
+		EF07916990DEC8A54940ADF8 /* Start */ = {
+			isa = PBXGroup;
+			children = (
+				B99547A9FC9FE0F9F087B97E /* StartView.swift */,
+			);
+			path = Start;
+			sourceTree = "<group>";
+		};
+		F20E90B31555E4B3E3CA6C3A /* Metrics */ = {
+			isa = PBXGroup;
+			children = (
+				9B3F35891DCA10543D84A423 /* MetricsView.swift */,
+			);
+			path = Metrics;
+			sourceTree = "<group>";
+		};
+		F3DFDF5075696D5E68A642EE /* Feed */ = {
+			isa = PBXGroup;
+			children = (
+				74B9337875CFCEE686312E1C /* LiveSensorFeed.swift */,
+			);
+			path = Feed;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -124,6 +279,9 @@
 			name = OptimalRunnerWatchTests;
 			packageProductDependencies = (
 				FB51CBEB750C812ED760BB40 /* ORModels */,
+				564AC54E6493B56859394936 /* ORPace */,
+				4C2B3075E5924240E3DD7766 /* ORColor */,
+				225152576C200649EA4EF0E5 /* WatchSupport */,
 			);
 			productName = OptimalRunnerWatchTests;
 			productReference = 9A48874ABD325D798D632FE1 /* OptimalRunnerWatchTests.xctest */;
@@ -148,6 +306,7 @@
 				4C1A9990B17CDAD5CA32D350 /* ORAlerts */,
 				236D2CA2BA3C69219DF74CEA /* ORStats */,
 				F661844D21F8A428860470F0 /* ORColor */,
+				37788ED294C71B67D97DE156 /* WatchSupport */,
 			);
 			productName = OptimalRunnerWatch;
 			productReference = 5C7D6AC7BADC500AC0354065 /* OptimalRunnerWatch.app */;
@@ -175,6 +334,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				661C4D1F1734C5CC605D3614 /* XCLocalSwiftPackageReference "../../Core" */,
+				EEE0A7C179C2D596BBD10F5D /* XCLocalSwiftPackageReference "WatchSupport" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 104A787C7986AB1B3729D04D /* Products */;
@@ -200,8 +360,19 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				69598134B5A72265C42D9807 /* AppCoordinator.swift in Sources */,
+				AED43E83CDB6EE142FC23727 /* ControlsView.swift in Sources */,
+				1C704BFC9A101B2B58F5DCA7 /* HealthKitWorkoutBackend.swift in Sources */,
+				32891786765634A2849BF6F1 /* IntervalOverlays.swift in Sources */,
+				DC67AAF9EC758BD1E3E8CD2F /* LiveSensorFeed.swift in Sources */,
+				B0969C46F68A1817B4C7732D /* MetricsView.swift in Sources */,
 				F54FA8410BDC8F6665FD256C /* OptimalRunnerWatchApp.swift in Sources */,
-				B368854B92D5497448CC5FA0 /* StartView.swift in Sources */,
+				A528563D0A0556A725E2E8BF /* RunPagerView.swift in Sources */,
+				992C9E9981482FDD4204E6F7 /* SettingsView.swift in Sources */,
+				9E700D787AEE0D74B61C5BEB /* StartView.swift in Sources */,
+				76CA24DAF9D934E6EEE72C0D /* WarningView.swift in Sources */,
+				66618DA2B7B43F7E8E9763A6 /* WatchHapticPlayer.swift in Sources */,
+				DB4E20FD00B7EAABEE406E87 /* ZoneStyle.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -440,16 +611,36 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Core;
 		};
+		EEE0A7C179C2D596BBD10F5D /* XCLocalSwiftPackageReference "WatchSupport" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = WatchSupport;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		225152576C200649EA4EF0E5 /* WatchSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = WatchSupport;
+		};
 		236D2CA2BA3C69219DF74CEA /* ORStats */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ORStats;
 		};
+		37788ED294C71B67D97DE156 /* WatchSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = WatchSupport;
+		};
 		4C1A9990B17CDAD5CA32D350 /* ORAlerts */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ORAlerts;
+		};
+		4C2B3075E5924240E3DD7766 /* ORColor */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORColor;
+		};
+		564AC54E6493B56859394936 /* ORPace */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORPace;
 		};
 		61A1CEEEDD60F1E319120778 /* ORIntervals */ = {
 			isa = XCSwiftPackageProductDependency;
