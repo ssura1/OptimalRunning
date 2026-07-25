@@ -15,6 +15,31 @@ on:
   pull_request:
 
 jobs:
+  # The Modern watch tier's logic — sensor fusion, the run controller, the presentation
+  # models, and the AC-FR-K-1-2 tier-equivalence replay — lives in a local Swift package
+  # so it can be tested without a simulator.
+  #
+  # Not folded into core.yml because it is not Core: keeping the boundary visible in CI
+  # mirrors ADR-001's boundary in the source tree.
+  #
+  # On macOS rather than Linux, unlike core.yml, and the reason is `@Observable`. The
+  # view models carry the Observation macro, which is why the package declares a macOS 14
+  # floor; whether Observation resolves under the Linux toolchain was not verified, and a
+  # Linux job asserting it would be a guess. Core keeps the fast Linux lane — it is the
+  # package that genuinely has no platform dependency. Revisit if this job's queue time
+  # becomes the bottleneck.
+  watch-support:
+    name: WatchSupport (tier logic)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reads the shared Fixtures/ directory at the repository root, the same files
+      # Core's own goldens use — that shared reading is what makes tier equivalence
+      # meaningful rather than a parallel set of expectations.
+      - name: Test
+        run: swift test --package-path Apps/WatchModern/WatchSupport
+
   build:
     name: ${{ matrix.name }}
     runs-on: macos-15
