@@ -27,13 +27,28 @@ else
   OBJ="$BIN/OptimalRunnerCorePackageTests.xctest"
 fi
 
-xcrun llvm-cov export -summary-only -instr-profile "$PROF" "$OBJ" 2>/dev/null \
-  | python3 -c '
-import json, re, sys
+# Written to a real file rather than passed via `python3 -c`, because the summary
+# formatting needs literal double quotes inside f-strings, and threading those through
+# a shell-quoted `-c` argument is exactly the kind of escaping trap that looks right
+# and silently isn't (which is what happened here the first time).
+SUMMARIZE="$(mktemp -t coverage-gate-summarize.XXXXXX.py)"
+trap 'rm -f "$SUMMARIZE"' EXIT
+
+cat > "$SUMMARIZE" <<'PY'
+import json
+import re
+import sys
+
+targets_pattern, minimum_str = sys.argv[1], sys.argv[2]
+minimum = float(minimum_str)
+
 data = json.load(sys.stdin)
-pattern = re.compile(r"/Core/Sources/('"$PRODUCT_TARGETS"')/")
-covered = total = 0
-rows = {}
+pattern = re.compile(r"/Core/Sources/(" + targets_pattern + r")/")
+
+covered = 0
+total = 0
+rows: dict[str, tuple[int, int]] = {}
+
 for f in data["data"][0]["files"]:
     m = pattern.search(f["filename"])
     if not m:
@@ -41,22 +56,26 @@ for f in data["data"][0]["files"]:
     lines = f["summary"]["lines"]
     covered += lines["covered"]
     total += lines["count"]
-    t = m.group(1)
-    c, n = rows.get(t, (0, 0))
-    rows[t] = (c + lines["covered"], n + lines["count"])
+    target = m.group(1)
+    c, n = rows.get(target, (0, 0))
+    rows[target] = (c + lines["covered"], n + lines["count"])
 
-print(f"{\"target\":<14}{\"covered\":>9}{\"lines\":>8}{\"pct\":>8}")
-for t in sorted(rows):
-    c, n = rows[t]
+header = f'{"target":<14}{"covered":>9}{"lines":>8}{"pct":>8}'
+print(header)
+for target in sorted(rows):
+    c, n = rows[target]
     pct = 100.0 * c / n if n else 100.0
-    print(f"{t:<14}{c:>9}{n:>8}{pct:>7.1f}%")
+    print(f'{target:<14}{c:>9}{n:>8}{pct:>7.1f}%')
 
 pct = 100.0 * covered / total if total else 0.0
-print(f"{\"-\"*39}")
-print(f"{\"TOTAL\":<14}{covered:>9}{total:>8}{pct:>7.1f}%")
-minimum = float("'"$MIN"'")
+print("-" * len(header))
+print(f'{"TOTAL":<14}{covered:>9}{total:>8}{pct:>7.1f}%')
+
 if pct < minimum:
     print(f"::error::Core coverage {pct:.1f}% is below the required {minimum:.0f}% (NFR-18)")
     sys.exit(1)
 print(f"ok: Core coverage {pct:.1f}% meets the {minimum:.0f}% gate")
-'
+PY
+
+xcrun llvm-cov export -summary-only -instr-profile "$PROF" "$OBJ" 2>/dev/null \
+  | python3 "$SUMMARIZE" "$PRODUCT_TARGETS" "$MIN"
