@@ -896,16 +896,19 @@ Selectable at onboarding (AC-FR-J-2-3). An orange↔blue diverging scale on a **
 | `onTarget` | `#1F2937` | white | 14.68 | `#0D1117` | white | 18.92 |
 | `slightlySlow` | `#1E40AF` | white | 8.72 | `#0D1B4A` | white | 16.50 |
 | `tooSlow` | `#7DD3FC` | black | 12.60 | `#046A9B` | white | 5.93 |
+| `neutral` | `#57534E` | white | 7.63 | `#55504A` | white | 7.98 |
 
 The dark centre is a deliberate inversion of the usual light-centred diverging scale, and it earns its place three times over: it puts maximum lightness on the states that need attention, it keeps the most common state easy on the eyes at night, and it spreads lightness widely across the five steps — which is exactly what makes the palette survive colour-vision deficiency.
+
+`neutral` is a warm stone grey rather than the standard palette's graphite. Graphite sits only ΔE 7.8 from this palette's near-black `onTarget`, which would make "settling" and "on target" indistinguishable — the one confusion a runner cannot afford, since it is the difference between "the app is judging me" and "the app is not".
 
 ### 11.3 Colour is verified, not eyeballed
 
 `ORColor` is pure maths in `Core` with no UI dependency, so the palette is unit-testable (AC-FR-J-1-4, AC-FR-J-2-2):
 
-- **Contrast** — WCAG relative luminance and contrast ratio; assert ≥ 4.5:1 for every (palette × zone × luminance-state) pairing against its designated text colour. All 22 pairings above are verified; the lowest is 4.64:1.
-- **CVD separation** — Brettel–Viénot–Mollon simulation for protanopia, deuteranopia, and tritanopia, converted to CIELAB, asserting ΔE\*ab between every pair of zone colours in the **CVD palette**: ≥ 20 for normal variants, ≥ 15 for dimmed. Measured worst cases are 38.4 (normal, deuteranopia) and 18.2 (dimmed, protanopia), so both thresholds hold with margin.
-- **Dimmed separation** — the same ΔE assertion across dimmed variants of both palettes (AC-FR-A-6-7).
+- **Contrast** — WCAG relative luminance and contrast ratio; assert ≥ 4.5:1 for every (palette × zone × luminance-state) pairing against its designated text colour. All 24 pairings above are verified; the lowest is 4.64:1.
+- **CVD separation** — Viénot–Brettel–Mollon simulation for protanopia, deuteranopia, and tritanopia, converted to CIELAB, asserting ΔE\*ab between every pair of zone colours in the **CVD palette**: ≥ 20 for normal variants, ≥ 15 for dimmed. Measured worst cases are 23.2 (normal, protanopia) and 18.2 (dimmed, protanopia), so both thresholds hold with margin.
+- **Dimmed separation** — the same ΔE assertion across dimmed variants of both palettes, threshold 15 (AC-FR-A-6-7). The standard palette's tightest dimmed pair is 16.3.
 
 **One caveat, stated plainly so the test is not over-trusted.** ΔE\*ab includes the lightness term, so two colours that a dichromat cannot distinguish *by hue* can still score a healthy ΔE purely because one is lighter. The default palette scores respectably under simulated deuteranopia for exactly that reason, and it is still the wrong palette for a red-green dichromat to rely on. The ΔE gate therefore proves *distinguishability given the lightness spread we designed in* — it does not prove hue discrimination, and it is not a substitute for either the alternate palette or the redundant glyph and delta. That is why [FR-J-1](./requirements.md#fr-j-1--colour-is-never-the-only-channel) makes redundant encoding unconditional rather than something the CVD palette switches on.
 
