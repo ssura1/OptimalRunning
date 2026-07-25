@@ -60,17 +60,20 @@ func makeFullDiskStore(directory: URL) -> SampleStore {
 @MainActor
 final class RunSessionModelTests: XCTestCase {
 
-    private var directory: URL!
-
-    override func setUp() {
-        super.setUp()
-        directory = FileManager.default.temporaryDirectory
+    /// A unique scratch directory, cleaned up when the test finishes.
+    ///
+    /// Deliberately **not** a stored property assigned in `setUp()`/`tearDown()`.
+    /// `XCTestCase`'s `setUp()` and `tearDown()` are `nonisolated`, so overriding them in
+    /// a `@MainActor` class and touching main-actor-isolated state from inside is an
+    /// isolation violation. Some Swift versions accept it and some reject it — this
+    /// compiled locally and failed CI — so the portable shape is to allocate per test in
+    /// an already-isolated context and register cleanup with `addTeardownBlock`, which
+    /// runs regardless of whether the test passes, fails, or throws.
+    private func makeScratchDirectory() -> URL {
+        let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("RunSessionModelTests-\(UUID().uuidString)")
-    }
-
-    override func tearDown() {
-        try? FileManager.default.removeItem(at: directory)
-        super.tearDown()
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+        return url
     }
 
     // MARK: - Harness
@@ -81,17 +84,24 @@ final class RunSessionModelTests: XCTestCase {
         let haptics: RecordingHaptics
         let backend: FakeWorkoutBackend
         let store: SampleStore
+        /// Exposed so a test can open a *second* store over the same directory, which is
+        /// how a relaunch discovering an orphan is simulated.
+        let directory: URL
     }
 
+    /// `store` is a factory rather than a value because the directory is allocated here —
+    /// a caller wanting a special store still needs it pointed at this test's scratch
+    /// directory.
     private func makeHarness(
         runType: RunType = .tempo,
         profile: RunnerProfile? = nil,
-        store: SampleStore? = nil
+        store: ((URL) -> SampleStore)? = nil
     ) -> Harness {
+        let directory = makeScratchDirectory()
         let feed = FakeSensorFeed()
         let haptics = RecordingHaptics()
         let backend = FakeWorkoutBackend()
-        let sampleStore = store ?? SampleStore(directory: directory)
+        let sampleStore = store?(directory) ?? SampleStore(directory: directory)
 
         let plan = runType.isStructured
             ? WorkoutPresets.intervals(reps: 4, workMetres: 400, recoveryMetres: 200)
@@ -112,7 +122,8 @@ final class RunSessionModelTests: XCTestCase {
             haptics: haptics
         )
         return Harness(
-            model: model, feed: feed, haptics: haptics, backend: backend, store: sampleStore
+            model: model, feed: feed, haptics: haptics, backend: backend,
+            store: sampleStore, directory: directory
         )
     }
 
@@ -252,7 +263,7 @@ final class RunSessionModelTests: XCTestCase {
         run(harness, seconds: 90)
         _ = try await harness.model.end()
 
-        let freshStore = SampleStore(directory: directory)
+        let freshStore = SampleStore(directory: harness.directory)
         XCTAssertNil(freshStore.detectOrphan())
     }
 
@@ -263,7 +274,7 @@ final class RunSessionModelTests: XCTestCase {
         run(harness, seconds: 200)
         // No end() — this is the crash.
 
-        let orphan = SampleStore(directory: directory).detectOrphan()
+        let orphan = SampleStore(directory: harness.directory).detectOrphan()
         XCTAssertNotNil(orphan)
         XCTAssertGreaterThanOrEqual(orphan?.sampleCount ?? 0, 170, "lost more than 30 s")
     }
@@ -271,7 +282,7 @@ final class RunSessionModelTests: XCTestCase {
     // MARK: - DEG-6: a doomed run never starts
 
     func testARunIsRefusedWhenStorageIsInsufficient() async {
-        let harness = makeHarness(store: makeFullDiskStore(directory: directory))
+        let harness = makeHarness(store: { makeFullDiskStore(directory: $0) })
 
         do {
             try await harness.model.start(activity: .outdoorRun)
