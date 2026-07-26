@@ -203,12 +203,22 @@ public struct StepMachine: Sendable {
         return (makeState(cumulativeDistance: cumulativeDistance, activeElapsed: activeElapsed), nil)
     }
 
+    /// Whether an undo would succeed if taken right now (AC-FR-C-6-1).
+    ///
+    /// The single definition of "undo is available", read by both `undo` and the `StepState` the UI
+    /// renders from. They disagreed until Wave 4: the action enforced the window, the state flag
+    /// only checked that a snapshot existed. One predicate makes that class of drift impossible
+    /// rather than merely fixed.
+    public func isUndoAvailable(atActiveElapsed: TimeInterval) -> Bool {
+        guard let snapshot = undoSnapshot else { return false }
+        return atActiveElapsed - snapshot.atActiveSeconds <= config.undoWindowSeconds
+    }
+
     /// Reverts the most recent manual advance, restoring the previous step with its
     /// accumulated distance and time intact (AC-FR-C-6-2).
     @discardableResult
     public mutating func undo(atActiveElapsed: TimeInterval) -> Bool {
-        guard let snapshot = undoSnapshot,
-              atActiveElapsed - snapshot.atActiveSeconds <= config.undoWindowSeconds
+        guard isUndoAvailable(atActiveElapsed: atActiveElapsed), let snapshot = undoSnapshot
         else { return false }
 
         index = snapshot.index
@@ -306,7 +316,20 @@ public struct StepMachine: Sendable {
             timeRemainingSeconds: timeRemaining,
             isCountingDown: countingDown,
             canAdvanceManually: step.goal.isOpen,
-            isUndoAvailable: undoSnapshot != nil
+            // The window is part of availability, not only of the action.
+            //
+            // This previously read `undoSnapshot != nil`, which is a different and weaker claim:
+            // "a manual advance happened at some point during this step". `undo(atActiveElapsed:)`
+            // has always enforced `config.undoWindowSeconds` correctly, so the *action* expired on
+            // time while the *affordance* did not — leaving a visible, tappable undo control on
+            // screen for the remainder of the step that silently did nothing after 5 s. On the
+            // `intervals-4x1000` fixture the control stayed up for 231 s after a warmup advance.
+            //
+            // AC-FR-C-6-1 is explicit that the affordance is offered *for 5 s (tunable)*, so the
+            // flag has to read the same clock the action does. Found by the shared presentation
+            // golden added in Wave 4, which records `showsUndo` per tick; neither tier's UI tests
+            // had covered how long the affordance persists, only whether it appeared.
+            isUndoAvailable: isUndoAvailable(atActiveElapsed: activeElapsed)
         )
     }
 }

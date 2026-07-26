@@ -228,6 +228,34 @@ public enum IntervalChecks {
             _ = expiring.tick(cumulativeDistance: 10, activeElapsed: 1, manualAdvanceRequested: true)
             c.expect("undo expires after the window", !expiring.undo(atActiveElapsed: 100))
 
+            // The *affordance* expires on the same clock as the action (AC-FR-C-6-1).
+            //
+            // The check above only proved that taking undo late fails. It passed while
+            // `isUndoAvailable` was defined as "a snapshot exists", so the flag stayed true for the
+            // remainder of the step and the UI kept a dead control on screen — 231 s of it on the
+            // `intervals-4x1000` fixture. Asserting the flag's *lifetime*, not just its onset, is
+            // what closes that.
+            var window = StepMachine(steps: steps, config: IntervalConfiguration())
+            window.start(cumulativeDistance: 0, activeElapsed: 0)
+            _ = window.tick(cumulativeDistance: 10, activeElapsed: 1, manualAdvanceRequested: true)
+
+            let insideWindow = window.tick(
+                cumulativeDistance: 14, activeElapsed: 3, manualAdvanceRequested: false
+            ).state
+            c.expect("the undo affordance is offered inside the window", insideWindow.isUndoAvailable)
+
+            let pastWindow = window.tick(
+                cumulativeDistance: 200, activeElapsed: 40, manualAdvanceRequested: false
+            ).state
+            c.expect(
+                "the undo affordance is withdrawn once the window closes",
+                !pastWindow.isUndoAvailable
+            )
+            c.expect(
+                "the withdrawn affordance agrees with the action",
+                pastWindow.isUndoAvailable == window.isUndoAvailable(atActiveElapsed: 40)
+            )
+
             // An automatic advance is not undoable — it was earned by running it.
             var auto = StepMachine(steps: steps, config: IntervalConfiguration())
             auto.start(cumulativeDistance: 0, activeElapsed: 0)
