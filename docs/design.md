@@ -805,6 +805,13 @@ This table is normative (AC-FR-K-1-3) and must be kept accurate in review.
 | Manual advance | tap, Double Tap (Series 9+), crown detent | tap, crown detent |
 | Concurrency | `async`/`await` throughout | `async`/`await` (available on watchOS 8) with completion-handler bridges for older HealthKit APIs |
 | Charts in-app | none (watch shows no charts) | none |
+| Architecture | `arm64_32` | **`armv7k`** — 32-bit. Pinned via `ARCHS` because the watchOS 26.5 SDK omits armv7k from `SupportedTargets.watchos.Archs` while still shipping linkable stub slices. |
+| App bundle layout | single-target app (`WKApplication`) | **two-target** WatchKit app + extension (`WKWatchKitApp`). `WKApplication` is watchOS 9+, so a single-target bundle will not launch on Series 3. |
+| Alert visibility signal | `isLuminanceReduced` | **app active/inactive lifecycle.** watchOS 8 exposes no luminance state and the screen goes fully *off*, so AC-FR-B-2-5's drop-don't-queue rule is driven by `WKExtension` activity notifications. Same rule, different signal. |
+| Signed pace delta placement | shares the caption row | **own row at 38 mm.** `A BIT FAST +24` measured 14 characters against a 13-character budget on the 136 pt panel. Found by T-067's exhaustive case-size matrix. |
+| Picker presentation | `.pickerStyle(.navigationLink)` | **default style.** `.navigationLink` is watchOS 9+, and CON-3 forbids an `#available` gate, so the style is left unspecified — watchOS 8's default `Picker` in a `List` already drills in. |
+| Testability floor | simulator lane in CI plus host-side `WatchSupport` tests | **host-side `LegacySupport` tests only.** No watchOS 8 simulator runtime exists for Xcode 26, so this tier has no simulator lane at all; more of the tier lives in the package as a result, and the manual protocol is correspondingly longer. |
+| Test-target hosting | unhosted; cannot import the app target | unhosted; cannot import the app *extension* — device queries are repeated through `WatchKit` rather than shared |
 
 ### 8.2 Distance fusion
 
