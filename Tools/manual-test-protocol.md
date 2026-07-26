@@ -70,6 +70,19 @@ otool -l <same path> | grep minos                                          # exp
 If `lipo` reports `arm64_32`, the build will install on a Series 4+ and **fail on a Series 3** — that
 is the failure to watch for, and it is silent until you try the actual device.
 
+**CI asserts this too, so you are not the only guard.** `.github/workflows/legacy.yml` runs exactly the
+two commands above on every push and fails the job on anything but `armv7k` / `minos 8.0`, and also
+checks the bundle layout (`PlugIns/*.appex`, `_WatchKitStub/WK`, and the `WKWatchKitApp` key) since a
+watchOS 9+ single-target bundle also builds cleanly and then refuses to launch. Both assertions were
+verified against deliberately planted violations — a real `ARCHS=arm64_32` build does build
+successfully, and the job does reject it. The manual check above remains useful for local builds, which
+CI never sees.
+
+Note that the CI pin is **two** values: `runs-on: macos-26` and `xcode-version: '26.6'`. A runner image
+carries only a fixed set of Xcode versions, so the label is part of the pin — `macos-15` stops at Xcode
+26.3 and cannot satisfy this job at all. If you change one, re-check the other against the
+[runner image inventory](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-Readme.md).
+
 ### 0.4 Practical notes for testing on this hardware
 
 - **Everything is slow.** First launch after install can take 30 s+ while the OS validates. That is
