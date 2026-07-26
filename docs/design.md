@@ -1336,21 +1336,36 @@ Matrix over `{iPhone iOS 17, WatchModern watchOS 10}`, using `xcodebuild build-f
 name: Legacy (Series 3)
 on: [push, pull_request]
 jobs:
-  build:
+  legacy-support:          # the tier's logic; deliberately unpinned, see below
     runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test --package-path Apps/WatchLegacy/LegacySupport
+
+  legacy-build:            # the watchOS 8 / armv7k build
+    runs-on: macos-26      # part of the pin: macos-15 carries no Xcode past 26.3
     steps:
       - uses: actions/checkout@v4
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '26.x'      # Xcode 27 drops watchOS 8 targets — see CON-2
+          xcode-version: '26.6'    # fixed, not latest-stable — see CON-2
+      - run: cd Apps/WatchLegacy && xcodegen generate
       - run: |
-          xcodebuild build-for-testing \
+          xcodebuild build \
             -project Apps/WatchLegacy/OptimalRunnerLegacy.xcodeproj \
             -scheme OptimalRunnerLegacy \
-            -destination 'platform=watchOS Simulator,name=Apple Watch Series 4 (40mm),OS=8.5'
+            -destination 'generic/platform=watchOS' \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO
+      - run: |    # a green build is not proof it runs on a Series 3
+          lipo -archs "$EXT" | grep -qx armv7k
 ```
 
-The Xcode version is **pinned**, with the reason in a comment. When this job starts failing because runners no longer carry Xcode 26, that is the signal from [R-1](./requirements.md#11-risks) that the Legacy tier's window has closed — a planned event with a planned response, not a surprise.
+**There is no simulator lane.** No watchOS 8 simulator runtime exists for Xcode 26, so this is a `generic/platform=watchOS` build, not `build-for-testing` against a simulator destination. That is why `LegacySupport` carries as much of the tier as it does, and why `Tools/manual-test-protocol.md` is as long as it is.
+
+**The pin is two values**, `runs-on` and `xcode-version`, because a runner image carries only a fixed set of Xcode versions — the label is part of the pin. It is fixed to the exact build (26.6 / 17F113) whose SDK was verified to still link armv7k, and the job asserts the resolved toolchain rather than trusting the spec, since `'26.6'` is a version *spec* that a future 26.6.1 would satisfy silently. When this job starts failing because runners no longer carry that Xcode, that is the signal from [R-1](./requirements.md#11-risks) that the Legacy tier's window has closed — a planned event with a planned response, not a surprise.
+
+**A successful build is not the assertion.** If `ARCHS` silently resolved to `arm64_32` the build would still succeed and produce a binary that installs on a Series 4+ and fails on the only hardware this tier exists for; likewise a single-target `WKApplication` bundle builds cleanly and then will not launch on watchOS 8. Both are invisible until someone tries the actual watch, so the job asserts architecture, minimum OS, and bundle layout on the produced binary.
 
 ### 16.6 What is deliberately not automated
 
