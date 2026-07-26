@@ -7,15 +7,28 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2C49B3BDDCC148DBB8946590 /* WatchSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E07A3B3A3E2B2B9C974EB7B6 /* WatchSyncCoordinator.swift */; };
+		3A9D0DD7CE25DBD0B0E84AE0 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A2F997968042C65D71A3B49 /* OnboardingView.swift */; };
 		3EC0DF1F87BCFBFC6DF2DEE0 /* ORAlerts in Frameworks */ = {isa = PBXBuildFile; productRef = 1523BC26694C0DBB7FBDE78F /* ORAlerts */; };
 		40C31DAF4D71281CB28733B2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8677FB795DB56B582549801 /* ContentView.swift */; };
+		41FA1936ED27813F3539792D /* RunDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38ADB2357B15E5BE92349B5A /* RunDetailView.swift */; };
 		5410A0FA8D022BEA7869773F /* ORColor in Frameworks */ = {isa = PBXBuildFile; productRef = 89AF71782C84AB7A047AB373 /* ORColor */; };
 		60935782A7B0E35D7E97FEC6 /* ScaffoldingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 153DAA14C4A8CDE6469A24D6 /* ScaffoldingTests.swift */; };
+		820A751CFAC1E07F248277DE /* ZoneColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2224233D8D41E01059849C28 /* ZoneColor.swift */; };
 		867FCEA16318A465AC618B7E /* ORPace in Frameworks */ = {isa = PBXBuildFile; productRef = 7258048C0F5128E6D569231B /* ORPace */; };
+		90CFF6AE7C66DB6293417809 /* ORStats in Frameworks */ = {isa = PBXBuildFile; productRef = 06A2428D3379BC1070BC3B39 /* ORStats */; };
+		9BB2DF5AD17D235EBFA608EC /* AppShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C170F297F51128DDECF1E267 /* AppShell.swift */; };
+		AED3746CAC292A7CE62FFF8F /* HealthKitWorkoutSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B926578F7448713F7AFB822 /* HealthKitWorkoutSource.swift */; };
+		B12781624B756E2D7CE2DC1F /* PhoneSupport in Frameworks */ = {isa = PBXBuildFile; productRef = D3029D1C8910876AB73FF5C2 /* PhoneSupport */; };
 		B2A8A6DFB4E599C03EAFE9FE /* OptimalRunnerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEC510D4F8526FEA99D60068 /* OptimalRunnerApp.swift */; };
+		C97DBFC94AF45F8E712F30E5 /* PhoneSupport in Frameworks */ = {isa = PBXBuildFile; productRef = D4C3F3B491D25ADDF1916D0C /* PhoneSupport */; };
 		C9C7E56D00035AAF511A5D69 /* ORModels in Frameworks */ = {isa = PBXBuildFile; productRef = BD10544F36FDDBADEE206A98 /* ORModels */; };
 		D2A07DE9874A902B0C86BED7 /* ORStats in Frameworks */ = {isa = PBXBuildFile; productRef = B851B6E8455177176AF1AD29 /* ORStats */; };
 		E23B5BEA38BD08131BE3507E /* ORIntervals in Frameworks */ = {isa = PBXBuildFile; productRef = B4AA3044AFEEE935CB6251C3 /* ORIntervals */; };
+		E43E95BAD8044610ECDE72D4 /* RunListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED15358730A527C5F8F6E2F /* RunListView.swift */; };
+		E967E755155366ADE9C9EFFC /* StatisticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44B6B41CC9A9F044E9680CBD /* StatisticsView.swift */; };
+		F9277853F4C93EAEE4B5DCA9 /* ORModels in Frameworks */ = {isa = PBXBuildFile; productRef = A3182113BFC18390BD0DE10F /* ORModels */; };
+		FCB20FB0DDBDCC9301E6613C /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA264A83CD022E5405FC9374 /* ProfileView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -30,11 +43,21 @@
 
 /* Begin PBXFileReference section */
 		153DAA14C4A8CDE6469A24D6 /* ScaffoldingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaffoldingTests.swift; sourceTree = "<group>"; };
+		1B926578F7448713F7AFB822 /* HealthKitWorkoutSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitWorkoutSource.swift; sourceTree = "<group>"; };
+		2224233D8D41E01059849C28 /* ZoneColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneColor.swift; sourceTree = "<group>"; };
+		2A44D1EFBAC3B8518411A0CC /* PhoneSupport */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PhoneSupport; path = PhoneSupport; sourceTree = SOURCE_ROOT; };
+		38ADB2357B15E5BE92349B5A /* RunDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunDetailView.swift; sourceTree = "<group>"; };
+		3ED15358730A527C5F8F6E2F /* RunListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunListView.swift; sourceTree = "<group>"; };
+		44B6B41CC9A9F044E9680CBD /* StatisticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsView.swift; sourceTree = "<group>"; };
 		4D4AA223782D29EC429C8D08 /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = ../../Core; sourceTree = SOURCE_ROOT; };
 		672E85C0A5BAC2D9146ECAFB /* OptimalRunner.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OptimalRunner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6A2F997968042C65D71A3B49 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		6D0B04CF3E7CC6C89AB5E66A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B8677FB795DB56B582549801 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B8AFEBBBEE138C84591B7C54 /* OptimalRunnerTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = OptimalRunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C170F297F51128DDECF1E267 /* AppShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShell.swift; sourceTree = "<group>"; };
+		E07A3B3A3E2B2B9C974EB7B6 /* WatchSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncCoordinator.swift; sourceTree = "<group>"; };
+		FA264A83CD022E5405FC9374 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		FEC510D4F8526FEA99D60068 /* OptimalRunnerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptimalRunnerApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -49,15 +72,43 @@
 				3EC0DF1F87BCFBFC6DF2DEE0 /* ORAlerts in Frameworks */,
 				D2A07DE9874A902B0C86BED7 /* ORStats in Frameworks */,
 				5410A0FA8D022BEA7869773F /* ORColor in Frameworks */,
+				B12781624B756E2D7CE2DC1F /* PhoneSupport in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F663A820A38F958C37286A06 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F9277853F4C93EAEE4B5DCA9 /* ORModels in Frameworks */,
+				90CFF6AE7C66DB6293417809 /* ORStats in Frameworks */,
+				C97DBFC94AF45F8E712F30E5 /* PhoneSupport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0963413969224C0B1BB85FD2 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				6A2F997968042C65D71A3B49 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		1F2B8C44C9FBFF02EDD8CDCD /* Transport */ = {
+			isa = PBXGroup;
+			children = (
+				E07A3B3A3E2B2B9C974EB7B6 /* WatchSyncCoordinator.swift */,
+			);
+			path = Transport;
+			sourceTree = "<group>";
+		};
 		20E79AD9E2E1412B940E25A0 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				C170F297F51128DDECF1E267 /* AppShell.swift */,
 				B8677FB795DB56B582549801 /* ContentView.swift */,
 				6D0B04CF3E7CC6C89AB5E66A /* Info.plist */,
 				FEC510D4F8526FEA99D60068 /* OptimalRunnerApp.swift */,
@@ -65,10 +116,27 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		404DB7B94894AE3C87D549D0 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				2224233D8D41E01059849C28 /* ZoneColor.swift */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		446754CDA78406C46E1B52EA /* RunDetail */ = {
+			isa = PBXGroup;
+			children = (
+				38ADB2357B15E5BE92349B5A /* RunDetailView.swift */,
+			);
+			path = RunDetail;
+			sourceTree = "<group>";
+		};
 		5DB5D51CE6DD7968EE9776AF /* Packages */ = {
 			isa = PBXGroup;
 			children = (
 				4D4AA223782D29EC429C8D08 /* Core */,
+				2A44D1EFBAC3B8518411A0CC /* PhoneSupport */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -81,6 +149,34 @@
 			path = Tests;
 			sourceTree = "<group>";
 		};
+		8365E35FE089ACB9CD3FABB0 /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				FA264A83CD022E5405FC9374 /* ProfileView.swift */,
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
+		8CE38180EAE9EE0FF3C5BAE7 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				0963413969224C0B1BB85FD2 /* Onboarding */,
+				8365E35FE089ACB9CD3FABB0 /* Profile */,
+				446754CDA78406C46E1B52EA /* RunDetail */,
+				EBDA2F2461896179E940D03F /* RunList */,
+				FBC10A98A18FC5D85AD19EDD /* Statistics */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		945B0F7305139F1BA6C92FFC /* Health */ = {
+			isa = PBXGroup;
+			children = (
+				1B926578F7448713F7AFB822 /* HealthKitWorkoutSource.swift */,
+			);
+			path = Health;
+			sourceTree = "<group>";
+		};
 		B2227454CCBE104E0BACBA60 = {
 			isa = PBXGroup;
 			children = (
@@ -91,10 +187,22 @@
 			);
 			sourceTree = "<group>";
 		};
+		EBDA2F2461896179E940D03F /* RunList */ = {
+			isa = PBXGroup;
+			children = (
+				3ED15358730A527C5F8F6E2F /* RunListView.swift */,
+			);
+			path = RunList;
+			sourceTree = "<group>";
+		};
 		EC0EF01C05C3887413469846 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
 				20E79AD9E2E1412B940E25A0 /* App */,
+				404DB7B94894AE3C87D549D0 /* DesignSystem */,
+				8CE38180EAE9EE0FF3C5BAE7 /* Features */,
+				945B0F7305139F1BA6C92FFC /* Health */,
+				1F2B8C44C9FBFF02EDD8CDCD /* Transport */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -108,6 +216,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		FBC10A98A18FC5D85AD19EDD /* Statistics */ = {
+			isa = PBXGroup;
+			children = (
+				44B6B41CC9A9F044E9680CBD /* StatisticsView.swift */,
+			);
+			path = Statistics;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -116,6 +232,7 @@
 			buildConfigurationList = B57286F1708F90A108CD1D22 /* Build configuration list for PBXNativeTarget "OptimalRunnerTests" */;
 			buildPhases = (
 				B575E6A8A4189646E5F5BE02 /* Sources */,
+				F663A820A38F958C37286A06 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -124,6 +241,9 @@
 			);
 			name = OptimalRunnerTests;
 			packageProductDependencies = (
+				A3182113BFC18390BD0DE10F /* ORModels */,
+				06A2428D3379BC1070BC3B39 /* ORStats */,
+				D4C3F3B491D25ADDF1916D0C /* PhoneSupport */,
 			);
 			productName = OptimalRunnerTests;
 			productReference = B8AFEBBBEE138C84591B7C54 /* OptimalRunnerTests.xctest */;
@@ -148,6 +268,7 @@
 				1523BC26694C0DBB7FBDE78F /* ORAlerts */,
 				B851B6E8455177176AF1AD29 /* ORStats */,
 				89AF71782C84AB7A047AB373 /* ORColor */,
+				D3029D1C8910876AB73FF5C2 /* PhoneSupport */,
 			);
 			productName = OptimalRunner;
 			productReference = 672E85C0A5BAC2D9146ECAFB /* OptimalRunner.app */;
@@ -175,6 +296,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				7058E7BB0FB70E2B3FDC7EC9 /* XCLocalSwiftPackageReference "../../Core" */,
+				09976A902006D19E5D4FC368 /* XCLocalSwiftPackageReference "PhoneSupport" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F477E957D4E699297F295EA8 /* Products */;
@@ -192,8 +314,17 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9BB2DF5AD17D235EBFA608EC /* AppShell.swift in Sources */,
 				40C31DAF4D71281CB28733B2 /* ContentView.swift in Sources */,
+				AED3746CAC292A7CE62FFF8F /* HealthKitWorkoutSource.swift in Sources */,
+				3A9D0DD7CE25DBD0B0E84AE0 /* OnboardingView.swift in Sources */,
 				B2A8A6DFB4E599C03EAFE9FE /* OptimalRunnerApp.swift in Sources */,
+				FCB20FB0DDBDCC9301E6613C /* ProfileView.swift in Sources */,
+				41FA1936ED27813F3539792D /* RunDetailView.swift in Sources */,
+				E43E95BAD8044610ECDE72D4 /* RunListView.swift in Sources */,
+				E967E755155366ADE9C9EFFC /* StatisticsView.swift in Sources */,
+				2C49B3BDDCC148DBB8946590 /* WatchSyncCoordinator.swift in Sources */,
+				820A751CFAC1E07F248277DE /* ZoneColor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -450,6 +581,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		09976A902006D19E5D4FC368 /* XCLocalSwiftPackageReference "PhoneSupport" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = PhoneSupport;
+		};
 		7058E7BB0FB70E2B3FDC7EC9 /* XCLocalSwiftPackageReference "../../Core" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Core;
@@ -457,6 +592,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		06A2428D3379BC1070BC3B39 /* ORStats */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORStats;
+		};
 		1523BC26694C0DBB7FBDE78F /* ORAlerts */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ORAlerts;
@@ -469,6 +608,10 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = ORColor;
 		};
+		A3182113BFC18390BD0DE10F /* ORModels */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORModels;
+		};
 		B4AA3044AFEEE935CB6251C3 /* ORIntervals */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ORIntervals;
@@ -480,6 +623,14 @@
 		BD10544F36FDDBADEE206A98 /* ORModels */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ORModels;
+		};
+		D3029D1C8910876AB73FF5C2 /* PhoneSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PhoneSupport;
+		};
+		D4C3F3B491D25ADDF1916D0C /* PhoneSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PhoneSupport;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

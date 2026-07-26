@@ -208,6 +208,13 @@ Implement `Pace`, `PaceRatio`, `UnitPreference`, and formatting helpers per `des
 
 **Not `EngineOutput`** — see [ADR-011](./design.md#adr-011). It embeds `StepState`/`StepTransition` (`ORIntervals`) and `AlertCommand` (`ORAlerts`), so it cannot live in `ORModels` without creating a dependency cycle; it is built alongside `RunEngine` in T-031 instead.
 
+> **Gap filled in Wave 3.** `RunSummary` and `StepSummary` were declared here with nothing able to
+> *build* one, and three call sites need them — both watch tiers when a run ends, and the phone's
+> degraded backfill. Three implementations of "how much climb was that?" would disagree, and the
+> disagreement would surface as a run whose lifetime totals shift depending on which path produced
+> it. `ORStats/Summary/RunSummaryBuilder` and `ORPace/Engine/StepSummaryAccumulator` now own those
+> derivations; `RunSensorFeed` was the same kind of gap and is covered in `design.md` §8.
+
 **Done when:** all types are `Codable, Sendable, Hashable`; `PaceZone` has all six cases; JSON round-trip tests pass for every type.
 
 <a id="t-010"></a>
@@ -788,11 +795,23 @@ Runs concurrently with Wave 2 after Wave 1. T-048…T-051 are the transport; T-0
 | **Wave** | 3 |
 | **Depends on** | T-026, T-038 |
 | **Satisfies** | AC-FR-E-1-1, AC-FR-E-1-2, AC-FR-E-1-5, DEG-7 |
-| **Touches** | `Apps/WatchModern/Sources/Transport/**` |
+| **Touches** | `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Transport/**` (queue, coordinator, envelope builder), `Core/Sources/ORModels/Sync/**` (the shared wire types and payload codec) — see [ADR-012](./design.md#adr-012) |
 
 `WCSession.transferFile` of a gzipped `RunEnvelope`, a pending queue retained until ACK, and eviction that never drops an unacknowledged payload in favour of an acknowledged one.
 
 **Done when:** a run enqueues with the phone unreachable and transfers on reconnect; ACK deletes the payload; the eviction policy is unit-tested including the unacknowledged-priority rule; the queue survives app relaunch.
+
+> **Note — eviction ranks rejected payloads too.** AC-FR-E-1-5 names only the
+> acknowledged-versus-unacknowledged rule. The implemented order is **acknowledged → rejected →
+> pending**, oldest first within each rank, and the reasoning is recorded in `design.md` §10: a run
+> the phone has definitively refused cannot become deliverable by waiting, so keeping it while
+> dropping a deliverable run would trade recoverable data for unrecoverable.
+>
+> **The reconciliation rules are a deviation worth knowing.** On load the on-disk index is
+> reconciled against the filesystem rather than trusted. A payload file with no index entry is
+> *adopted as pending* — it is a real recorded run, and idempotent ingest makes a duplicate send
+> free, whereas deleting it loses the run. An index entry with no file is *dropped*, or the
+> coordinator would hand a nonexistent path to the transport on every reconnect.
 
 <a id="t-049"></a>
 ### T-049 — Phone transport and ingest
@@ -802,11 +821,24 @@ Runs concurrently with Wave 2 after Wave 1. T-048…T-051 are the transport; T-0
 | **Wave** | 3 |
 | **Depends on** | T-026, T-053 |
 | **Satisfies** | AC-FR-E-1-3, AC-FR-E-1-4, AC-FR-E-1-7, NFR-13 |
-| **Touches** | `Apps/iPhone/Sources/Transport/**` |
+| **Touches** | `Apps/iPhone/PhoneSupport/Sources/PhoneSupport/Ingest/**` (validation and upsert), `Apps/iPhone/Sources/Transport/**` (the `WCSession` conformer) — see [ADR-013](./design.md#adr-013) |
 
 Receive, validate, upsert by `runID`, update aggregates, ACK. Unknown major schema versions produce a message, never a crash.
 
 **Done when:** duplicate delivery creates exactly one record; a version-2 payload is rejected gracefully; end-to-end delivery completes within 60 s of reachability in an integration test.
+
+> **Deviation — the 60 s delivery bound (AC-FR-E-1-7) is not automated, and cannot be here.**
+> Delivery time is a property of `WCSession`'s own scheduling between two *paired physical devices*.
+> The Simulator does not model it: an iOS test run logs `WCErrorCodeDeviceNotPaired` on every
+> `updateApplicationContext`, which is exactly the honest answer. What is automated is everything
+> either side of the wire — the watch hands payloads over the instant reachability returns, with no
+> artificial delay, and the phone stores and acknowledges synchronously on receipt. The wire itself
+> is on the manual protocol in `Apps/iPhone/README.md`.
+>
+> Also note the receipt path reads the transferred file's bytes **synchronously in the delegate
+> callback**. WatchConnectivity deletes the file as soon as that method returns, so hopping to the
+> main actor first and reading there races the deletion — intermittently losing runs on a path with
+> no error to report.
 
 <a id="t-050"></a>
 ### T-050 — Profile and plan downlink
@@ -816,11 +848,23 @@ Receive, validate, upsert by `runID`, update aggregates, ACK. Unknown major sche
 | **Wave** | 3 |
 | **Depends on** | T-048, T-049 |
 | **Satisfies** | AC-FR-I-1-6, AC-FR-G-1-3, AC-FR-A-7-4 |
-| **Touches** | `Apps/WatchModern/Sources/Transport/Downlink/**`, `Apps/iPhone/Sources/Transport/Downlink/**` |
+| **Touches** | `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Transport/DownlinkApplier.swift`, `Apps/iPhone/PhoneSupport/Sources/PhoneSupport/Downlink/**`, `Core/Sources/ORModels/Sync/SyncMessages.swift` (`PhoneContext`) — see [ADR-013](./design.md#adr-013) |
 
 `updateApplicationContext` carrying profile and upcoming planned workouts.
 
 **Done when:** a profile edit on the phone reaches the watch; the watch operates correctly on the last-synced profile with the phone off; today's planned workout appears on the watch start screen.
+
+> **Scope — the plan half carries nothing yet, deliberately.** Plan generation is Wave 5. The wire
+> format (`PlannedWorkoutDescriptor`), the store model, the publisher and the watch-side applier are
+> all built and tested end to end with a real `WorkoutPlan`, so the channel needs no change when
+> Wave 5 lands. Nothing *generates* one, and publishing today returns an empty list — fabricating a
+> planned workout to demonstrate the channel would put a feature on the watch's start screen that the
+> product does not have.
+>
+> **The "with the phone off" guarantee is tested by relaunching, not by mocking.** A synced profile
+> is written through to storage on arrival, and the test builds a fresh `SettingsStore` over the same
+> backing — which is what a watch reboot is. A profile held only in memory would leave a runner
+> judged against a default target they never set.
 
 <a id="t-051"></a>
 ### T-051 — HealthKit backfill
@@ -830,11 +874,27 @@ Receive, validate, upsert by `runID`, update aggregates, ACK. Unknown major sche
 | **Wave** | 3 |
 | **Depends on** | T-049 |
 | **Satisfies** | AC-FR-E-1-6, DEG-4 |
-| **Touches** | `Apps/iPhone/Sources/Health/**` |
+| **Touches** | `Apps/iPhone/PhoneSupport/Sources/PhoneSupport/Health/**` (reconstruction and reconciliation), `Apps/iPhone/Sources/Health/**` (the `HKWorkout` query) — see [ADR-013](./design.md#adr-013) |
 
 Reconstruct a degraded `RunRecord` from an `HKWorkout` when no sidecar arrives, flagged `isDegraded`.
 
 **Done when:** a run with a deleted payload still appears with distance, duration, heart rate, and route; the detail view states what is missing rather than rendering an empty chart; backfill never overwrites a complete record.
+
+> **The third ordering, which the Done-when does not name.** "Backfill never overwrites a complete
+> record" covers two of the three cases. The dangerous one is the sidecar arriving *after* a
+> backfill: the placeholder was created under a `runID` this app invented — the watch's own was
+> unknowable once its payload was gone — so an upsert keyed on `runID` cannot see it, and the store
+> ends up holding **two records for one run**, with every lifetime total counting it twice.
+> Reconciliation is therefore keyed on `healthKitWorkoutUUID`, the only identifier the watch and
+> HealthKit share, and runs inside the ingest transaction.
+>
+> **Deliberately no heuristic fallback.** A payload with no `healthKitWorkoutUUID` is left as a
+> second record rather than matched to a placeholder by start time — that guess would silently merge
+> two different runs recorded minutes apart, and a visible duplicate the user can delete beats an
+> invisible merge they cannot undo.
+>
+> A backfilled run also sets **no personal best**: HealthKit gives whole-run totals only, so
+> awarding a 5 k best from an average pace over 10 km would be fiction.
 
 <a id="t-052"></a>
 ### T-052 — iPhone app shell
@@ -844,7 +904,7 @@ Reconstruct a degraded `RunRecord` from an `HKWorkout` when no sidecar arrives, 
 | **Wave** | 3 |
 | **Depends on** | T-005 |
 | **Satisfies** | §13.1 of `design.md` |
-| **Touches** | `Apps/iPhone/Sources/App/**` |
+| **Touches** | `Apps/iPhone/Sources/App/**`, `Apps/iPhone/Sources/DesignSystem/**` |
 
 Five-tab structure, navigation, launch, and onboarding entry.
 
@@ -858,11 +918,26 @@ Five-tab structure, navigation, launch, and onboarding entry.
 | **Wave** | 3 |
 | **Depends on** | T-052, T-026 |
 | **Satisfies** | §9.3 of `design.md`, R-8 |
-| **Touches** | `Apps/iPhone/Sources/Persistence/**` |
+| **Touches** | `Apps/iPhone/PhoneSupport/Sources/PhoneSupport/Persistence/**` — see [ADR-013](./design.md#adr-013) |
 
 The schema from `design.md` §9.3 with `.externalStorage` blobs, repository types, and a migration plan from v1.
 
 **Done when:** all models persist and fetch; sample blobs live in external storage, verified by inspecting the store; a 1 000-run fetch for the list view does not page in blobs; repository types are unit-tested against an in-memory container.
+
+> **Finding — `.externalStorage` only applies above ~128 KiB, and real runs straddle that line.**
+> Measured on both macOS and iOS: the threshold is Core Data's documented 131 072 bytes, which a
+> JSON-encoded `PackedSamples` reaches at about 4 900 samples — roughly 82 minutes at 1 Hz. A
+> 40-minute run is stored *inline*. The list-fetch guarantee therefore rests on **never touching the
+> property** (`RunListItem` is a value-type projection), not on externalisation; see `design.md`
+> §9.3. The threshold itself is now pinned by a test in both suites.
+>
+> **The 1 000-run test proves this structurally, not by timing.** Its first version compared the
+> list fetch against a blob-reading fetch and asserted the list was faster; it reported the list as
+> 8× *slower*, because whichever fetch ran first paid the cold-cache cost of opening the store. It
+> was measuring filesystem cache warmth. The test now deletes every external blob file and requires
+> the list fetch to return all 1 000 rows with correct values — it cannot read what no longer
+> exists — with a final assertion that `packedSamples` then reads `nil`, which is what stops the
+> first half being vacuous.
 
 <a id="t-054"></a>
 ### T-054 — Run list
@@ -872,7 +947,7 @@ The schema from `design.md` §9.3 with `.externalStorage` blobs, repository type
 | **Wave** | 3 |
 | **Depends on** | T-053 |
 | **Satisfies** | FR-F-1 (all ACs) |
-| **Touches** | `Apps/iPhone/Sources/Features/RunList/**` |
+| **Touches** | `Apps/iPhone/Sources/Features/RunList/**`, `Apps/iPhone/PhoneSupport/Sources/PhoneSupport/Persistence/RunStore.swift` (`RunListItem`, `RunListFilter`) |
 
 Newest-first list with type, distance, duration, average pace, heart rate; filters by type and date range; empty state.
 
@@ -892,6 +967,12 @@ Largest-triangle-three-buckets downsampling to at most 1 000 points.
 
 **Done when:** 5 400 points reduce to 1 000 preserving visible peaks and troughs; first and last points are always retained; it runs in under 5 ms; a property test confirms output length never exceeds the threshold.
 
+> **Note on the timing bound.** The 5 ms figure is asserted as a generous ceiling rather than a
+> tight one — observed cost is sub-millisecond. A threshold set near the real figure fails on a
+> loaded CI runner without indicating a regression; what the assertion is actually protecting is
+> that the algorithm stays linear, and 5 ms leaves enough margin to catch an accidental quadratic
+> while being immune to machine speed.
+
 <a id="t-056"></a>
 ### T-056 — Pace and heart-rate charts
 
@@ -900,7 +981,7 @@ Largest-triangle-three-buckets downsampling to at most 1 000 points.
 | **Wave** | 3 |
 | **Depends on** | T-053, T-055 |
 | **Satisfies** | FR-F-2, AC-FR-F-2-1, AC-FR-F-2-2, AC-FR-F-2-9 |
-| **Touches** | `Apps/iPhone/Sources/Features/RunDetail/Charts/Pace/**` |
+| **Touches** | `Apps/iPhone/Sources/Features/RunDetail/RunDetailView.swift`, `Apps/iPhone/PhoneSupport/Sources/PhoneSupport/Analysis/RunAnalysis.swift` — the charts share one detail view rather than a file per chart; see the T-056 note |
 
 Swift Charts pace-over-distance with the target curve and shaded band, heart rate on a shared axis, and a distance/time axis toggle.
 
@@ -914,11 +995,24 @@ Swift Charts pace-over-distance with the target curve and shaded band, heart rat
 | **Wave** | 3 |
 | **Depends on** | T-056 |
 | **Satisfies** | AC-FR-F-2-3, AC-FR-A-4-8 |
-| **Touches** | `Apps/iPhone/Sources/Features/RunDetail/Charts/Elevation/**` |
+| **Touches** | `Apps/iPhone/Sources/Features/RunDetail/RunDetailView.swift`, `Apps/iPhone/PhoneSupport/Sources/PhoneSupport/Analysis/RunAnalysis.swift` (`elevationSeries`) |
 
 Elevation profile with raw and grade-adjusted target overlaid where adjustment applied.
 
 **Done when:** a `hilly-10k`-derived record shows the adjusted target diverging on climbs; runs without altimeter data hide the overlay rather than showing a flat line.
+
+> **Two implementation notes, both from tests that failed and were right to.**
+>
+> "Has grade adjustment" is read from the **grade factor**, not by differencing the raw and effective
+> target columns. Both targets are `Float32` in `PackedSamples`, so after a store round-trip two
+> values that were bit-identical differ by ~1e-8 of quantisation noise; differencing them against a
+> 1e-9 tolerance reported grade adjustment on *every* run, including a treadmill. The grade factor's
+> resolution is documented, which makes "meaningfully different from 1.0" exactly answerable.
+>
+> "Has elevation data" is keyed on the engine's `altimeterUnavailable` flag, not on whether the
+> ground varied. Those are different facts, and conflating them is wrong in both directions: a
+> genuinely flat outdoor run has real data and deserves its (flat) profile, while a treadmill run has
+> none and must hide the chart.
 
 <a id="t-058"></a>
 ### T-058 — Time in zone
@@ -928,7 +1022,7 @@ Elevation profile with raw and grade-adjusted target overlaid where adjustment a
 | **Wave** | 3 |
 | **Depends on** | T-053, T-025 |
 | **Satisfies** | AC-FR-F-2-4 |
-| **Touches** | `Apps/iPhone/Sources/Features/RunDetail/Zones/**` |
+| **Touches** | `Apps/iPhone/Sources/Features/RunDetail/RunDetailView.swift`, `Apps/iPhone/PhoneSupport/Sources/PhoneSupport/Analysis/RunAnalysis.swift` (`zoneShares`) |
 
 Stacked bar plus a table in seconds and percentage.
 
@@ -942,11 +1036,22 @@ Stacked bar plus a table in seconds and percentage.
 | **Wave** | 3 |
 | **Depends on** | T-053 |
 | **Satisfies** | AC-FR-F-2-5, AC-FR-F-2-6 |
-| **Touches** | `Apps/iPhone/Sources/Features/RunDetail/Splits/**` |
+| **Touches** | `Apps/iPhone/Sources/Features/RunDetail/RunDetailView.swift`, `Apps/iPhone/PhoneSupport/Sources/PhoneSupport/Analysis/RunAnalysis.swift` (`splits`, `repRows`), `Core/Sources/ORPace/Engine/StepSummaryAccumulator.swift` |
 
 Per-mile/km splits and, for structured workouts, a per-rep table.
 
 **Done when:** splits respect the unit preference; a 4×1000 m run shows four work reps with correct distance, time, average pace, and heart rate; a partial final split is labelled as partial.
+
+> **`ResolvedStep.repIndex` is one-based**, as `WorkoutPlan.flatten` produces it and the declaration
+> states. This is recorded here because both tiers got it wrong: the watch's interval header and the
+> phone's rep table each added 1, displaying "REP 2/4" through "REP 5/4" for a four-rep workout. The
+> Wave 2 test that should have caught it hand-built `repIndex: 0` — a value the real resolver never
+> emits — so it confirmed the author's belief rather than the resolver's behaviour. Both tiers' tests
+> now drive `WorkoutPresets` through the real resolver.
+>
+> Splits interpolate to the exact unit boundary rather than snapping to the nearest 1 Hz sample, and
+> the tests assert the splits sum to the run's total distance *and* duration — the check that catches
+> an interpolation losing a fraction of a unit at every boundary.
 
 <a id="t-060"></a>
 ### T-060 — Route map
@@ -956,7 +1061,7 @@ Per-mile/km splits and, for structured workouts, a per-rep table.
 | **Wave** | 3 |
 | **Depends on** | T-053 |
 | **Satisfies** | AC-FR-F-2-7 |
-| **Touches** | `Apps/iPhone/Sources/Features/RunDetail/Map/**` |
+| **Touches** | `Apps/iPhone/Sources/Features/RunDetail/RunDetailView.swift`, `Apps/iPhone/PhoneSupport/Sources/PhoneSupport/Analysis/RunAnalysis.swift` (`routeSegments`) |
 
 MapKit polyline coloured by zone.
 
@@ -970,11 +1075,27 @@ MapKit polyline coloured by zone.
 | **Wave** | 3 |
 | **Depends on** | T-029, T-053 |
 | **Satisfies** | FR-F-3 (all ACs), NFR-5 |
-| **Touches** | `Apps/iPhone/Sources/Features/Statistics/**` |
+| **Touches** | `Apps/iPhone/Sources/Features/Statistics/**`, `Apps/iPhone/PhoneSupport/Sources/PhoneSupport/Persistence/AggregateRepository.swift`, `.../RunLibrary.swift` |
 
 Lifetime and periodic totals, 52-week chart, personal bests.
 
 **Done when:** the screen renders in under 300 ms with 1 000 runs, asserted by a performance test; totals match a `rebuildAll` recomputation; personal bests reflect in-run segments, not just whole runs.
+
+> **"Totals match `rebuildAll`" is asserted as a fuzz property, not a scenario.** Twelve seeded
+> random sequences of ingests, re-deliveries, deletions and backfill-then-sidecar upgrades — 288
+> operations — each verified against a full recomputation **after every single operation** at
+> lifetime, per-month and per-week granularity, plus cache-versus-store run count. Checking only at
+> the end would let two errors cancel. The generator is seeded rather than system-random so a
+> failure is reproducible, which is the one thing a fuzz test cannot do without.
+>
+> Bests are excluded from that comparison by design: `AggregateCache.remove` cannot restore a best a
+> deleted run had held, which `Core` documents. `RunLibrary.delete` therefore triggers a re-sweep
+> when the deleted run was long enough to have held one — otherwise a deleted run keeps claiming the
+> user's record.
+>
+> **The 300 ms render bound is not automated.** The screen reads one decoded `AggregateCache` blob
+> rather than scanning runs, so the work it does is independent of run count by construction; what
+> remains is SwiftUI layout, which needs a simulator and a stopwatch. On the manual protocol.
 
 <a id="t-062"></a>
 ### T-062 — Profile and onboarding
@@ -984,7 +1105,7 @@ Lifetime and periodic totals, 52-week chart, personal bests.
 | **Wave** | 3 |
 | **Depends on** | T-053, T-027 |
 | **Satisfies** | FR-I-1 (all ACs), AC-FR-J-2-3, DEG-9, R-6 |
-| **Touches** | `Apps/iPhone/Sources/Features/Profile/**`, `Apps/iPhone/Sources/Features/Onboarding/**` |
+| **Touches** | `Apps/iPhone/Sources/Features/Profile/**`, `Apps/iPhone/Sources/Features/Onboarding/**`, `Apps/iPhone/PhoneSupport/Sources/PhoneSupport/Profile/PaceDerivation.swift`, `.../Downlink/PhoneContextPublisher.swift` (`ProfileRepository`) |
 
 Onboarding: units, palette choice, pace derivation from a race result or recent runs, and a medical disclaimer. Profile: per-type target paces, band tuning, curve editing, overrides.
 

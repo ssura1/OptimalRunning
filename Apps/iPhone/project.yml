@@ -13,6 +13,13 @@ options:
 packages:
   Core:
     path: ../../Core
+  # The phone tier's logic — persistence, ingest, backfill, analysis — in a local package so it
+  # can be tested with `swift test` on the macOS host rather than only in a simulator. Same
+  # reasoning as WatchSupport (ADR-012), for a different cause: on iOS a hosted test target can
+  # import the app fine, but this is the code where a bug silently corrupts a run's history, and
+  # that deserves a test loop measured in seconds.
+  PhoneSupport:
+    path: PhoneSupport
 
 targets:
   OptimalRunner:
@@ -34,6 +41,8 @@ targets:
         product: ORStats
       - package: Core
         product: ORColor
+      - package: PhoneSupport
+        product: PhoneSupport
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.optimalrunner.app
@@ -77,6 +86,12 @@ targets:
       - path: Tests
     dependencies:
       - target: OptimalRunner
+      - package: Core
+        product: ORModels
+      - package: Core
+        product: ORStats
+      - package: PhoneSupport
+        product: PhoneSupport
     settings:
       base:
         SWIFT_VERSION: "6.0"

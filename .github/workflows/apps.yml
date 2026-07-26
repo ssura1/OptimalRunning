@@ -40,6 +40,21 @@ jobs:
       - name: Test
         run: swift test --package-path Apps/WatchModern/WatchSupport
 
+  # The iPhone tier's logic — persistence, ingest, backfill and analysis. Same reasoning as the
+  # WatchSupport job: this is where a bug silently corrupts a run's history rather than showing a
+  # wrong number, so it gets its own fast signal separate from the simulator build.
+  #
+  # macOS rather than Linux because SwiftData needs the Apple runtime — there is no Linux option
+  # here at all, unlike Core.
+  phone-support:
+    name: PhoneSupport (tier logic)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test
+        run: swift test --package-path Apps/iPhone/PhoneSupport
+
   build:
     name: ${{ matrix.name }}
     runs-on: macos-15

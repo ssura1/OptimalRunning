@@ -133,6 +133,21 @@ Short, dated, and stated with their trade-offs. These exist so a future contribu
 **Consequence.** A small amount of boilerplate converting `CLLocation` → `LocationSample` in each adapter, paid once per tier, in exchange for a test suite that runs in seconds on the cheapest available CI runner. Satisfies NFR-19.
 
 <a id="adr-002"></a>
+
+**One documented exception, added in Wave 3.** `ORModels/Sync/SyncPayloadCodec.swift` imports
+`Compression`, which is neither the standard library nor cross-platform Foundation. It earns the
+exception by being the only way to have *one* definition of the compressed payload format: the
+watch compresses and the phone decompresses, they live in two local packages that cannot see each
+other, and a codec duplicated across both is two implementations free to disagree about framing —
+with the symptom being "some runs never arrive". Sync is the one place in this project where two
+independently-written halves must produce byte-identical results, so it gets one implementation
+that both import, and a cross-tier round-trip test that would be impossible to write otherwise.
+
+The exception is narrow: `Compression` needs no device, no simulator and no entitlement, so `Core`
+still tests without Xcode. On non-Apple platforms the codec **throws** rather than passing data
+through — a silent identity fallback would let `Core` build on Linux while producing bytes the
+phone cannot read, and that failure would surface months later as "some runs never sync".
+
 ### ADR-002 — Two watch targets with zero shared UI or sensor code
 
 **Decision.** `Apps/WatchModern` (watchOS 10.0) and `Apps/WatchLegacy` (watchOS 8.0) are separate targets with separate source trees and separate bundle identifiers. They share `Core` and nothing else. Duplication between them is accepted and intentional.
@@ -226,6 +241,32 @@ Without this split, the choice would be between untested tier logic and making i
 **Why not in `Core`.** ADR-001 scopes `Core` to judgement logic shared by *every* tier. How one tier orchestrates its own sensors is not shared — ADR-002 is explicit that the two watch tiers share no sensor code — so moving fusion into `Core` would put tier-specific behaviour in the module whose entire value is being tier-agnostic.
 
 **Consequence.** As with ADR-011, a Wave 2 task's `Touches` field is not sufficient to locate code: paths written as `Apps/WatchModern/Sources/Sensors/Fusion/**` resolve to `Apps/WatchModern/WatchSupport/Sources/WatchSupport/Fusion/**`. The Wave 2 task table records the actual paths. The package declares a `watchOS 10 / macOS 14` platform floor because its view models use the `Observable` macro; the macOS floor exists only so `swift test` can host it, and `Core` stays platform-unconstrained and Linux-testable.
+
+
+<a id="adr-013"></a>
+### ADR-013 — The iPhone tier's logic lives in a local `PhoneSupport` package too, for a different reason
+
+**Decision.** Persistence, ingest, HealthKit backfill, run analysis, the downlink publisher and
+pace derivation live in `Apps/iPhone/PhoneSupport/`, a local Swift package. The app target holds
+SwiftUI, Swift Charts, MapKit, and the two framework adapters that cannot be faked usefully at this
+level: `WCSession` and `HKHealthStore`.
+
+**Why, given the watchOS constraint does not apply here.** On iOS a hosted test target imports the
+app fine, so this is not forced by the toolchain. It is earned by the *nature of the work*. A
+sensor bug shows a wrong number on a screen and a runner notices; an ingest or aggregate bug
+silently drops or double-counts a run and nobody notices until the history is already wrong. That
+class of code needs a test loop measured in seconds, not one that boots a simulator — and
+`swift test` on the macOS host gives it, because SwiftData runs there.
+
+Verified before the package was created rather than assumed: an in-memory `ModelContainer` with an
+`.externalStorage` attribute builds and passes under `swift test` on macOS.
+
+**Consequence.** As with ADR-011 and ADR-012, a Wave 3 task's `Touches` field is not sufficient to
+locate code — paths written as `Apps/iPhone/Sources/Persistence/**` resolve to
+`Apps/iPhone/PhoneSupport/Sources/PhoneSupport/Persistence/**`. The Wave 3 task table records the
+actual paths. Both app targets additionally keep a thin platform test suite (`Apps/*/Tests/`) that
+re-runs a slice of the package's checks compiled for the *shipping* platform; Wave 2 established
+why, when an API that compiled on the macOS test host turned out not to exist on watchOS.
 
 ---
 
@@ -359,6 +400,15 @@ Wave 2 added three fields to satisfy NFR-21 for values the requirements already 
 | `capture.minimumFreeBytesToStart` | 8 MiB | The storage precondition a run is refused below | DEG-6 |
 | `presentation.warningAutoDismissSeconds` | 4 | AC-FR-B-2-2 marks the dismissal explicitly tunable | AC-FR-B-2-2 |
 | `presentation.transitionScreenSeconds` | 3 | The §12.4 transition screen's duration, alongside it | §12.4 |
+| `stats.elevationGainThresholdMetres` | 1 m | Rise that must accumulate before it counts as climb | FR-F-2 |
+| `stats.maxSampleGapSeconds` | 5 | Longest gap still treated as continuous recording | FR-F-2 |
+
+`stats.elevationGainThresholdMetres` is not noise-reduction pedantry: without it the figure is
+simply wrong. A barometric altimeter resolves about a metre but jitters continuously, so a naive sum
+of positive per-sample deltas integrates that jitter into hundreds of metres of climb that never
+happened over a 5 400-sample run — reporting a flat park loop as hilly and poisoning every
+grade-adjusted comparison built on top. `RunSummaryBuilder` instead follows a reference altitude
+that tracks downward freely and credits climb only once the rise clears the threshold.
 
 **What NFR-21 does *not* cover, and why.** Two constants in the watch tier are deliberately not routed through `PaceEngineConfiguration`: `DistanceFusion.priorityOrder` (§8.2's source ranking) and `DistanceFusion.maxSwitchJumpMetres` (the 5 m switch bound from `implementation.md` T-035). NFR-21 governs *tunables* — values a runner, a profile, or a deployment might legitimately vary. These are correctness bounds the specification fixes, and exposing them as configuration would imply a supported 50 m jump setting or a supported pedometer-first ordering, neither of which exists. They are declared once each, in the type that enforces them, with the reasoning recorded at the declaration.
 
@@ -875,7 +925,24 @@ A 90-minute run is 5 400 samples × ~19 bytes ≈ 103 KB raw, ~30 KB compressed 
 @Model final class AggregateCache       { /* lifetime & periodic totals, PBs */ }
 ```
 
-`@Attribute(.externalStorage)` keeps the sample blobs out of the main store file, so list queries never page them in — this is what makes AC-FR-F-1-3 and NFR-5 achievable.
+`@Attribute(.externalStorage)` keeps the sample blobs out of the main store file — but **only
+above Core Data's ~128 KiB threshold**, which real runs straddle, so the guarantee that actually
+delivers AC-FR-F-1-3 and NFR-5 is a different one.
+
+Measured (`RunStoreTests`, and re-measured on iOS in the app target's suite): the threshold sits
+between 128 KiB and 160 KiB — Core Data's documented 131 072 bytes — and a JSON-encoded
+`PackedSamples` reaches it at roughly 4 900 samples, about **82 minutes** at 1 Hz. So a 40-minute
+run (64 KB encoded) is stored *inline* and a 90-minute run (144 KB encoded) is stored externally.
+
+The list query is therefore fast because it **never touches the property**, not because the bytes
+are necessarily elsewhere: `RunRepository.listItems` projects into a `RunListItem` value type, and a
+caller handed a projection cannot fault a blob in by accident. `propertiesToFetch` contributes a
+measured ~2× on the fetch itself (0.09 s versus 0.19 s over 1 000 rows) but is not what provides the
+guarantee. `.externalStorage` is retained because it genuinely helps the long runs, which are the
+ones where paging would hurt most.
+
+This is pinned by a test rather than left as prose: a future change that shrinks the encoding —
+compressing the blob, say — would put every run inline and silently void the attribute.
 
 ---
 
@@ -919,6 +986,30 @@ sequenceDiagram
 **Recovery path** (AC-FR-E-1-6). If a payload is lost, the phone can reconstruct a degraded `RunRecord` from the `HKWorkout` alone — distance, duration, heart rate, route — flagged `isDegraded`, with zone timeline and grade data absent. The run detail view renders what it has and says what is missing rather than showing a blank chart.
 
 **Profile and plan flow the other way** via `updateApplicationContext`, which is a latest-value-wins channel — exactly right for a profile, where only the newest matters (AC-FR-I-1-6, AC-FR-G-1-3).
+
+**Correction — there is one application context, not two channels.** The sequence diagram above
+shows acknowledgements travelling in `applicationContext`, and the paragraph above describes the
+profile downlink using the same call, as though they were independent. `WCSession` has exactly one
+application context per session: a second `updateApplicationContext` replaces the first wholesale
+rather than merging. Sent by two independent senders, whichever wrote last would silently erase the
+other — surfacing as a profile edit that intermittently fails to arrive, or as acknowledgements that
+vanish while the watch's queue grows toward its eviction budget. Both halves are therefore assembled
+into one versioned `PhoneContext` (`ORModels/Sync/SyncMessages.swift`) and published once.
+
+For the same reason the acknowledgement is a **rolling set** rather than the single `runID` just
+processed: the channel is lossy by design, so any context the watch misses while asleep is simply
+gone, and a single-ID payload would strand every run acknowledged during that window. The window is
+bounded and is asserted to be at least as large as `SyncConfiguration.maxPendingRuns`, so a watch
+that has been away for weeks is cleared in one reconnect.
+
+**Eviction ranking (AC-FR-E-1-5).** The AC names the acknowledged-versus-unacknowledged rule and is
+silent on rejected payloads. The implemented order is **acknowledged → rejected → pending**, oldest
+first within each rank. Rejected sorts before pending because a run the phone has definitively
+refused cannot become deliverable by waiting, so keeping it while dropping a run that could still
+transfer would trade recoverable data for unrecoverable. A payload is only ever evicted from the
+lowest rank present, which is what makes "never evict an unacknowledged payload in favour of an
+acknowledged one" hold — a plain FIFO-by-age policy satisfies "evict oldest first" and violates the
+requirement.
 
 ---
 
