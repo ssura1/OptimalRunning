@@ -12,8 +12,36 @@
 
 import PackageDescription
 
+// Platform floors, added in Wave 4 (T-063) — and the reason is worth recording, because
+// this manifest deliberately carried none for three waves.
+//
+// `platforms:` was omitted on the principle that Core is platform-agnostic: it imports only
+// the standard library and Foundation, and it builds on Linux where these floors are ignored
+// entirely. That principle is still right. The omission, however, was not free.
+//
+// With no floor declared, Xcode compiles a package target for watchOS against the *SDK's*
+// minimum — `SupportedTargets.watchos.MinimumDeploymentTarget`, which is 4.0 in the
+// watchOS 26.5 SDK — rather than against the client app's deployment target. Swift
+// concurrency is only available from watchOS 6.0, so `RunSensorFeed.stop() async throws`
+// fails to compile with "concurrency is only available in watchOS 6.0.0 or newer". The
+// Modern tier never surfaced this because nothing else in the repo built Core for watchOS
+// with a floor low enough to matter; Legacy's watchOS 8 target is what exposed it.
+//
+// So these floors are not a change of principle — they are the truth stated explicitly, the
+// same resolution WatchSupport reached for `@Observable`, and for the same reason: raising a
+// floor says "this is the deployment target this code serves", whereas an `@available`
+// attribute would be exactly what CON-3 and Tools/check-no-availability.sh exist to prevent.
+//
+// watchOS 8 is the floor because Series 3 is the oldest device the product supports (CON-2).
+// Linux is unaffected: SwiftPM ignores `platforms:` there, so core.yml's fast Linux lane
+// keeps working unchanged.
 let package = Package(
     name: "OptimalRunnerCore",
+    platforms: [
+        .watchOS(.v8),
+        .iOS(.v17),
+        .macOS(.v13),
+    ],
     products: [
         .library(name: "ORModels", targets: ["ORModels"]),
         .library(name: "ORPace", targets: ["ORPace"]),
