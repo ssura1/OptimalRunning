@@ -32,4 +32,21 @@ enum FixtureLocating {
         let url = goldenDirectory.appendingPathComponent("\(name).golden.json")
         return try FixtureCoder.makeDecoder().decode(EngineGolden.self, from: Data(contentsOf: url))
     }
+
+    /// The rendered-presentation golden, shared with the Legacy tier (AC-FR-K-1-2).
+    ///
+    /// A distinct `.presentation.json` suffix rather than a second key inside the engine golden:
+    /// the engine golden is also read by `Core`'s own tests and by `ORConformance`, neither of
+    /// which knows anything about a watch screen, and widening that file's schema for a tier
+    /// concern would push presentation into Core's contract.
+    static func presentationGoldenURL(named name: String) -> URL {
+        goldenDirectory.appendingPathComponent("\(name).presentation.json")
+    }
+
+    static func loadPresentationGolden(named name: String) throws -> PresentationGolden {
+        try FixtureCoder.makeDecoder().decode(
+            PresentationGolden.self,
+            from: Data(contentsOf: presentationGoldenURL(named: name))
+        )
+    }
 }
