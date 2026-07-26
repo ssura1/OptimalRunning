@@ -145,6 +145,12 @@ jobs:
             echo "::error::Info.plist has no WKWatchKitApp key — a watchOS 9+ single-target bundle will not launch on Series 3"
             exit 1
           fi
+          # There is no iOS companion target in this project, so the app must declare independence or
+          # watchOS 8 treats it as needing a containing app that does not exist.
+          if [ "$(plutil -extract WKRunsIndependentlyOfCompanionApp raw "$APP/Info.plist" 2>/dev/null)" != "true" ]; then
+            echo "::error::WKRunsIndependentlyOfCompanionApp is not true — the app is not independently installable on a Series 3"
+            exit 1
+          fi
 
           ARCHS=$(lipo -archs "$EXT")
           echo "archs: $ARCHS"

@@ -44,6 +44,14 @@ Read this once before the Legacy sections. It is the part with real obstacles.
    signing" on.
 6. Select the `OptimalRunnerLegacy` scheme and the watch as the run destination, then Run.
 
+**There is no iPhone app to install.** This project has no iOS companion target — the tier is a
+standalone watch app so it stays deletable (ADR-002). That only works because the app target declares
+`WKRunsIndependentlyOfCompanionApp`; on watchOS 6–8 a classic two-target app *without* that key is a
+companion-dependent app and expects a containing iOS app that does not exist here. The key is set in
+`project.yml` and asserted in CI, so you should not have to think about it — but if the app ever
+installs and then will not launch, that is the first thing to check. The iPhone is still needed for
+**pairing** (step 1), just not as an install target.
+
 ### 0.3 The one fragile thing, and how you will know it broke
 
 The Legacy target is pinned to `ARCHS: armv7k` in `Apps/WatchLegacy/project.yml`, because Series 3

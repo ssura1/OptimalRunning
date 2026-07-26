@@ -69,6 +69,11 @@ targets:
         GENERATE_INFOPLIST_FILE: true
         # `WKWatchKitApp`, not `WKApplication` — see the note at the top of this file.
         INFOPLIST_KEY_WKWatchKitApp: true
+        # Required, not optional, for this project: on watchOS 6–8 a classic two-target watch app
+        # *without* this key is a companion-dependent app, and expects a containing iOS app to be
+        # installed alongside it. This project has no iOS companion target by design (ADR-002 keeps the
+        # tier deletable), so without this the app is not independently installable on a Series 3.
+        INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: true
         INFOPLIST_KEY_CFBundleDisplayName: OptimalRunner
 
   # Where all the code lives. On the classic layout the app target is a stub and the extension is the
