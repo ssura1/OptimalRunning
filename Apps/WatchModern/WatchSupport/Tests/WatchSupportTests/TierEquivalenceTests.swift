@@ -20,6 +20,15 @@ import ORPace
 /// reading, which no `Core` test could have seen.
 final class TierEquivalenceTests: XCTestCase {
 
+    /// design.md §8.2's priority order, as a rank. Lower wins.
+    private func rank(_ source: DistanceSource) -> Int {
+        switch source {
+        case .healthKit: return 0
+        case .location: return 1
+        case .pedometer: return 2
+        }
+    }
+
     /// Rebuilds a fixture's `EngineInput` stream through this tier's adapter logic.
     ///
     /// `cumulativeDistance` from the fixture stands in for HealthKit's fused figure —
@@ -34,15 +43,34 @@ final class TierEquivalenceTests: XCTestCase {
         var pipeline = SensorPipeline(activity: activity)
 
         return fixture.inputs.enumerated().map { index, input in
-            pipeline.makeInput(from: RawSensorTick(
+            // Availability is derived from the source the fixture *recorded*, so that
+            // priority resolves to that same source.
+            //
+            // This replaced an earlier version that offered every source the fixture's
+            // `cumulativeDistance` unconditionally, and the difference is not cosmetic.
+            // `treadmill-indoor` declares `distanceSource: .pedometer`
+            // (FixtureGenerator.swift:288); handing HealthKit a reading anyway let HealthKit
+            // win on priority, so the reconstructed stream carried `.healthKit` and
+            // `RunEngine` never inferred an indoor run — it reads "pedometer and no location"
+            // as the indoor signal. The committed golden's `indoorRun` degradation was
+            // therefore absent from this replay for the whole of Waves 2 and 3, and went
+            // unnoticed because the assertion below compared five named fields and omitted
+            // `degradations` entirely.
+            //
+            // Found by the Legacy tier's equivalent test (T-064), which compares the whole
+            // `EngineGolden`. Both tiers now do.
+            //
+            // Sources *below* the declared one stay available on purpose: they are outranked
+            // and cannot change the outcome, but their offsets keep refreshing every tick,
+            // which is the switching stress this test exists to apply.
+            let declared = rank(input.distanceSource)
+            return pipeline.makeInput(from: RawSensorTick(
                 timestamp: input.timestamp,
-                healthKitDistance: healthKitAvailable(index) ? input.cumulativeDistance : nil,
-                // Every source agrees on the truth here. That is deliberate: the thing
-                // under test is whether *switching* between agreeing sources is
-                // transparent, not whether disagreeing sources are reconciled well
-                // (DistanceFusionTests covers that separately).
-                locationDistance: input.cumulativeDistance,
-                pedometerDistance: input.cumulativeDistance,
+                healthKitDistance: rank(.healthKit) >= declared && healthKitAvailable(index)
+                    ? input.cumulativeDistance : nil,
+                locationDistance: rank(.location) >= declared ? input.cumulativeDistance : nil,
+                pedometerDistance: rank(.pedometer) >= declared
+                    ? input.cumulativeDistance : nil,
                 location: input.location.map {
                     RawLocationReading(
                         timestamp: $0.timestamp,
@@ -93,25 +121,13 @@ final class TierEquivalenceTests: XCTestCase {
             )
 
             XCTAssertEqual(
-                produced.zoneTimeline, committed.zoneTimeline,
-                "\(fixture.name): zone timeline diverged through the adapter"
-            )
-            XCTAssertEqual(
-                produced.alerts, committed.alerts,
-                "\(fixture.name): alert sequence diverged through the adapter"
-            )
-            XCTAssertEqual(
-                produced.transitions, committed.transitions,
-                "\(fixture.name): step transitions diverged through the adapter"
-            )
-            XCTAssertEqual(
-                produced.sampleCount, committed.sampleCount,
-                "\(fixture.name): sample count diverged through the adapter"
-            )
-            XCTAssertEqual(
-                produced.finalCumulativeDistance, committed.finalCumulativeDistance,
-                accuracy: 1e-6,
-                "\(fixture.name): final distance diverged through the adapter"
+                produced, committed,
+                """
+                \(fixture.name): the Modern adapter diverged from the committed golden.
+                degraded: \(produced.degradations) vs \(committed.degradations)
+                distance: \(produced.finalCumulativeDistance) vs \
+                \(committed.finalCumulativeDistance)
+                """
             )
         }
     }
@@ -131,10 +147,15 @@ final class TierEquivalenceTests: XCTestCase {
             like: fixture
         )
 
-        XCTAssertEqual(produced.zoneTimeline, committed.zoneTimeline)
-        XCTAssertEqual(produced.alerts, committed.alerts)
+        // Whole-golden equality, no tolerance. The 1e-6 accuracy this previously allowed on
+        // `finalCumulativeDistance` turned out to be unnecessary — both tiers reach a
+        // bit-identical result, because fusion recomputes each offset from the settled total
+        // rather than folding per-tick error. Keeping a tolerance that nothing needs is how
+        // Wave 3's `hasGradeAdjustment` bug happened: a comparison looser than the data's own
+        // quantization, which then accepted everything including what it should have rejected.
         XCTAssertEqual(
-            produced.finalCumulativeDistance, committed.finalCumulativeDistance, accuracy: 1e-6
+            produced, committed,
+            "alternating HealthKit availability diverged from the golden"
         )
     }
 
