@@ -1,0 +1,741 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		039914D6274E8809EC79760B /* StartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8145B08957E9215936493F52 /* StartView.swift */; };
+		0C14CF76C5CD364C6CDD0B60 /* ORModels in Frameworks */ = {isa = PBXBuildFile; productRef = D31C37E52C9E7CBADF0E7EF5 /* ORModels */; };
+		1603057D7AD0B7625477C8E6 /* HealthKitWorkoutBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87E935B192BAAE79F0DCE764 /* HealthKitWorkoutBackend.swift */; };
+		1764143D1274B978A190B5E8 /* ControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA610684421A36F85E5CA64E /* ControlsView.swift */; };
+		1C1730B2FF03B73DB9596A8F /* MetricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4B4ABB841F4856A980D54D5 /* MetricsView.swift */; };
+		25B455F612D8554AFDA1AC83 /* ORPace in Frameworks */ = {isa = PBXBuildFile; productRef = 28DB22EA312ED5B234A12E1E /* ORPace */; };
+		288624B9C61974A6DBE50E39 /* ORColor in Frameworks */ = {isa = PBXBuildFile; productRef = C1ED45A613F0AD1558BBCCEE /* ORColor */; };
+		3E44065037E9AD13F4EF7084 /* ORIntervals in Frameworks */ = {isa = PBXBuildFile; productRef = BA2B19F083C021FA25EC3F05 /* ORIntervals */; };
+		46DBBAC6382B5B31478325FC /* RunPagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE8E9A65B1F648D1B2298BE7 /* RunPagerView.swift */; };
+		50270E3A1253A62AD2C91AB4 /* LegacySupport in Frameworks */ = {isa = PBXBuildFile; productRef = DC043B2CD9BB23ED309C366B /* LegacySupport */; };
+		6314E7C1F349A9FE16F9692A /* ORAlerts in Frameworks */ = {isa = PBXBuildFile; productRef = E6330EB4F918056396359588 /* ORAlerts */; };
+		6C96DA33BA0800A784C02348 /* PerformanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10140D6D2AEBDD992F307A6C /* PerformanceTests.swift */; };
+		7FC735A02542488C80B27C11 /* ORStats in Frameworks */ = {isa = PBXBuildFile; productRef = 227DB6B795C58CCC77898833 /* ORStats */; };
+		91DE52B0B514DBD69F8662D8 /* LiveSensorFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0014067506C72C1072EA020 /* LiveSensorFeed.swift */; };
+		99BB7C5C47F4022DCCBA5EDC /* OptimalRunnerLegacyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0BF46D27DAEADA717328F27 /* OptimalRunnerLegacyApp.swift */; };
+		C70B86CEE7ABA37E3A279FD7 /* LegacySupport in Frameworks */ = {isa = PBXBuildFile; productRef = C4CDD79A47BC2FB25836C9C5 /* LegacySupport */; };
+		C82F1D0EAF60B138C6134CD7 /* OptimalRunnerLegacyExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 25E85FE2AFC410C2D825787D /* OptimalRunnerLegacyExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D0926F8F59DE49D1D3E83159 /* ORPace in Frameworks */ = {isa = PBXBuildFile; productRef = E446D56BC2ADA0D9FF3D60FE /* ORPace */; };
+		D790EEBAFC4C9872B01486F5 /* ORModels in Frameworks */ = {isa = PBXBuildFile; productRef = AF255CFD2C723B881D59D8C7 /* ORModels */; };
+		E922410F1956FB7B7731AB6F /* ORIntervals in Frameworks */ = {isa = PBXBuildFile; productRef = FBC4B0934BA8F660FE798E82 /* ORIntervals */; };
+		EFFDAC8B195EFBCBFA77D0B3 /* ZoneStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8FF0234541977EAC4E3D77F /* ZoneStyle.swift */; };
+		F5D4F7FE89D7A82520301F41 /* AppCoordinatorActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B755D762C5FD0E3F3224BA3 /* AppCoordinatorActions.swift */; };
+		FDB07CD6A0E89A053611E195 /* WatchHapticPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E78B63B69B314792F82DD33 /* WatchHapticPlayer.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		DA08869361197D027D6D1269 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0FAB78E4C0D52963D7E70C5B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7FE5043397794B1B370D0CF6;
+			remoteInfo = OptimalRunnerLegacyExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C96C1A45B3BA9187AC9ED09A /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				C82F1D0EAF60B138C6134CD7 /* OptimalRunnerLegacyExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		00D0F981D7C55AC8415AE796 /* OptimalRunnerLegacyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OptimalRunnerLegacyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		10140D6D2AEBDD992F307A6C /* PerformanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceTests.swift; sourceTree = "<group>"; };
+		25E85FE2AFC410C2D825787D /* OptimalRunnerLegacyExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OptimalRunnerLegacyExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		2E78B63B69B314792F82DD33 /* WatchHapticPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHapticPlayer.swift; sourceTree = "<group>"; };
+		48982CB728A7DAF318A4A8A7 /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = ../../Core; sourceTree = SOURCE_ROOT; };
+		67BBE0EBC3E39DB35498208C /* OptimalRunnerLegacy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OptimalRunnerLegacy.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8145B08957E9215936493F52 /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
+		87E935B192BAAE79F0DCE764 /* HealthKitWorkoutBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitWorkoutBackend.swift; sourceTree = "<group>"; };
+		8881FEBB7A6CB49D53D0EDF9 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		9B755D762C5FD0E3F3224BA3 /* AppCoordinatorActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinatorActions.swift; sourceTree = "<group>"; };
+		A4B4ABB841F4856A980D54D5 /* MetricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricsView.swift; sourceTree = "<group>"; };
+		B0BF46D27DAEADA717328F27 /* OptimalRunnerLegacyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptimalRunnerLegacyApp.swift; sourceTree = "<group>"; };
+		B8FF0234541977EAC4E3D77F /* ZoneStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneStyle.swift; sourceTree = "<group>"; };
+		C0014067506C72C1072EA020 /* LiveSensorFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSensorFeed.swift; sourceTree = "<group>"; };
+		CA610684421A36F85E5CA64E /* ControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlsView.swift; sourceTree = "<group>"; };
+		FA7763938E104C9A87F3D085 /* LegacySupport */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LegacySupport; path = LegacySupport; sourceTree = SOURCE_ROOT; };
+		FE8E9A65B1F648D1B2298BE7 /* RunPagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunPagerView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		1338D8E811AC812D8096A1F8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D790EEBAFC4C9872B01486F5 /* ORModels in Frameworks */,
+				D0926F8F59DE49D1D3E83159 /* ORPace in Frameworks */,
+				3E44065037E9AD13F4EF7084 /* ORIntervals in Frameworks */,
+				C70B86CEE7ABA37E3A279FD7 /* LegacySupport in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A781447CED5A65C834EE7632 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0C14CF76C5CD364C6CDD0B60 /* ORModels in Frameworks */,
+				25B455F612D8554AFDA1AC83 /* ORPace in Frameworks */,
+				E922410F1956FB7B7731AB6F /* ORIntervals in Frameworks */,
+				6314E7C1F349A9FE16F9692A /* ORAlerts in Frameworks */,
+				7FC735A02542488C80B27C11 /* ORStats in Frameworks */,
+				288624B9C61974A6DBE50E39 /* ORColor in Frameworks */,
+				50270E3A1253A62AD2C91AB4 /* LegacySupport in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		01985D9CC17DF423A1A6B102 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				B8FF0234541977EAC4E3D77F /* ZoneStyle.swift */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		09BB23725FEB913F580D1484 /* Sensors */ = {
+			isa = PBXGroup;
+			children = (
+				BF7BF80D2AFD30E7E8AD193E /* Feed */,
+				B95D55142ADE7DE1628D4624 /* Workout */,
+			);
+			path = Sensors;
+			sourceTree = "<group>";
+		};
+		78605448F961FDEE4B88A0DD /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				48982CB728A7DAF318A4A8A7 /* Core */,
+				FA7763938E104C9A87F3D085 /* LegacySupport */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		83DDEC0C6B1E7A8CA571B995 /* Run */ = {
+			isa = PBXGroup;
+			children = (
+				F0440DC768673CFB0A2B107E /* Haptics */,
+				8B2BE69F91CE0308E40451D1 /* Views */,
+			);
+			path = Run;
+			sourceTree = "<group>";
+		};
+		8B2BE69F91CE0308E40451D1 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				CA610684421A36F85E5CA64E /* ControlsView.swift */,
+				A4B4ABB841F4856A980D54D5 /* MetricsView.swift */,
+				FE8E9A65B1F648D1B2298BE7 /* RunPagerView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A3C01F0897696732DC9DA2F1 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				10140D6D2AEBDD992F307A6C /* PerformanceTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		B95D55142ADE7DE1628D4624 /* Workout */ = {
+			isa = PBXGroup;
+			children = (
+				87E935B192BAAE79F0DCE764 /* HealthKitWorkoutBackend.swift */,
+			);
+			path = Workout;
+			sourceTree = "<group>";
+		};
+		BF7BF80D2AFD30E7E8AD193E /* Feed */ = {
+			isa = PBXGroup;
+			children = (
+				C0014067506C72C1072EA020 /* LiveSensorFeed.swift */,
+			);
+			path = Feed;
+			sourceTree = "<group>";
+		};
+		C55831102EEE28BBE0714B71 = {
+			isa = PBXGroup;
+			children = (
+				78605448F961FDEE4B88A0DD /* Packages */,
+				EAF060097CF5B87950A60660 /* Resources */,
+				EBF099AF438942986C058C44 /* Sources */,
+				A3C01F0897696732DC9DA2F1 /* Tests */,
+				CD015A722E29E16A833B1092 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		CD015A722E29E16A833B1092 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				67BBE0EBC3E39DB35498208C /* OptimalRunnerLegacy.app */,
+				25E85FE2AFC410C2D825787D /* OptimalRunnerLegacyExtension.appex */,
+				00D0F981D7C55AC8415AE796 /* OptimalRunnerLegacyTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		EAF060097CF5B87950A60660 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				8881FEBB7A6CB49D53D0EDF9 /* .gitkeep */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		EBF099AF438942986C058C44 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				FE6A8A79D655960C11755480 /* App */,
+				01985D9CC17DF423A1A6B102 /* DesignSystem */,
+				83DDEC0C6B1E7A8CA571B995 /* Run */,
+				09BB23725FEB913F580D1484 /* Sensors */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		F0440DC768673CFB0A2B107E /* Haptics */ = {
+			isa = PBXGroup;
+			children = (
+				2E78B63B69B314792F82DD33 /* WatchHapticPlayer.swift */,
+			);
+			path = Haptics;
+			sourceTree = "<group>";
+		};
+		FE6A8A79D655960C11755480 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				9B755D762C5FD0E3F3224BA3 /* AppCoordinatorActions.swift */,
+				B0BF46D27DAEADA717328F27 /* OptimalRunnerLegacyApp.swift */,
+				8145B08957E9215936493F52 /* StartView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		36BEDCD45BFF26D2867498D0 /* OptimalRunnerLegacyTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3DA0748E8BC0C750D0697EC9 /* Build configuration list for PBXNativeTarget "OptimalRunnerLegacyTests" */;
+			buildPhases = (
+				E0585136FEB2937249571D20 /* Sources */,
+				1338D8E811AC812D8096A1F8 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OptimalRunnerLegacyTests;
+			packageProductDependencies = (
+				AF255CFD2C723B881D59D8C7 /* ORModels */,
+				E446D56BC2ADA0D9FF3D60FE /* ORPace */,
+				BA2B19F083C021FA25EC3F05 /* ORIntervals */,
+				C4CDD79A47BC2FB25836C9C5 /* LegacySupport */,
+			);
+			productName = OptimalRunnerLegacyTests;
+			productReference = 00D0F981D7C55AC8415AE796 /* OptimalRunnerLegacyTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		7FE5043397794B1B370D0CF6 /* OptimalRunnerLegacyExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0583AE1BAE6DC3682E3B7F50 /* Build configuration list for PBXNativeTarget "OptimalRunnerLegacyExtension" */;
+			buildPhases = (
+				F97BBE3E13D8CE6CAADF5CA0 /* Sources */,
+				A781447CED5A65C834EE7632 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OptimalRunnerLegacyExtension;
+			packageProductDependencies = (
+				D31C37E52C9E7CBADF0E7EF5 /* ORModels */,
+				28DB22EA312ED5B234A12E1E /* ORPace */,
+				FBC4B0934BA8F660FE798E82 /* ORIntervals */,
+				E6330EB4F918056396359588 /* ORAlerts */,
+				227DB6B795C58CCC77898833 /* ORStats */,
+				C1ED45A613F0AD1558BBCCEE /* ORColor */,
+				DC043B2CD9BB23ED309C366B /* LegacySupport */,
+			);
+			productName = OptimalRunnerLegacyExtension;
+			productReference = 25E85FE2AFC410C2D825787D /* OptimalRunnerLegacyExtension.appex */;
+			productType = "com.apple.product-type.watchkit2-extension";
+		};
+		E00FDCA19509CAC577C51B4A /* OptimalRunnerLegacy */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3805BC912A00C289E3EE2454 /* Build configuration list for PBXNativeTarget "OptimalRunnerLegacy" */;
+			buildPhases = (
+				C96C1A45B3BA9187AC9ED09A /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				67B082C3370E7A339A6C60F5 /* PBXTargetDependency */,
+			);
+			name = OptimalRunnerLegacy;
+			packageProductDependencies = (
+			);
+			productName = OptimalRunnerLegacy;
+			productReference = 67BBE0EBC3E39DB35498208C /* OptimalRunnerLegacy.app */;
+			productType = "com.apple.product-type.application.watchapp2";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		0FAB78E4C0D52963D7E70C5B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = D1114913208288CEE4AD579C /* Build configuration list for PBXProject "OptimalRunnerLegacy" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = C55831102EEE28BBE0714B71;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				941BD42203CB34652579C622 /* XCLocalSwiftPackageReference "../../Core" */,
+				41065975DEC0279D336D1BDB /* XCLocalSwiftPackageReference "LegacySupport" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = CD015A722E29E16A833B1092 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E00FDCA19509CAC577C51B4A /* OptimalRunnerLegacy */,
+				7FE5043397794B1B370D0CF6 /* OptimalRunnerLegacyExtension */,
+				36BEDCD45BFF26D2867498D0 /* OptimalRunnerLegacyTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E0585136FEB2937249571D20 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6C96DA33BA0800A784C02348 /* PerformanceTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F97BBE3E13D8CE6CAADF5CA0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F5D4F7FE89D7A82520301F41 /* AppCoordinatorActions.swift in Sources */,
+				1764143D1274B978A190B5E8 /* ControlsView.swift in Sources */,
+				1603057D7AD0B7625477C8E6 /* HealthKitWorkoutBackend.swift in Sources */,
+				91DE52B0B514DBD69F8662D8 /* LiveSensorFeed.swift in Sources */,
+				1C1730B2FF03B73DB9596A8F /* MetricsView.swift in Sources */,
+				99BB7C5C47F4022DCCBA5EDC /* OptimalRunnerLegacyApp.swift in Sources */,
+				46DBBAC6382B5B31478325FC /* RunPagerView.swift in Sources */,
+				039914D6274E8809EC79760B /* StartView.swift in Sources */,
+				FDB07CD6A0E89A053611E195 /* WatchHapticPlayer.swift in Sources */,
+				EFFDAC8B195EFBCBFA77D0B3 /* ZoneStyle.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		67B082C3370E7A339A6C60F5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7FE5043397794B1B370D0CF6 /* OptimalRunnerLegacyExtension */;
+			targetProxy = DA08869361197D027D6D1269 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0E71EA506CAB2FF9B3CF3D53 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = armv7k;
+				ASSETCATALOG_COMPILER_COMPLICATION_NAME = Complication;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSExtensionPointIdentifier = com.apple.watchkit;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "OptimalRunner reads your heart rate during a run so it can show it on the run screen and record it with your workout.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "OptimalRunner saves each run as a workout in Health, including distance, heart rate, and interval segments, so it appears alongside your other activity data.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "OptimalRunner uses your location while you are running to measure your pace and draw your route. Location is only used during an active run.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "OptimalRunner uses the motion coprocessor and barometer to estimate your pace and adjust your target for hills, and to keep measuring distance when GPS is unavailable.";
+				INFOPLIST_KEY_UIBackgroundModes = "workout-processing audio";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = com.optimalrunner.legacy.watchkitapp.extension;
+				PRODUCT_NAME = OptimalRunnerExtension;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 8.0;
+			};
+			name = Debug;
+		};
+		2CE83031549EE0CF211CC128 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = armv7k;
+				BUNDLE_LOADER = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = com.optimalrunner.OptimalRunnerLegacyTests;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "";
+				WATCHOS_DEPLOYMENT_TARGET = 8.0;
+			};
+			name = Debug;
+		};
+		51AF69A23678E9D9ED13D745 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 8.0;
+			};
+			name = Release;
+		};
+		70D2E075E7D34375515B8547 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 8.0;
+			};
+			name = Debug;
+		};
+		7A39998876624EF3665D45DE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = armv7k;
+				BUNDLE_LOADER = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = com.optimalrunner.OptimalRunnerLegacyTests;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "";
+				WATCHOS_DEPLOYMENT_TARGET = 8.0;
+			};
+			name = Release;
+		};
+		8DA46DA95A939F407F269D73 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = armv7k;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = OptimalRunner;
+				INFOPLIST_KEY_WKWatchKitApp = YES;
+				MARKETING_VERSION = 1.0;
+				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = com.optimalrunner.legacy.watchkitapp;
+				PRODUCT_NAME = OptimalRunner;
+				SDKROOT = watchos;
+				SKIP_INSTALL = NO;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 8.0;
+			};
+			name = Release;
+		};
+		F55E5181A078D6EB36BDF8B6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = armv7k;
+				ASSETCATALOG_COMPILER_COMPLICATION_NAME = Complication;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSExtensionPointIdentifier = com.apple.watchkit;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "OptimalRunner reads your heart rate during a run so it can show it on the run screen and record it with your workout.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "OptimalRunner saves each run as a workout in Health, including distance, heart rate, and interval segments, so it appears alongside your other activity data.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "OptimalRunner uses your location while you are running to measure your pace and draw your route. Location is only used during an active run.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "OptimalRunner uses the motion coprocessor and barometer to estimate your pace and adjust your target for hills, and to keep measuring distance when GPS is unavailable.";
+				INFOPLIST_KEY_UIBackgroundModes = "workout-processing audio";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = com.optimalrunner.legacy.watchkitapp.extension;
+				PRODUCT_NAME = OptimalRunnerExtension;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 8.0;
+			};
+			name = Release;
+		};
+		F8AF883A0001A7CAC166890D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = armv7k;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = OptimalRunner;
+				INFOPLIST_KEY_WKWatchKitApp = YES;
+				MARKETING_VERSION = 1.0;
+				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = com.optimalrunner.legacy.watchkitapp;
+				PRODUCT_NAME = OptimalRunner;
+				SDKROOT = watchos;
+				SKIP_INSTALL = NO;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 8.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0583AE1BAE6DC3682E3B7F50 /* Build configuration list for PBXNativeTarget "OptimalRunnerLegacyExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0E71EA506CAB2FF9B3CF3D53 /* Debug */,
+				F55E5181A078D6EB36BDF8B6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		3805BC912A00C289E3EE2454 /* Build configuration list for PBXNativeTarget "OptimalRunnerLegacy" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F8AF883A0001A7CAC166890D /* Debug */,
+				8DA46DA95A939F407F269D73 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		3DA0748E8BC0C750D0697EC9 /* Build configuration list for PBXNativeTarget "OptimalRunnerLegacyTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2CE83031549EE0CF211CC128 /* Debug */,
+				7A39998876624EF3665D45DE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D1114913208288CEE4AD579C /* Build configuration list for PBXProject "OptimalRunnerLegacy" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				70D2E075E7D34375515B8547 /* Debug */,
+				51AF69A23678E9D9ED13D745 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		41065975DEC0279D336D1BDB /* XCLocalSwiftPackageReference "LegacySupport" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = LegacySupport;
+		};
+		941BD42203CB34652579C622 /* XCLocalSwiftPackageReference "../../Core" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Core;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		227DB6B795C58CCC77898833 /* ORStats */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORStats;
+		};
+		28DB22EA312ED5B234A12E1E /* ORPace */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORPace;
+		};
+		AF255CFD2C723B881D59D8C7 /* ORModels */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORModels;
+		};
+		BA2B19F083C021FA25EC3F05 /* ORIntervals */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORIntervals;
+		};
+		C1ED45A613F0AD1558BBCCEE /* ORColor */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORColor;
+		};
+		C4CDD79A47BC2FB25836C9C5 /* LegacySupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LegacySupport;
+		};
+		D31C37E52C9E7CBADF0E7EF5 /* ORModels */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORModels;
+		};
+		DC043B2CD9BB23ED309C366B /* LegacySupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LegacySupport;
+		};
+		E446D56BC2ADA0D9FF3D60FE /* ORPace */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORPace;
+		};
+		E6330EB4F918056396359588 /* ORAlerts */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORAlerts;
+		};
+		FBC4B0934BA8F660FE798E82 /* ORIntervals */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ORIntervals;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 0FAB78E4C0D52963D7E70C5B /* Project object */;
+}

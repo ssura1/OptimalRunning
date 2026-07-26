@@ -1,0 +1,108 @@
+name: Legacy (Series 3)
+
+# The watchOS 8 / Series 3 tier (Wave 4, CON-2, AC-FR-K-1-2).
+#
+# Deferred from T-006 (Wave 0) because it had nothing to build against until Apps/WatchLegacy existed.
+#
+# ## Why the Xcode version is pinned
+#
+# CON-2: the Series 3 build window is closing. This target needs two things a future toolchain will
+# eventually stop providing — a watchOS 8.0 deployment target, and the **armv7k** architecture, which
+# the watchOS 26.5 SDK already omits from `SupportedTargets.watchos.Archs` while still shipping the
+# stub slices that make it link.
+#
+# So this job is pinned deliberately, and **its failure is a designed signal rather than a surprise**:
+# when runners no longer carry Xcode 26, or when Xcode 26 stops building armv7k, that is
+# R-1 arriving and the planned response is to delete Apps/WatchLegacy and this file
+# (see docs/requirements.md §11 and Tools/manual-test-protocol.md §0.3).
+#
+# ## What this job can and cannot verify
+#
+# It builds, and it runs the tier's logic tests. It does **not** run a simulator, because there is no
+# watchOS 8 simulator runtime for Xcode 26 — the only installed watchOS runtime is 26.5. That is not a
+# gap in this workflow; it is the reason `LegacySupport` carries as much of the tier as it does, and
+# the reason Tools/manual-test-protocol.md is as long as it is.
+on:
+  push:
+  pull_request:
+
+jobs:
+  # The tier's logic — sensor fusion, the run controller, presentation, transport, and the
+  # AC-FR-K-1-2 fixture replay against the shared goldens.
+  #
+  # This is the job that matters. It runs on the macOS host with no simulator, which is the only
+  # automated verification this tier can have.
+  legacy-support:
+    name: LegacySupport (tier logic + equivalence)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reads the shared Fixtures/ directory at the repository root — the same seven fixtures and the
+      # same seven goldens Core and the Modern tier read. That shared reading is what makes tier
+      # equivalence meaningful rather than a parallel set of expectations.
+      - name: Test
+        run: swift test --package-path Apps/WatchLegacy/LegacySupport
+
+  # The watchOS 8 build, for armv7k.
+  #
+  # No `test` action: the only test target here is T-072's performance suite, whose numbers are
+  # meaningless off-device. Running it on a fast macOS runner would report success for the wrong
+  # reason and create the impression NFR-1/2/3 are covered when they are not.
+  legacy-build:
+    name: Watch Legacy (watchOS 8, armv7k)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned. See the note at the top of this file — this line is the tripwire for R-1.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.6'
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: cd Apps/WatchLegacy && xcodegen generate
+
+      - name: Build for watchOS 8 / armv7k
+        run: |
+          set -euo pipefail
+          xcodebuild build \
+            -project Apps/WatchLegacy/OptimalRunnerLegacy.xcodeproj \
+            -scheme OptimalRunnerLegacy \
+            -destination 'generic/platform=watchOS' \
+            CODE_SIGNING_ALLOWED=NO
+
+      # A successful build is not proof the artifact runs on a Series 3: if ARCHS silently resolved to
+      # arm64_32, the build would still succeed and the app would install on a Series 4+ while failing
+      # on the only hardware this tier exists for. So the architecture and minimum OS are asserted on
+      # the produced binary.
+      - name: Verify the binary is armv7k / watchOS 8
+        run: |
+          set -euo pipefail
+          EXT=$(find ~/Library/Developer/Xcode/DerivedData \
+            -path '*OptimalRunnerLegacy*' -name 'OptimalRunnerExtension' -type f -perm +111 \
+            2>/dev/null | grep -v dSYM | head -1)
+          if [ -z "$EXT" ]; then
+            echo "::error::could not locate the built extension binary"
+            exit 1
+          fi
+          echo "binary: $EXT"
+
+          ARCHS=$(lipo -archs "$EXT")
+          echo "archs: $ARCHS"
+          case "$ARCHS" in
+            *armv7k*) ;;
+            *) echo "::error::built $ARCHS, not armv7k — this will not run on a Series 3 (CON-2)"
+               exit 1 ;;
+          esac
+
+          MINOS=$(otool -l "$EXT" | awk '/minos/ {print $2; exit}')
+          echo "minos: $MINOS"
+          if [ "$MINOS" != "8.0" ]; then
+            echo "::error::minimum OS is $MINOS, not 8.0 — Series 3 cannot install this"
+            exit 1
+          fi
+          echo "ok: armv7k / watchOS 8.0"
