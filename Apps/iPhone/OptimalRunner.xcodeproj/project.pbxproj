@@ -8,16 +8,21 @@
 
 /* Begin PBXBuildFile section */
 		2C49B3BDDCC148DBB8946590 /* WatchSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E07A3B3A3E2B2B9C974EB7B6 /* WatchSyncCoordinator.swift */; };
+		3993403E52910F072DCAF2E6 /* PhoneMotion in Frameworks */ = {isa = PBXBuildFile; productRef = 47632724FA2154C03F0EC1F8 /* PhoneMotion */; };
 		3A9D0DD7CE25DBD0B0E84AE0 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A2F997968042C65D71A3B49 /* OnboardingView.swift */; };
 		3EC0DF1F87BCFBFC6DF2DEE0 /* ORAlerts in Frameworks */ = {isa = PBXBuildFile; productRef = 1523BC26694C0DBB7FBDE78F /* ORAlerts */; };
 		40C31DAF4D71281CB28733B2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8677FB795DB56B582549801 /* ContentView.swift */; };
 		41FA1936ED27813F3539792D /* RunDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38ADB2357B15E5BE92349B5A /* RunDetailView.swift */; };
+		4292EB4A97B1279667730A79 /* MotionCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 644635E4437095ED60A74610 /* MotionCaptureView.swift */; };
 		5410A0FA8D022BEA7869773F /* ORColor in Frameworks */ = {isa = PBXBuildFile; productRef = 89AF71782C84AB7A047AB373 /* ORColor */; };
 		60935782A7B0E35D7E97FEC6 /* ScaffoldingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 153DAA14C4A8CDE6469A24D6 /* ScaffoldingTests.swift */; };
+		7431CD36404A290C8501B903 /* MotionCaptureRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80CF315E330ADCC67B510AE /* MotionCaptureRecorder.swift */; };
+		760BE38F535B7187260FD8B1 /* MotionAvailabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9CD25009BC8FCBF4D3D06A7 /* MotionAvailabilityTests.swift */; };
 		820A751CFAC1E07F248277DE /* ZoneColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2224233D8D41E01059849C28 /* ZoneColor.swift */; };
 		867FCEA16318A465AC618B7E /* ORPace in Frameworks */ = {isa = PBXBuildFile; productRef = 7258048C0F5128E6D569231B /* ORPace */; };
 		90CFF6AE7C66DB6293417809 /* ORStats in Frameworks */ = {isa = PBXBuildFile; productRef = 06A2428D3379BC1070BC3B39 /* ORStats */; };
 		9BB2DF5AD17D235EBFA608EC /* AppShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C170F297F51128DDECF1E267 /* AppShell.swift */; };
+		A9235B31DB3897085A0A59E0 /* CaptureWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AE095640438FE8742A8D112 /* CaptureWriter.swift */; };
 		AED3746CAC292A7CE62FFF8F /* HealthKitWorkoutSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B926578F7448713F7AFB822 /* HealthKitWorkoutSource.swift */; };
 		B12781624B756E2D7CE2DC1F /* PhoneSupport in Frameworks */ = {isa = PBXBuildFile; productRef = D3029D1C8910876AB73FF5C2 /* PhoneSupport */; };
 		B2A8A6DFB4E599C03EAFE9FE /* OptimalRunnerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEC510D4F8526FEA99D60068 /* OptimalRunnerApp.swift */; };
@@ -50,13 +55,18 @@
 		3ED15358730A527C5F8F6E2F /* RunListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunListView.swift; sourceTree = "<group>"; };
 		44B6B41CC9A9F044E9680CBD /* StatisticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsView.swift; sourceTree = "<group>"; };
 		4D4AA223782D29EC429C8D08 /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = ../../Core; sourceTree = SOURCE_ROOT; };
+		643236B874A638CB0C7D9D30 /* PhoneMotion */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PhoneMotion; path = PhoneMotion; sourceTree = SOURCE_ROOT; };
+		644635E4437095ED60A74610 /* MotionCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionCaptureView.swift; sourceTree = "<group>"; };
 		672E85C0A5BAC2D9146ECAFB /* OptimalRunner.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OptimalRunner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6A2F997968042C65D71A3B49 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		6D0B04CF3E7CC6C89AB5E66A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		7AE095640438FE8742A8D112 /* CaptureWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureWriter.swift; sourceTree = "<group>"; };
+		A9CD25009BC8FCBF4D3D06A7 /* MotionAvailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionAvailabilityTests.swift; sourceTree = "<group>"; };
 		B8677FB795DB56B582549801 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B8AFEBBBEE138C84591B7C54 /* OptimalRunnerTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = OptimalRunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C170F297F51128DDECF1E267 /* AppShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShell.swift; sourceTree = "<group>"; };
 		E07A3B3A3E2B2B9C974EB7B6 /* WatchSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncCoordinator.swift; sourceTree = "<group>"; };
+		F80CF315E330ADCC67B510AE /* MotionCaptureRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionCaptureRecorder.swift; sourceTree = "<group>"; };
 		FA264A83CD022E5405FC9374 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		FEC510D4F8526FEA99D60068 /* OptimalRunnerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptimalRunnerApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -73,6 +83,7 @@
 				D2A07DE9874A902B0C86BED7 /* ORStats in Frameworks */,
 				5410A0FA8D022BEA7869773F /* ORColor in Frameworks */,
 				B12781624B756E2D7CE2DC1F /* PhoneSupport in Frameworks */,
+				3993403E52910F072DCAF2E6 /* PhoneMotion in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -116,6 +127,14 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		2F0F6FA67B96DD680C564560 /* Standalone */ = {
+			isa = PBXGroup;
+			children = (
+				D3BB956AD72627747EBF1064 /* Capture */,
+			);
+			path = Standalone;
+			sourceTree = "<group>";
+		};
 		404DB7B94894AE3C87D549D0 /* DesignSystem */ = {
 			isa = PBXGroup;
 			children = (
@@ -136,6 +155,7 @@
 			isa = PBXGroup;
 			children = (
 				4D4AA223782D29EC429C8D08 /* Core */,
+				643236B874A638CB0C7D9D30 /* PhoneMotion */,
 				2A44D1EFBAC3B8518411A0CC /* PhoneSupport */,
 			);
 			name = Packages;
@@ -144,6 +164,7 @@
 		7A2E0A395B1A5FEBD8298D95 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				A9CD25009BC8FCBF4D3D06A7 /* MotionAvailabilityTests.swift */,
 				153DAA14C4A8CDE6469A24D6 /* ScaffoldingTests.swift */,
 			);
 			path = Tests;
@@ -187,6 +208,16 @@
 			);
 			sourceTree = "<group>";
 		};
+		D3BB956AD72627747EBF1064 /* Capture */ = {
+			isa = PBXGroup;
+			children = (
+				7AE095640438FE8742A8D112 /* CaptureWriter.swift */,
+				F80CF315E330ADCC67B510AE /* MotionCaptureRecorder.swift */,
+				644635E4437095ED60A74610 /* MotionCaptureView.swift */,
+			);
+			path = Capture;
+			sourceTree = "<group>";
+		};
 		EBDA2F2461896179E940D03F /* RunList */ = {
 			isa = PBXGroup;
 			children = (
@@ -202,6 +233,7 @@
 				404DB7B94894AE3C87D549D0 /* DesignSystem */,
 				8CE38180EAE9EE0FF3C5BAE7 /* Features */,
 				945B0F7305139F1BA6C92FFC /* Health */,
+				2F0F6FA67B96DD680C564560 /* Standalone */,
 				1F2B8C44C9FBFF02EDD8CDCD /* Transport */,
 			);
 			path = Sources;
@@ -269,6 +301,7 @@
 				B851B6E8455177176AF1AD29 /* ORStats */,
 				89AF71782C84AB7A047AB373 /* ORColor */,
 				D3029D1C8910876AB73FF5C2 /* PhoneSupport */,
+				47632724FA2154C03F0EC1F8 /* PhoneMotion */,
 			);
 			productName = OptimalRunner;
 			productReference = 672E85C0A5BAC2D9146ECAFB /* OptimalRunner.app */;
@@ -296,6 +329,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				7058E7BB0FB70E2B3FDC7EC9 /* XCLocalSwiftPackageReference "../../Core" */,
+				67F3C5132ED08A58887B34CA /* XCLocalSwiftPackageReference "PhoneMotion" */,
 				09976A902006D19E5D4FC368 /* XCLocalSwiftPackageReference "PhoneSupport" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -315,8 +349,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				9BB2DF5AD17D235EBFA608EC /* AppShell.swift in Sources */,
+				A9235B31DB3897085A0A59E0 /* CaptureWriter.swift in Sources */,
 				40C31DAF4D71281CB28733B2 /* ContentView.swift in Sources */,
 				AED3746CAC292A7CE62FFF8F /* HealthKitWorkoutSource.swift in Sources */,
+				7431CD36404A290C8501B903 /* MotionCaptureRecorder.swift in Sources */,
+				4292EB4A97B1279667730A79 /* MotionCaptureView.swift in Sources */,
 				3A9D0DD7CE25DBD0B0E84AE0 /* OnboardingView.swift in Sources */,
 				B2A8A6DFB4E599C03EAFE9FE /* OptimalRunnerApp.swift in Sources */,
 				FCB20FB0DDBDCC9301E6613C /* ProfileView.swift in Sources */,
@@ -332,6 +369,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				760BE38F535B7187260FD8B1 /* MotionAvailabilityTests.swift in Sources */,
 				60935782A7B0E35D7E97FEC6 /* ScaffoldingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -585,6 +623,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = PhoneSupport;
 		};
+		67F3C5132ED08A58887B34CA /* XCLocalSwiftPackageReference "PhoneMotion" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = PhoneMotion;
+		};
 		7058E7BB0FB70E2B3FDC7EC9 /* XCLocalSwiftPackageReference "../../Core" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Core;
@@ -599,6 +641,10 @@
 		1523BC26694C0DBB7FBDE78F /* ORAlerts */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ORAlerts;
+		};
+		47632724FA2154C03F0EC1F8 /* PhoneMotion */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PhoneMotion;
 		};
 		7258048C0F5128E6D569231B /* ORPace */ = {
 			isa = XCSwiftPackageProductDependency;

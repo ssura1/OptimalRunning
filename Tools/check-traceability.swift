@@ -79,3 +79,81 @@ if failures.isEmpty {
     for failure in failures { print("  \(failure)") }
     exit(1)
 }
+
+// MARK: - The standalone track
+//
+// A second, independent identifier space (docs/standalone/). It gets its own pass rather
+// than being merged into the one above for two reasons: the two tracks must not be able
+// to satisfy each other's requirements by accident, and a standalone document referring to
+// a core requirement — which it does constantly, by design — must not be mistaken for a
+// task covering it.
+
+let standaloneDirectory = root.appendingPathComponent("docs/standalone")
+
+func readStandalone(_ name: String) -> String? {
+    try? String(
+        contentsOf: standaloneDirectory.appendingPathComponent(name), encoding: .utf8)
+}
+
+if let standaloneRequirements = readStandalone("requirements.md"),
+   let standaloneDesign = readStandalone("design.md"),
+   let standaloneImplementation = readStandalone("implementation.md")
+{
+    // Mirrors the core pattern with the mandatory `S` segment. `FR-S-A-1` cannot collide
+    // with `FR-A-1`: the core pattern requires a letter in A–K immediately after `FR-`,
+    // and `S` is outside that range, so neither pattern can match the other's IDs.
+    let standalonePattern =
+        "\\b(?:AC-FR-S-[A-Z]-\\d+-\\d+|FR-S-[A-Z]-\\d+|NFR-S-\\d+|DEG-S-\\d+|CON-S-\\d+|R-S-\\d+)\\b"
+    let standaloneRegex = try! NSRegularExpression(pattern: standalonePattern)
+
+    func standaloneIDs(in text: String) -> Set<String> {
+        let range = NSRange(text.startIndex..., in: text)
+        return Set(standaloneRegex.matches(in: text, range: range).compactMap {
+            Range($0.range, in: text).map { String(text[$0]) }
+        })
+    }
+
+    let sDefined = standaloneIDs(in: standaloneRequirements)
+    let sCitedByTasks = standaloneIDs(in: standaloneImplementation)
+    let sCitedByDesign = standaloneIDs(in: standaloneDesign)
+
+    var standaloneFailures: [String] = []
+
+    for orphan in sCitedByTasks.union(sCitedByDesign).subtracting(sDefined).sorted() {
+        standaloneFailures.append(
+            "cited but not defined in docs/standalone/requirements.md: \(orphan)")
+    }
+
+    // Risks are documented, not implemented, so they are not required to have a covering
+    // task — the same reasoning that exempts AC-level identifiers in the core pass.
+    func standaloneTopLevel(_ set: Set<String>) -> Set<String> {
+        set.filter { id in
+            id.hasPrefix("NFR-S-") || id.hasPrefix("DEG-S-") || id.hasPrefix("CON-S-")
+                || (id.hasPrefix("FR-S-") && !id.hasPrefix("AC-"))
+        }
+    }
+
+    for uncovered in standaloneTopLevel(sDefined).subtracting(sCitedByTasks).sorted() {
+        standaloneFailures.append("defined but no standalone task satisfies it: \(uncovered)")
+    }
+
+    let standaloneTaskRegex = try! NSRegularExpression(
+        pattern: "^### (S-\\d{3}) — ", options: .anchorsMatchLines)
+    let standaloneRange = NSRange(
+        standaloneImplementation.startIndex..., in: standaloneImplementation)
+    let standaloneTaskCount = standaloneTaskRegex.numberOfMatches(
+        in: standaloneImplementation, range: standaloneRange)
+
+    if standaloneFailures.isEmpty {
+        print("ok: standalone track — \(standaloneTopLevel(sDefined).count) top-level "
+            + "requirements, \(sDefined.count) identifiers, \(standaloneTaskCount) tasks")
+    } else {
+        print("::error::standalone traceability check failed")
+        for failure in standaloneFailures { print("  \(failure)") }
+        exit(1)
+    }
+} else {
+    // Absent rather than broken: the standalone track is a separate body of work and the
+    // core gate must keep passing in a tree that does not have it.
+    print("note: docs/standalone/ not present — standalone traceability skipped")
+}

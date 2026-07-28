@@ -20,8 +20,21 @@
 	<string>1</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>NSHealthShareUsageDescription</key>
 	<string>OptimalRunner reads your past runs from Health so it can show your training history, personal bests, and lifetime statistics. Your data is never sent anywhere else.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>OptimalRunner uses GPS to measure your distance and pace during a run, and to record your route. Your location is never sent anywhere.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>OptimalRunner reads motion from the phone in your hand to measure your cadence and your pace when GPS is weak or unavailable. It stays on your device.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>audio</string>
+	</array>
+	<key>UIFileSharingEnabled</key>
+	<true/>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

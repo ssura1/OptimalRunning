@@ -20,6 +20,13 @@ packages:
   # that deserves a test loop measured in seconds.
   PhoneSupport:
     path: PhoneSupport
+  # The standalone tier's motion estimation, as pure arithmetic (standalone ADR-S-03).
+  # Separate from PhoneSupport because it has no SwiftData dependency and therefore no
+  # macOS 14 floor, which is what lets it run in the fast Linux CI lane alongside Core —
+  # and the iOS Simulator has no accelerometer at all (CON-S-1), so a package that can be
+  # tested without one is not a convenience here, it is the only verification available.
+  PhoneMotion:
+    path: PhoneMotion
 
 targets:
   OptimalRunner:
@@ -43,6 +50,8 @@ targets:
         product: ORColor
       - package: PhoneSupport
         product: PhoneSupport
+      - package: PhoneMotion
+        product: PhoneMotion
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.optimalrunner.app
@@ -73,6 +82,33 @@ targets:
         # NFR-14 — declared for completeness even though this app makes no network
         # calls; check-no-network.sh (NFR-14/15) is what actually enforces it.
         ITSAppUsesNonExemptEncryption: false
+
+        # --- Standalone tier (docs/standalone) ---
+        #
+        # These keys are *declarations of capability*, not prompts. iOS asks the user at
+        # the point of use, and AC-FR-S-A-1-2 requires the request to happen on the first
+        # standalone run and nowhere else — a hub-only user who never starts a phone run
+        # is never asked for either of these. That laziness is what makes ADR-S-01's
+        # "one app, two personalities" decision cost a hub-only user nothing.
+        NSMotionUsageDescription: >-
+          OptimalRunner reads motion from the phone in your hand to measure your cadence
+          and your pace when GPS is weak or unavailable. It stays on your device.
+        NSLocationWhenInUseUsageDescription: >-
+          OptimalRunner uses GPS to measure your distance and pace during a run, and to
+          record your route. Your location is never sent anywhere.
+        # CON-S-4 — there is no `workout-processing` background mode on iOS, and no live
+        # HKWorkoutSession at this deployment target to hold the process up (CON-S-2), so
+        # background execution during a run is earned here or not at all. Omitting either
+        # of these produces a run that silently stops recording the moment the screen
+        # sleeps, with no error anywhere.
+        UIBackgroundModes:
+          - location
+          - audio
+        # FR-S-F-1-7 — captured motion traces are retrievable through the Files app and
+        # the share sheet. Retrieval that needs Xcode is retrieval that does not happen on
+        # a Sunday morning after a long run.
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
     scheme:
       testTargets:
         - OptimalRunnerTests

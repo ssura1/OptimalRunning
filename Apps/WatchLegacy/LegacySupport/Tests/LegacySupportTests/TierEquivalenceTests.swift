@@ -46,11 +46,17 @@ import ORPace
 final class TierEquivalenceTests: XCTestCase {
 
     /// design.md §8.2's priority order, as a rank. Lower wins.
+    ///
+    /// `.motionModel` ranks last and is unreachable on this tier: it is the standalone
+    /// phone tier's step-length model (standalone/design.md ADR-S-02), and no watch
+    /// fixture declares it. It is listed so this switch stays exhaustive rather than
+    /// falling through a `default:` that would silently absorb a genuinely new source.
     private func rank(_ source: DistanceSource) -> Int {
         switch source {
         case .healthKit: return 0
         case .location: return 1
         case .pedometer: return 2
+        case .motionModel: return 3
         }
     }
 

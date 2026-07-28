@@ -35,3 +35,30 @@ jobs:
 
       - name: Coverage gate (NFR-18)
         run: Tools/coverage-gate.sh 85
+
+  # The standalone tier's motion estimation (standalone/ADR-S-03). In the *Linux* lane
+  # rather than with the other tier packages on macOS, and that placement is the whole
+  # point of the ADR: WatchSupport and PhoneSupport need a macOS host for the Observation
+  # macro and SwiftData respectively, but this package is arithmetic over arrays of
+  # doubles with no framework anywhere near it.
+  #
+  # It matters more here than it does for Core. The iOS Simulator has no accelerometer
+  # and no gyroscope at all, and unlike GPS there is no route file that can stand in for
+  # them (CON-S-1) — so estimation code that needed a device would have no automated
+  # verification whatsoever. This job is the only thing standing between the step-length
+  # model and "it looked right on my phone".
+  motion:
+    name: PhoneMotion (standalone estimation)
+    runs-on: ubuntu-latest
+    container: swift:6.1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: swift build --package-path Apps/iPhone/PhoneMotion
+
+      - name: Test
+        run: swift test --package-path Apps/iPhone/PhoneMotion --enable-code-coverage
+
+      - name: Coverage gate (NFR-S-21)
+        run: Tools/coverage-gate.sh 85 Apps/iPhone/PhoneMotion

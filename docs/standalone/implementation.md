@@ -471,6 +471,132 @@ subsequent run matches exactly.
 
 ---
 
+### Waves S0 and S1 — as built
+
+Deviations and findings from executing this plan, recorded here rather than left in commit
+messages — the discipline the core track's "Wave 4 — as built" section established.
+
+**The environment, first, because it shaped how everything was verified.** This repository lives
+under `~/Desktop`, which on this machine is synced by iCloud Drive. During the work `fseventsd`,
+`cloudd` and `fileproviderd` were consuming most of the machine's I/O, and the effect was severe
+rather than cosmetic: `git rev-parse HEAD` took **93 seconds at 0% CPU**, and `swift build` stalled
+indefinitely against a contended `.build` lock shared with SourceKit-LSP's background indexer. All
+verification was therefore run against an `rsync` copy of the tree under `/private/tmp`, which is not
+synced. This changes nothing about the code — the sources are the repository's — but it is worth
+knowing, because the natural conclusion from a hanging `git status` is that the repository is broken
+and it is not.
+
+**S-001 — `PhoneMotion` declares platform floors after all**, restated from `Core` rather than
+chosen. The manifest was written with none, on the correct principle that arithmetic over arrays of
+doubles has no deployment target to state. SwiftPM disagrees: `Core` declares `.macOS(.v13)` (core
+track T-063), and a package may not depend on a product with a higher floor than its own. The Linux
+lane — the only thing [ADR-S-03](./design.md#adr-s-03) was protecting — is unaffected, because
+SwiftPM ignores `platforms:` there entirely. Reconciled in that ADR.
+
+**S-016 — the van Oeveren prior is valid over a far narrower band than reading the paper suggests,
+and this was found by implementing it.** The relation was fitted over 1.64–4.68 m·s⁻¹; inverted,
+that entire speed range maps to a cadence band of **159.9–178.2 spm**. Below the floor it returns a
+*negative* speed — at 150 spm, −0.0033 m/s — and above the ceiling it implies 6.65 m/s for a runner
+at 190 spm. `priorStepLength` now returns `nil` outside `[2.665 Hz, 2.969 Hz]` rather than
+extrapolating, and a runner outside that band on a GNSS-free first run gets a timed run with no
+distance, which is what [ADR-S-06](./design.md#adr-s-06) prescribes anyway. Written up in
+[design.md §5.4](./design.md#54-the-no-gnss-prior).
+
+This is also the sharpest available statement of [§5.1](./design.md#51-why-a-cadence-only-model-cannot-work-for-running)'s
+argument, and it is worth the emphasis: **a 185% increase in running speed shows up as an 11%
+increase in cadence.** A model that reads speed from cadence is reading an 11% signal to explain a
+185% effect.
+
+#### Five real bugs the tests caught
+
+All five were caught by tests written to the acceptance criteria before the code was tuned, and all
+five were in shipped-looking code that ran without complaint.
+
+**1 — The autocorrelation picked an arbitrary *multiple* of the period.** A periodic signal
+correlates with itself at every multiple of its period, and for a clean signal those peaks are
+within floating-point noise of one another, so "take the largest" picks whichever one happened to
+score higher. `testRecoversANonIntegerPeriodToWellUnderOneSample` reported a **200% period error** on
+a pure sinusoid. Fixed by preferring the shortest lag within 85% of the best peak — the standard
+fundamental-frequency rule — which is also provably safe for the stride-versus-step problem, since
+`L` and `2L` map to the same cadence by construction ([§4.3](./design.md#43-resolving-the-stride-versus-step-ambiguity)).
+
+**2 — The step detector had no refractory interval before the first cadence estimate existed.** The
+refractory is derived from the live cadence, and `(cadence?.stepPeriodSeconds ?? 0)` is zero when
+there is no cadence yet — so for the first several seconds of every run the gate was wide open, and
+the property suite found event gaps of 0.08 s against a 0.15 s bound. Fixed with a floor at the
+fastest physiologically admissible step period.
+
+**3 — There was no stationarity gate at all, so the detector kept counting steps at a traffic
+light.** [AC-FR-S-B-3-5](./requirements.md#fr-s-b-3--step-event-detection) requires no events during
+a stationary interval and nothing implemented it. The adaptive threshold cannot do the job by
+itself, and the reason is worth recording: being *relative* — mean plus kσ over a trailing window —
+it follows the signal down and finds "peaks" in sensor noise. Worse, the phase-locked fallback keeps
+synthesising steps at the last known cadence for as long as the correlation window remembers it. An
+absolute RMS floor on the gait band now suppresses both, and `steps.stationaryRMSThreshold` is a new
+tunable.
+
+**4 — Calibration learned from a bad window before the disagreement check could see it.** The
+disagreement comparison ran on a 200 m window while the calibration window is 100 m, so the first
+calibration window closed and was **applied** before the first disagreement window had been
+evaluated. `testCalibrationDoesNotMoveWhileDisagreementIsSuspended` caught the scale moving its full
+per-window cap on data where GNSS reported double the motion leg. The check now runs on the
+calibration window itself, immediately before applying it — suspension after the fact is no use when
+the damage is already in the persisted state.
+
+**5 — Window qualification was all-or-nothing and disqualified the first window of every run.**
+[AC-FR-S-C-2-7](./requirements.md#fr-s-c-2--online-calibration-against-gnss) forbids learning from a
+window "where cadence confidence was low", which was implemented as "where *any* step lacked a
+confident cadence". Every run begins with a few seconds of no cadence estimate at all while the
+correlation window fills, so every run's *first* window was disqualified — the exact window a
+first-ever calibration depends on. `testSuppressingFixesAfterATimeProducesAnEstimatedTail` failed
+with no calibration after a clean 60 s of GNSS. Now a window qualifies if ≥ 80% of its steps carried
+a confident cadence.
+
+#### Smaller things, recorded because they will look arbitrary otherwise
+
+- **The filters are causal, never zero-phase.** Offline gait analysis normally uses a
+  forward-backward pass; that is unavailable here because live estimation and fixture replay must be
+  bit-identical ([NFR-S-14](./requirements.md#94-reliability)) and a backward pass is not causal.
+- **`Rotation.axisAngle` is written out element by element.** The nine compound expressions in one
+  array literal defeat Swift's type checker outright — a compile error, not a slow build.
+- **`CadenceEstimator`'s analysis is `static`.** Passing `&vertical` while calling a `mutating`
+  method on `self` is an exclusivity violation. The config and previous estimate are hoisted into
+  locals instead.
+- **The coverage gate and its summariser now take a package path and a source root.** They were
+  hardcoded to `Core`; `PhoneMotion` is gated on the same 85% terms
+  ([NFR-S-21](./requirements.md#96-maintainability)), and duplicating the script would have meant
+  two copies of the llvm-cov-location logic to keep in step.
+- **`DistanceFusion` takes the calibration configuration as an init parameter.** The first
+  implementation reached for a mutable static, which is global mutable state in a package whose
+  entire value is determinism.
+- **Cadence *confidence* and the minimum autocorrelation *peak* were the same constant, and should
+  not have been.** `minimumPeakCorrelation` (0.30) gates whether an estimate is emitted at all;
+  confidence is a product of three factors ([§4.4](./design.md#44-confidence)) and lives on a
+  different scale entirely. Reusing one for the other made the calibration gate far laxer than it
+  read. `cadence.minimumTrustedConfidence` now exists and is shared by the calibrator and the
+  phase-locked fallback, so the two cannot come to disagree about what "trusted" means.
+- **Three literals moved into configuration** under [NFR-S-19](./requirements.md#96-maintainability)
+  — the trusted-confidence threshold, the confident-step fraction, and the stationary RMS floor.
+  Three others stayed as declared constants with their reasoning at the declaration, following the
+  core track's own distinction (`design.md` §4): `Autocorrelator.fundamentalPreferenceRatio`,
+  `StepDetector.fallbackLatenessFactor` and `CadenceEstimator.channelDisagreementThreshold` are
+  algorithm correctness constants, not values a runner or a deployment might legitimately vary.
+
+#### What is *not* built, and is not pretended to be
+
+- **No recorded trace exists**, so Wave S2 has not run and every accuracy requirement in
+  [§9.3](./requirements.md#93-accuracy) remains **unvalidated**. The
+  [validation-status table](./requirements.md#121-validation-status) says so, and
+  `Tools/check-motion-fixtures.sh` makes it structurally impossible for a synthetic test to claim
+  otherwise.
+- **The capture tool has not been run on a device.** It builds, and the Simulator confirms it
+  correctly refuses to record where there are no sensors ([S-004](#s-004)), but "records a clean
+  60-minute trace" is a claim only a phone can support.
+- **Waves S3–S5 are specified and not built.** The gate between S2 and S3 is deliberate: the shape of
+  the standalone app legitimately depends on what the traces measure.
+
+---
+
 ## Wave S2 — Validation against recorded traces
 
 **This wave is blocked on hardware.** It cannot be started, let alone completed, without files from

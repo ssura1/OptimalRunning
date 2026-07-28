@@ -26,6 +26,7 @@ struct ProfileView: View {
                 displaySection
                 alertsSection
                 disclaimerSection
+                developerSection
             }
             .navigationTitle("Profile")
             .task { load() }
@@ -38,6 +39,28 @@ struct ProfileView: View {
                     save()
                 }
             }
+        }
+    }
+
+    /// The standalone track's capture tool (S-006, AC-FR-S-F-1-9).
+    ///
+    /// Last section, plainly labelled, behind a navigation push: reachable deliberately
+    /// rather than discoverable by accident. It records raw motion for algorithm
+    /// development and is not part of the product — but it lives inside this app rather
+    /// than in a scratch project, because that way recording a trace means building the
+    /// one app that already exists and already has the entitlements.
+    private var developerSection: some View {
+        Section {
+            NavigationLink("Motion Capture") { MotionCaptureView() }
+        } header: {
+            Text("Developer")
+        } footer: {
+            Text(
+                """
+                Records raw motion to a file for algorithm development. The iOS Simulator \
+                has no accelerometer, so this needs a real device — see \
+                Tools/motion-recording-protocol.md.
+                """)
         }
     }
 

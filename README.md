@@ -60,13 +60,15 @@ swift run --package-path Core ORReplay timeline --fixture hilly-10k
 One package of pure logic, surrounded by thin application shells.
 
 ```
-Core/            pure Swift — every decision the product makes. Builds on Linux.
-Apps/iPhone/     iOS 17+ — statistics hub
-Apps/WatchModern/  watchOS 10+ — Series 4 and later
-Apps/WatchLegacy/  watchOS 8 — Series 3 only
-Fixtures/        recorded traces + committed golden outputs
-Tools/           CI gates and the replay CLI
-docs/            requirements, design, implementation plan
+Core/                  pure Swift — every decision the product makes. Builds on Linux.
+Apps/iPhone/           iOS 17+ — statistics hub, and the standalone running tier
+Apps/iPhone/PhoneMotion/  pure Swift — motion estimation for phone-only runs. Builds on Linux.
+Apps/WatchModern/      watchOS 10+ — Series 4 and later
+Apps/WatchLegacy/      watchOS 8 — Series 3 only
+Fixtures/              recorded traces + committed golden outputs
+Tools/                 CI gates and the replay CLI
+docs/                  requirements, design, implementation plan
+docs/standalone/       the same three, for the phone-only track
 ```
 
 Every decision — what pace you should be running, what colour the screen is, whether to

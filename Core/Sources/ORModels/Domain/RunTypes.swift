@@ -117,10 +117,15 @@ public enum PaletteChoice: String, Codable, Sendable, Hashable, CaseIterable {
 
 // MARK: - Device tier
 
-/// Which watch codebase produced a run (ADR-002).
+/// Which codebase produced a run (ADR-002, ADR-S-01).
 public enum DeviceTier: String, Codable, Sendable, Hashable, CaseIterable {
     case modern
     case legacy
+    /// The iPhone sensing a run on its own, with no paired watch. Not a separate app
+    /// — a capability of `Apps/iPhone` (standalone/design.md ADR-S-01) — but a
+    /// genuinely different sensing tier, so a run's origin is never ambiguous in the
+    /// store.
+    case phoneStandalone
 }
 
 // MARK: - Degradation
@@ -151,7 +156,63 @@ public enum DegradationFlag: String, Codable, Sendable, Hashable, CaseIterable {
     case reconstructedFromHealthKit
 }
 
+// MARK: - Carry position
+
+/// Where on the body the sensing device is during a run.
+///
+/// Only meaningful for the standalone phone tier — a watch is on a wrist by
+/// definition — and it exists as an enum with a single case on purpose
+/// (standalone/design.md ADR-S-04). Carry position changes the motion signal
+/// *fundamentally*, not incrementally: a pocketed phone is quasi-rigidly coupled to
+/// the pelvis and sees vertical centre-of-mass oscillation at step frequency, while a
+/// hand-held one swings at *stride* frequency with a continuously changing
+/// orientation. A step detector tuned for one is wrong for the other.
+///
+/// A single-case enum states that dependence at compile time. Adding a second
+/// position becomes "add a case and fix the exhaustiveness errors"; with no parameter
+/// at all, the assumption would be invisible and smeared through filter cutoffs and
+/// detector thresholds for someone to rediscover by reading.
+public enum CarryPosition: String, Codable, Sendable, Hashable, CaseIterable {
+    /// The only supported position for standalone v1 (CON-S-3).
+    case handHeld
+}
+
 // MARK: - Sensor capabilities
+
+/// How a tier arrives at distance, as a *static* property of the tier.
+///
+/// `hasGPS` cannot answer this: a tier can have GPS and still be handing back an
+/// estimate right now. What a caller needs to know is whether the number it is being
+/// given is an observation or an inference, and that has three states, not two —
+/// which is why this is an enum rather than another boolean (ADR-S-02). The *dynamic*
+/// per-tick answer lives on `EngineInput.distanceSource`.
+public enum DistanceCapability: String, Codable, Sendable, Hashable, CaseIterable {
+    /// Position fixes are primary; a motion model exists only as a fallback.
+    /// Both watch tiers, and the standalone phone tier outdoors.
+    case measuredWithEstimatedFallback
+    /// No position source at all: distance is always inferred from motion.
+    case estimatedOnly
+    /// Position fixes only, with nothing to fall back on.
+    case measuredOnly
+}
+
+/// Which workout-session facility the platform actually offers.
+///
+/// Not a boolean, because the interesting case is the middle one. On iOS 17–25 an app
+/// cannot create a local `HKWorkoutSession` — that initializer is `ios(26.0)`, and
+/// iOS 17's iPhone-side session exists only as the *mirrored* endpoint of a watch
+/// session (CON-S-2) — but `HKWorkoutBuilder` has been available since iOS 12 and is
+/// perfectly capable of writing the workout. A `supportsWorkoutSession: Bool` would
+/// report `false` there, and a caller reading it as "can I record a workout at all"
+/// would wrongly decline to write to HealthKit.
+public enum WorkoutSessionCapability: String, Codable, Sendable, Hashable, CaseIterable {
+    /// A live, locally-owned `HKWorkoutSession`: watchOS, and iOS 26+.
+    case localSession
+    /// `HKWorkoutBuilder` only — no live session. iOS 17–25.
+    case builderOnly
+    /// Neither.
+    case none
+}
 
 /// What the hardware running the app can actually do (design.md §8).
 ///
@@ -163,18 +224,51 @@ public struct SensorCapabilities: Codable, Sendable, Hashable {
     public let hasAlwaysOnDisplay: Bool
     public let supportsNativeActivitySegmentation: Bool
     public let supportsDoubleTap: Bool
+    /// Whether distance is measured, estimated, or measured with an estimated
+    /// fallback (AC-FR-S-A-3-1).
+    public let distance: DistanceCapability
+    /// Which workout-session facility this platform offers (AC-FR-S-A-3-2).
+    public let workoutSession: WorkoutSessionCapability
 
+    /// The two standalone-track fields default to what both watch tiers already are,
+    /// so every pre-existing construction site compiles unchanged (ADR-S-02).
     public init(
         hasAltimeter: Bool,
         hasGPS: Bool,
         hasAlwaysOnDisplay: Bool,
         supportsNativeActivitySegmentation: Bool,
-        supportsDoubleTap: Bool
+        supportsDoubleTap: Bool,
+        distance: DistanceCapability = .measuredWithEstimatedFallback,
+        workoutSession: WorkoutSessionCapability = .localSession
     ) {
         self.hasAltimeter = hasAltimeter
         self.hasGPS = hasGPS
         self.hasAlwaysOnDisplay = hasAlwaysOnDisplay
         self.supportsNativeActivitySegmentation = supportsNativeActivitySegmentation
         self.supportsDoubleTap = supportsDoubleTap
+        self.distance = distance
+        self.workoutSession = workoutSession
+    }
+
+    /// Hand-written rather than synthesised so a value encoded before the two
+    /// standalone fields existed still decodes (AC-FR-S-A-3-5).
+    ///
+    /// This type is not carried in `RunEnvelope` today, so nothing on disk is missing
+    /// these keys right now — but it is `public` and `Codable`, and "nobody encodes it
+    /// yet" is not a property that stays true. Synthesised `init(from:)` would make a
+    /// future payload undecodable with a `keyNotFound` that names a field the writer
+    /// had never heard of.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        hasAltimeter = try container.decode(Bool.self, forKey: .hasAltimeter)
+        hasGPS = try container.decode(Bool.self, forKey: .hasGPS)
+        hasAlwaysOnDisplay = try container.decode(Bool.self, forKey: .hasAlwaysOnDisplay)
+        supportsNativeActivitySegmentation = try container.decode(
+            Bool.self, forKey: .supportsNativeActivitySegmentation)
+        supportsDoubleTap = try container.decode(Bool.self, forKey: .supportsDoubleTap)
+        distance = try container.decodeIfPresent(DistanceCapability.self, forKey: .distance)
+            ?? .measuredWithEstimatedFallback
+        workoutSession = try container.decodeIfPresent(
+            WorkoutSessionCapability.self, forKey: .workoutSession) ?? .localSession
     }
 }

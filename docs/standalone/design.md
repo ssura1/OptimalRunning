@@ -306,6 +306,17 @@ dependency and should not inherit that floor: it is arithmetic over arrays of do
 the fast Linux lane alongside `Core`, and putting it behind SwiftData's platform requirements would
 cost the cheapest, fastest signal in the project for nothing.
 
+> **As built — the package does declare platform floors, and the reason is worth recording.** The
+> manifest was written with no `platforms:`, on the principle above. SwiftPM rejects that: `Core`
+> declares `.macOS(.v13)` (added in the core track's Wave 4, T-063, so a watchOS 8 target would
+> compile `RunSensorFeed`'s `async` methods), and a package may not depend on a product with a
+> *higher* floor than its own — `error: the library 'PhoneMotion' requires macos 10.13, but depends
+> on the product 'ORModels' which requires macos 13.0`. The floors are therefore restated from the
+> dependency rather than claimed about deployment. **Nothing this ADR is protecting changes**:
+> SwiftPM ignores `platforms:` on Linux entirely, so the fast Linux lane — the actual point — works
+> exactly as intended. The distinction from `PhoneSupport` also survives, since what disqualified
+> that package was never the floor number but SwiftData being attached to it.
+
 **Why not in the CoreMotion adapter.** The adapter's job is to turn `CMDeviceMotion` into
 `MotionSample` and hand it over. Mixing estimation into it makes the estimation untestable and the
 adapter unreviewable, and it is the specific failure ADR-001 was written to prevent.
@@ -748,6 +759,28 @@ argued against — which is precisely why it is the *last* resort and why
 normalisation anchor, not a fitted value: van Oeveren's relation is a group-level fit and does not
 publish a cohort height, so scaling by `h/h_ref` assumes the group mean was near 1.75 m. That
 assumption is stated here because it is the kind of thing that otherwise becomes invisible.
+
+**The prior has a much narrower validity band than it looks, and this was found by implementing it
+rather than by reading it.** The relation was fitted over 1.64–4.68 m·s⁻¹. Inverted, that entire
+speed range maps to a cadence band of just **159.9 to 178.2 spm**:
+
+| Speed | Cadence | Step length |
+|---:|---:|---:|
+| 1.64 m/s (published floor) | 159.9 spm | 0.616 m |
+| 3.00 m/s | 168.1 spm | 1.071 m |
+| 4.68 m/s (published ceiling) | 178.2 spm | 1.576 m |
+
+Below the floor the inversion returns a **negative speed** — at 150 spm it gives −0.0033 m/s — and
+above the ceiling it extrapolates hard, implying 6.65 m/s (a 4:02/mi pace) for anyone running at
+190 spm. `StepLengthModel.priorStepLength` therefore returns `nil` outside
+`[2.665 Hz, 2.969 Hz]` rather than extrapolating, and a runner outside that cadence band on a
+GNSS-free first run gets a **timed run with no distance** — which is the honest outcome and the same
+one [ADR-S-06](#adr-s-06) prescribes when no scale exists at all.
+
+This narrowness is also the sharpest available statement of
+[§5.1](#51-why-a-cadence-only-model-cannot-work-for-running)'s argument: **a 185% increase in
+running speed shows up as an 11% increase in cadence.** A model that reads speed from cadence is
+reading an 11% signal to explain a 185% effect.
 
 Runs recorded under this prior are marked lower-confidence in the record
 ([AC-FR-S-E-2-4](./requirements.md#fr-s-e-2--provenance-is-visible-not-hidden)).

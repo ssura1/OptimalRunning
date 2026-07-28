@@ -1,7 +1,11 @@
 // Summarizes `llvm-cov export -summary-only` JSON into a per-target coverage table and
 // enforces the NFR-18 floor.
 //
-// Usage: llvm-cov export … | swift Tools/coverage-summarize.swift <targets-regex> <minimum>
+// Usage: llvm-cov export … | swift Tools/coverage-summarize.swift <targets-regex> <minimum> [source-root]
+//
+// `source-root` defaults to `Core/Sources`. It is a parameter because the standalone
+// track's `PhoneMotion` is gated on the same terms (NFR-S-21) and lives at a different
+// path; hardcoding it here would have meant a second copy of this file.
 //
 // **Swift, not Python.** This was Python until it turned out the `swift:6.1` container CI
 // runs `Core` in has no `python3` at all — so the coverage gate had never actually
@@ -39,13 +43,18 @@ private struct Report: Decodable {
 // MARK: - Arguments
 
 let arguments = Array(CommandLine.arguments.dropFirst())
-guard arguments.count == 2, let minimum = Double(arguments[1]) else {
+guard (2...3).contains(arguments.count), let minimum = Double(arguments[1]) else {
     FileHandle.standardError.write(Data(
-        "usage: coverage-summarize.swift <targets-regex> <minimum-percent>\n".utf8
+        "usage: coverage-summarize.swift <targets-regex> <minimum-percent> [source-root]\n".utf8
     ))
     exit(2)
 }
 let targetsPattern = arguments[0]
+let sourceRoot = arguments.count == 3 ? arguments[2] : "Core/Sources"
+/// What to call this package in the pass/fail line. Derived from the source root so the
+/// message names the package actually being gated rather than always saying "Core",
+/// which it did once a second package started using this script.
+let label = sourceRoot.split(separator: "/").first.map(String.init) ?? sourceRoot
 
 // MARK: - Input
 
@@ -65,10 +74,12 @@ do {
 
 // MARK: - Aggregate
 
-/// Matches `…/Core/Sources/<target>/…`, capturing the target name, so a file is attributed
-/// to whichever product module it lives in. Anything outside `Core/Sources` — test targets,
-/// the CLIs, package checkouts — never matches and is therefore never counted.
-let regex = try NSRegularExpression(pattern: "/Core/Sources/(" + targetsPattern + ")/")
+/// Matches `…/<source-root>/<target>/…`, capturing the target name, so a file is
+/// attributed to whichever product module it lives in. Anything outside the source root —
+/// test targets, the CLIs, package checkouts — never matches and is therefore never
+/// counted.
+let regex = try NSRegularExpression(
+    pattern: "/" + sourceRoot + "/(" + targetsPattern + ")/")
 
 var perTarget: [String: (covered: Int, total: Int)] = [:]
 var covered = 0
@@ -90,7 +101,8 @@ for file in report.data.first?.files ?? [] {
 }
 
 guard total > 0 else {
-    print("::error::no Core product files found in the coverage report (targets: \(targetsPattern))")
+    print("::error::no product files under \(sourceRoot) in the coverage report "
+        + "(targets: \(targetsPattern))")
     exit(1)
 }
 
@@ -136,9 +148,9 @@ print(
 let minimumLabel = "\(Int(minimum.rounded()))"
 if percent < minimum {
     print(
-        "::error::Core coverage \(percentString(percent)) is below the required "
+        "::error::\(label) coverage \(percentString(percent)) is below the required "
             + "\(minimumLabel)% (NFR-18)"
     )
     exit(1)
 }
-print("ok: Core coverage \(percentString(percent)) meets the \(minimumLabel)% gate")
+print("ok: \(label) coverage \(percentString(percent)) meets the \(minimumLabel)% gate")

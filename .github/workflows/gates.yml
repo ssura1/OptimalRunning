@@ -13,8 +13,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Core imports no Apple frameworks (ADR-001)
+      # Covers Core and Apps/iPhone/PhoneMotion — the two packages whose value depends on
+      # being framework-free (ADR-001, ADR-S-03).
+      - name: Pure packages import no Apple frameworks (ADR-001, ADR-S-03)
         run: Tools/check-core-imports.sh
+
+      # The standalone track's central honesty rule, made mechanical: a synthetic motion
+      # signal may prove a structural property but may never back an accuracy claim
+      # (CON-S-7, AC-FR-S-F-3-4).
+      - name: No synthetic signal backs an accuracy claim (CON-S-7)
+        run: Tools/check-motion-fixtures.sh
 
       - name: No availability conditionals in watch targets (CON-3, AC-FR-K-1-5)
         run: Tools/check-no-availability.sh

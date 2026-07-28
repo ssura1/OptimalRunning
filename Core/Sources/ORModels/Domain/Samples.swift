@@ -44,6 +44,34 @@ public enum DistanceSource: String, Codable, Sendable, Hashable, CaseIterable {
     case healthKit
     case location
     case pedometer
+    /// This project's own step-length model, from the standalone phone tier
+    /// (standalone/design.md §5).
+    ///
+    /// **Deliberately not folded into `.pedometer`.** They are different claims:
+    /// `.pedometer` means "CMPedometer said so", a model whose internals we do not
+    /// know and whose running behaviour we have not characterised, while
+    /// `.motionModel` means "our model said so" — a number we can explain, bound and
+    /// validate against a recorded trace. Collapsing them would make the
+    /// measured-versus-estimated display a lie and the calibration diagnostics
+    /// unreadable.
+    ///
+    /// It also matters to live behaviour: `RunEngine` reads
+    /// `.pedometer && location == nil` as an indoor run, and a GPS-denied *outdoor*
+    /// underpass is not a treadmill. A separate case leaves that inference exactly as
+    /// it was.
+    case motionModel
+
+    /// Whether this source *observed* the runner's displacement or *inferred* it.
+    ///
+    /// `.healthKit` counts as measured because on a watch it is Apple's GNSS-fused
+    /// estimate; where no GNSS is present the adapter reports the underlying source
+    /// instead.
+    public var isEstimated: Bool {
+        switch self {
+        case .healthKit, .location: return false
+        case .pedometer, .motionModel: return true
+        }
+    }
 }
 
 // MARK: - Engine input
