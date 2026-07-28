@@ -2,6 +2,7 @@ import CoreLocation
 import CoreMotion
 import Foundation
 import PhoneMotion
+import UIKit
 
 /// Records raw motion, location and pedometer streams to a file on device (S-006,
 /// FR-S-F-1).
@@ -14,6 +15,16 @@ import PhoneMotion
 ///
 /// Deliberately a developer tool rather than a product surface (AC-FR-S-F-1-9): reachable
 /// on purpose, not discoverable by accident.
+///
+/// ## Ownership (S-056)
+///
+/// **This object must outlive the capture screen.** It was previously a `@StateObject`
+/// inside `MotionCaptureView`, which is a `NavigationLink` destination — so navigating away
+/// from the screen destroyed the recorder, released `CMMotionManager`, and ended the
+/// capture without ever calling `finish`. A runner who opened the screen to press MARK and
+/// went back found the recording silently over and no assembled trace on disk. It is now
+/// owned by the app and injected, so the capture's lifetime is the *capture's*, not a
+/// view's.
 @MainActor
 final class MotionCaptureRecorder: NSObject, ObservableObject {
 
@@ -37,9 +48,11 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
 
     // MARK: - Capture state
 
+    /// The serial destination for every record. See `CaptureSink` for why capture work is
+    /// kept off the main thread entirely.
+    private let sink = CaptureSink()
     private var startedAt: Date?
     private var startUptime: TimeInterval = 0
-    private var writer: CaptureWriter?
     private var displayTimer: Timer?
     private var cumulativeLocationMetres = 0.0
     private var previousLocation: CLLocation?
@@ -76,6 +89,23 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
 
     var canRecord: Bool { motion.isDeviceMotionAvailable }
 
+    /// Whether location is authorised well enough to survive the screen locking.
+    ///
+    /// Surfaced because its absence is invisible until it matters: without authorisation
+    /// the `location` background mode cannot keep the process alive (CON-S-4), so the
+    /// capture ends the moment the phone sleeps — an hour into a run, with no error.
+    var locationWarning: String? {
+        switch locations.authorizationStatus {
+        case .denied, .restricted:
+            return "Location is denied, so recording will stop when the screen locks. "
+                + "Enable it in Settings › Privacy › Location Services."
+        case .notDetermined:
+            return nil
+        default:
+            return nil
+        }
+    }
+
     // MARK: - Lifecycle
 
     func start(runnerHeightMetres height: Double?) {
@@ -98,7 +128,7 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
         startUptime = ProcessInfo.processInfo.systemUptime
 
         do {
-            writer = try CaptureWriter(startedAt: now)
+            _ = try sink.begin(startedAt: now)
         } catch {
             lastError = "cannot open capture file: \(error.localizedDescription)"
             return
@@ -107,6 +137,11 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
         startMotion()
         startLocation()
         startPedometer()
+
+        // The one control that matters here has to be reachable, and a screen that has
+        // slept puts Face ID and a passcode between the runner and the MARK button. Held
+        // only while recording, and restored in `stop`.
+        UIApplication.shared.isIdleTimerDisabled = true
 
         isRecording = true
         displayTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
@@ -123,6 +158,7 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
         locations.stopUpdatingLocation()
         locations.allowsBackgroundLocationUpdates = false
         pedometer.stopUpdates()
+        UIApplication.shared.isIdleTimerDisabled = false
 
         let header = MotionTrace.Header(
             name: Self.name(for: startedAt ?? Date()),
@@ -136,11 +172,11 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
             runnerHeightMetres: runnerHeightMetres,
             references: [])
         do {
-            try writer?.finish(header: header)
+            try sink.finish(header: header)
         } catch {
             lastError = "cannot finalise capture: \(error.localizedDescription)"
         }
-        writer = nil
+        tickDisplay()
         refreshCaptures()
     }
 
@@ -152,7 +188,7 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
     func mark(note: String? = nil) {
         guard isRecording else { return }
         markCount += 1
-        writer?.append(mark: MotionTrace.Mark(
+        sink.append(mark: MotionTrace.Mark(
             timestamp: relativeTime(), index: markCount, note: note))
     }
 
@@ -164,6 +200,11 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
         // without waiting for a magnetometer calibration the runner would have to perform.
         // Heading is irrelevant here — the estimator needs a scalar distance, not a
         // position (design.md §3.2) — so the cheapest reference frame is the right one.
+        //
+        // Nothing in this closure touches the main actor or the recorder: it captures the
+        // sink and nothing else. At 100 Hz that is the difference between a capture screen
+        // that responds and one that does not (S-056).
+        let sink = self.sink
         motion.startDeviceMotionUpdates(
             using: .xArbitraryZVertical, to: queue
         ) { [weak self] data, error in
@@ -176,7 +217,10 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
             // Converted from g to m/s² **here**, once, so nothing downstream has to
             // remember which unit CoreMotion reports in.
             let g = 9.80665
-            let sample = MotionSample(
+            // CoreMotion's own uptime clock. `CaptureWriter.assemble` rebases these onto
+            // the same origin as the other streams, which is why no shared start time has
+            // to be read from this closure.
+            sink.append(motion: MotionSample(
                 timestamp: data.timestamp,
                 userAcceleration: Vector3(
                     x: data.userAcceleration.x * g,
@@ -185,11 +229,7 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
                 gravity: Vector3(
                     x: data.gravity.x * g, y: data.gravity.y * g, z: data.gravity.z * g),
                 rotationRate: Vector3(
-                    x: data.rotationRate.x, y: data.rotationRate.y, z: data.rotationRate.z))
-            Task { @MainActor in
-                self?.writer?.append(motion: sample)
-                self?.motionSampleCount += 1
-            }
+                    x: data.rotationRate.x, y: data.rotationRate.y, z: data.rotationRate.z)))
         }
     }
 
@@ -214,14 +254,14 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
 
     private func startPedometer() {
         guard CMPedometer.isStepCountingAvailable() else { return }
-        pedometer.startUpdates(from: Date()) { [weak self] data, _ in
+        let sink = self.sink
+        pedometer.startUpdates(from: Date()) { data, _ in
             guard let data else { return }
-            let reading = MotionTrace.RecordedPedometerReading(
+            sink.append(pedometer: MotionTrace.RecordedPedometerReading(
                 timestamp: data.endDate.timeIntervalSince(data.startDate),
                 cumulativeSteps: data.numberOfSteps.intValue,
                 cumulativeDistanceMetres: data.distance?.doubleValue,
-                currentCadenceStepsPerSecond: data.currentCadence?.doubleValue)
-            Task { @MainActor in self?.writer?.append(pedometer: reading) }
+                currentCadenceStepsPerSecond: data.currentCadence?.doubleValue))
         }
     }
 
@@ -231,9 +271,19 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
         ProcessInfo.processInfo.systemUptime - startUptime
     }
 
+    /// Publishes the counters twice a second.
+    ///
+    /// The counts are read from the sink rather than incremented per sample: an
+    /// `@Published` property mutated at 100 Hz asks SwiftUI to rebuild the screen on every
+    /// frame, which is what made the capture screen stop responding (S-056).
     private func tickDisplay() {
-        guard let startedAt else { return }
-        elapsed = Date().timeIntervalSince(startedAt)
+        if let startedAt { elapsed = Date().timeIntervalSince(startedAt) }
+        let counts = sink.snapshot()
+        motionSampleCount = counts.motion
+        locationFixCount = counts.location
+        if let failure = counts.failure, lastError == nil {
+            lastError = failure
+        }
     }
 
     private func refreshCaptures() {
@@ -289,6 +339,8 @@ extension MotionCaptureRecorder: CLLocationManagerDelegate {
         Task { @MainActor in self.lastError = error.localizedDescription }
     }
 
+    /// Location arrives at roughly 1 Hz, so building the record on the main actor costs
+    /// nothing — unlike motion at 100 Hz, which is why only that stream bypasses it.
     private func record(_ location: CLLocation) {
         guard isRecording else { return }
         // Cumulative distance is accumulated here rather than in `PhoneMotion`, because
@@ -301,8 +353,7 @@ extension MotionCaptureRecorder: CLLocationManagerDelegate {
             }
             previousLocation = location
         }
-        locationFixCount += 1
-        writer?.append(location: MotionTrace.RecordedFix(
+        sink.append(location: MotionTrace.RecordedFix(
             timestamp: relativeTime(),
             latitude: location.coordinate.latitude,
             longitude: location.coordinate.longitude,

@@ -18,12 +18,40 @@ import PhoneMotion
 /// So the run-time format is the durable one and the committed format is the analysable
 /// one, with the conversion at `finish` — which is also the only place that needs the
 /// header the trace cannot know until the session is over.
-final class CaptureWriter {
+/// ## Thread confinement
+///
+/// Every instance method here is **confined to its owner's serial capture queue** and must
+/// never be called from two queues at once. That is what makes the `@unchecked Sendable`
+/// below honest rather than a silencer: the type has mutable state and no internal lock,
+/// and it is safe only because `MotionCaptureRecorder` funnels motion, location, pedometer
+/// and mark records onto one serial queue before they arrive.
+///
+/// The alternative — an internal queue inside the writer — was rejected because it makes
+/// `append` asynchronous, and a test that appends and then reads the file would have to
+/// drain a queue it does not own to assert anything. Keeping the writer synchronous is
+/// what lets `CaptureWriterTests` assert on bytes without a single expectation.
+final class CaptureWriter: @unchecked Sendable {
 
-    private let workingURL: URL
+    let workingURL: URL
     private let handle: FileHandle
     private var pendingBytes = 0
     private var lastFlush = Date()
+
+    /// One encoder for the life of the capture rather than one per record.
+    ///
+    /// At 100 Hz the previous code built and tore down a `JSONEncoder` a hundred times a
+    /// second for the entire run.
+    private let encoder = JSONEncoder()
+
+    /// Why the last record could not be written, if one could not be.
+    ///
+    /// This exists because its absence made a field failure undiagnosable: `write` used to
+    /// be `guard let data = try? encoder.encode(record) else { return }`, so an encoding
+    /// failure produced a zero-byte capture, no error, and no way to tell that apart from
+    /// "the sensor delivered nothing". JSONEncoder rejects non-finite doubles by default,
+    /// which is a realistic thing for a sensor stream to contain, so this was not a
+    /// theoretical hole. Set once and kept: the first failure is the informative one.
+    private(set) var lastFailure: String?
 
     /// Flush at least this often. FR-D-6's 30 s bound, applied to capture.
     private static let flushInterval: TimeInterval = 5
@@ -77,6 +105,16 @@ final class CaptureWriter {
         case mark(MotionTrace.Mark)
 
         enum CodingKeys: String, CodingKey { case kind, payload }
+
+        /// Names the stream a record came from, so a write failure can say which one.
+        var kind: String {
+            switch self {
+            case .motion: "motion"
+            case .location: "location"
+            case .pedometer: "pedometer"
+            case .mark: "mark"
+            }
+        }
 
         func encode(to encoder: any Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
@@ -134,7 +172,16 @@ final class CaptureWriter {
     }
 
     private func write(_ record: Record) {
-        guard var data = try? JSONEncoder().encode(record) else { return }
+        var data: Data
+        do {
+            data = try encoder.encode(record)
+        } catch {
+            // Recorded rather than swallowed. A capture that writes nothing must say why.
+            if lastFailure == nil {
+                lastFailure = "could not encode a \(record.kind) record: \(error)"
+            }
+            return
+        }
         data.append(0x0A)
         handle.write(data)
         pendingBytes += data.count

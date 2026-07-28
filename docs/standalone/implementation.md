@@ -476,15 +476,20 @@ subsequent run matches exactly.
 Deviations and findings from executing this plan, recorded here rather than left in commit
 messages — the discipline the core track's "Wave 4 — as built" section established.
 
-**The environment, first, because it shaped how everything was verified.** This repository lives
-under `~/Desktop`, which on this machine is synced by iCloud Drive. During the work `fseventsd`,
-`cloudd` and `fileproviderd` were consuming most of the machine's I/O, and the effect was severe
-rather than cosmetic: `git rev-parse HEAD` took **93 seconds at 0% CPU**, and `swift build` stalled
-indefinitely against a contended `.build` lock shared with SourceKit-LSP's background indexer. All
-verification was therefore run against an `rsync` copy of the tree under `/private/tmp`, which is not
-synced. This changes nothing about the code — the sources are the repository's — but it is worth
-knowing, because the natural conclusion from a hanging `git status` is that the repository is broken
-and it is not.
+**The environment, first, because it shaped how everything was verified.** This repository lived
+under `~/Desktop` while Waves S0 and S1 were built, and `~/Desktop` on this machine is synced by
+iCloud Drive. The effect was severe rather than cosmetic: `git rev-parse HEAD` took **93 seconds at
+0% CPU**, and `swift build` stalled indefinitely. All verification was therefore run against an
+`rsync` copy under `/private/tmp`, which is not synced.
+
+The cause was identified afterwards and is worth writing down, because the natural conclusion from a
+hanging `git status` is that the repository is broken and it is not. With the disk at 96% full,
+macOS had **evicted 720 of the repository's 1121 files** to iCloud placeholders — most of `.git` and
+several golden fixtures among them — and every read of an evicted file blocks on an on-demand
+download. The 2.4 GB of SwiftPM `.build` directories inside the synced folder were both the largest
+source of sync churn and the reason the disk had no headroom. The repository now lives at
+`~/Downloads/running_app/OptimalRunning`, which is not synced; the same `git rev-parse` takes 0.02 s.
+Keep it out of `~/Desktop` and `~/Documents`.
 
 **S-001 — `PhoneMotion` declares platform floors after all**, restated from `Core` rather than
 chosen. The manifest was written with none, on the correct principle that arithmetic over arrays of
@@ -602,6 +607,60 @@ a confident cadence.
   support, and it has not been made.
 - **Waves S3–S5 are specified and not built.** The gate between S2 and S3 is deliberate: the shape of
   the standalone app legitimately depends on what the traces measure.
+
+---
+
+<a id="s-056"></a>
+### S-056 — The first field session recorded nothing, and why
+
+**Satisfies** FR-S-F-1, AC-FR-S-F-1-6 · **Wave** S1 (unplanned)
+
+The first attempt to record on a real phone produced **five consecutive captures of zero bytes**.
+The app exited when *Start capture* was tapped, and when it stayed up the screen stopped responding,
+so MARK could not be pressed. This is the failure mode [S-006](#s-006) exists to prevent, and it
+reached a run because the capture tool shipped with **no tests at all** — the app target had six,
+none of which touched capture. "It is only a developer tool" was exactly the wrong reason to leave
+it unverified: a bug here is not a degraded feature, it is a run that cannot be re-recorded without
+going outside again.
+
+**What was ruled out by measurement, not by reading.** `CaptureWriter` was suspected first and is
+innocent: `CaptureWriterTests` drives it directly and it writes, flushes, recovers a truncated
+stream and assembles correctly. Two false leads were followed and are recorded because both are easy
+to repeat — `plutil -extract` **rewrites the file in place** unless given `-o -`, which corrupts the
+very plist being inspected; and `URL.resourceValues` caches, so reading a file's size before and
+after an append returns the first answer twice and reads exactly like a product that never wrote.
+Neither was a defect in the app.
+
+**The defects that were real**, each independently capable of producing what the field session saw:
+
+| | Defect | Consequence |
+|---|---|---|
+| 1 | The recorder was a `@StateObject` **inside** `MotionCaptureView`, a `NavigationLink` destination | Navigating away destroyed it mid-capture: sensors stopped, `finish` never ran, no trace assembled. Directly matches "I reopened the page and the recording had stopped" |
+| 2 | Every sample hopped to the **main actor** to JSON-encode and `write(2)` | 100 main-actor hops a second, each doing file I/O |
+| 3 | `@Published` counters mutated at **100 Hz** | SwiftUI rebuilt the whole screen every frame — an unresponsive UI, and an app whose main thread is wedged when the system asks it to suspend is one the watchdog terminates |
+| 4 | `guard let data = try? encoder.encode(record) else { return }` | An encoding failure produced an empty capture, no error, and no way to distinguish that from a silent sensor. `JSONEncoder` rejects non-finite doubles by default |
+| 5 | A fresh `JSONEncoder` per record | Built and torn down a hundred times a second |
+| 6 | `isIdleTimerDisabled` never set | The screen slept, putting Face ID between the runner and the one control that has to work |
+| 7 | Location authorisation never surfaced | Without it the `location` background mode cannot hold the process up ([CON-S-4](./requirements.md#con-s-4)), so capture dies at screen-lock with no error |
+
+**The fix.** Capture work leaves the main thread entirely: `CaptureSink` is a serial queue that every
+record passes through, which is also what makes `CaptureWriter`'s lack of an internal lock sound —
+three sensor streams arrive on three queues and something has to serialise them. Motion at 100 Hz
+touches neither the main actor nor the recorder. Location (~1 Hz) and the pedometer still build their
+records on the main actor, because at that rate it costs nothing and the code is plainer for it.
+Counters are read from the sink twice a second by the display timer instead of being published by the
+sensor. Marks are written **synchronously** — a mark is the one record a runner cannot supply twice,
+so it is on disk before the button's action returns rather than queued behind a backlog of samples.
+The recorder is owned by `OptimalRunnerApp` and injected, so a capture outlives the screen.
+
+**What is still not established.** Which defect actually killed the app has **not** been pinned down:
+that needs the device's crash report, and without it "the watchdog terminated a wedged main thread"
+remains the leading explanation rather than a demonstrated one. It is recorded that way on purpose.
+
+**Tests.** Ten, where there were none: bytes-on-disk assertions for the writer (including a
+deliberately non-finite sample, which must surface rather than vanish), and concurrent multi-queue
+drivers for the sink asserting that no record is lost and no two writes interleave into invalid JSON.
+Every one asserts on the file, because the failure being chased wrote nothing while reporting nothing.
 
 ---
 

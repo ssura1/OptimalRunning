@@ -10,6 +10,14 @@ struct OptimalRunnerApp: App {
     private let container: ModelContainer
     @State private var sync: WatchSyncCoordinator
 
+    /// Owned here, not by the capture screen (S-056).
+    ///
+    /// A capture has to outlive the view that starts it: the screen is a `NavigationLink`
+    /// destination, and while it was a `@StateObject` there, navigating back tore the
+    /// recorder down mid-run and lost the trace. App-scoped is the shortest lifetime that
+    /// is longer than a run.
+    @StateObject private var motionCapture = MotionCaptureRecorder()
+
     init() {
         // A store that cannot be opened is not recoverable by retrying, and continuing with an
         // in-memory one would silently discard every run the user records. Failing loudly at
@@ -27,6 +35,7 @@ struct OptimalRunnerApp: App {
     var body: some Scene {
         WindowGroup {
             AppShell()
+                .environmentObject(motionCapture)
                 .task { sync.activate() }
         }
         .modelContainer(container)

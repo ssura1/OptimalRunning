@@ -21,11 +21,14 @@
 		820A751CFAC1E07F248277DE /* ZoneColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2224233D8D41E01059849C28 /* ZoneColor.swift */; };
 		867FCEA16318A465AC618B7E /* ORPace in Frameworks */ = {isa = PBXBuildFile; productRef = 7258048C0F5128E6D569231B /* ORPace */; };
 		90CFF6AE7C66DB6293417809 /* ORStats in Frameworks */ = {isa = PBXBuildFile; productRef = 06A2428D3379BC1070BC3B39 /* ORStats */; };
+		98193AE727C2D47041C7ADFB /* CaptureSinkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A64E058ACC3A8003C8CEAED /* CaptureSinkTests.swift */; };
 		9BB2DF5AD17D235EBFA608EC /* AppShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C170F297F51128DDECF1E267 /* AppShell.swift */; };
+		A44AC865732E7C9E45772555 /* CaptureSink.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE080E6A72C68DE28F8566B1 /* CaptureSink.swift */; };
 		A9235B31DB3897085A0A59E0 /* CaptureWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AE095640438FE8742A8D112 /* CaptureWriter.swift */; };
 		AED3746CAC292A7CE62FFF8F /* HealthKitWorkoutSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B926578F7448713F7AFB822 /* HealthKitWorkoutSource.swift */; };
 		B12781624B756E2D7CE2DC1F /* PhoneSupport in Frameworks */ = {isa = PBXBuildFile; productRef = D3029D1C8910876AB73FF5C2 /* PhoneSupport */; };
 		B2A8A6DFB4E599C03EAFE9FE /* OptimalRunnerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEC510D4F8526FEA99D60068 /* OptimalRunnerApp.swift */; };
+		B51D88B767274D0324FBFF0D /* CaptureWriterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF3ABCFC9B8560A04F971ED8 /* CaptureWriterTests.swift */; };
 		C97DBFC94AF45F8E712F30E5 /* PhoneSupport in Frameworks */ = {isa = PBXBuildFile; productRef = D4C3F3B491D25ADDF1916D0C /* PhoneSupport */; };
 		C9C7E56D00035AAF511A5D69 /* ORModels in Frameworks */ = {isa = PBXBuildFile; productRef = BD10544F36FDDBADEE206A98 /* ORModels */; };
 		D2A07DE9874A902B0C86BED7 /* ORStats in Frameworks */ = {isa = PBXBuildFile; productRef = B851B6E8455177176AF1AD29 /* ORStats */; };
@@ -52,6 +55,7 @@
 		2224233D8D41E01059849C28 /* ZoneColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneColor.swift; sourceTree = "<group>"; };
 		2A44D1EFBAC3B8518411A0CC /* PhoneSupport */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PhoneSupport; path = PhoneSupport; sourceTree = SOURCE_ROOT; };
 		38ADB2357B15E5BE92349B5A /* RunDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunDetailView.swift; sourceTree = "<group>"; };
+		3A64E058ACC3A8003C8CEAED /* CaptureSinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSinkTests.swift; sourceTree = "<group>"; };
 		3ED15358730A527C5F8F6E2F /* RunListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunListView.swift; sourceTree = "<group>"; };
 		44B6B41CC9A9F044E9680CBD /* StatisticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsView.swift; sourceTree = "<group>"; };
 		4D4AA223782D29EC429C8D08 /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = ../../Core; sourceTree = SOURCE_ROOT; };
@@ -65,7 +69,9 @@
 		B8677FB795DB56B582549801 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B8AFEBBBEE138C84591B7C54 /* OptimalRunnerTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = OptimalRunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C170F297F51128DDECF1E267 /* AppShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShell.swift; sourceTree = "<group>"; };
+		DF3ABCFC9B8560A04F971ED8 /* CaptureWriterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureWriterTests.swift; sourceTree = "<group>"; };
 		E07A3B3A3E2B2B9C974EB7B6 /* WatchSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncCoordinator.swift; sourceTree = "<group>"; };
+		EE080E6A72C68DE28F8566B1 /* CaptureSink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSink.swift; sourceTree = "<group>"; };
 		F80CF315E330ADCC67B510AE /* MotionCaptureRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionCaptureRecorder.swift; sourceTree = "<group>"; };
 		FA264A83CD022E5405FC9374 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		FEC510D4F8526FEA99D60068 /* OptimalRunnerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptimalRunnerApp.swift; sourceTree = "<group>"; };
@@ -164,6 +170,8 @@
 		7A2E0A395B1A5FEBD8298D95 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				3A64E058ACC3A8003C8CEAED /* CaptureSinkTests.swift */,
+				DF3ABCFC9B8560A04F971ED8 /* CaptureWriterTests.swift */,
 				A9CD25009BC8FCBF4D3D06A7 /* MotionAvailabilityTests.swift */,
 				153DAA14C4A8CDE6469A24D6 /* ScaffoldingTests.swift */,
 			);
@@ -211,6 +219,7 @@
 		D3BB956AD72627747EBF1064 /* Capture */ = {
 			isa = PBXGroup;
 			children = (
+				EE080E6A72C68DE28F8566B1 /* CaptureSink.swift */,
 				7AE095640438FE8742A8D112 /* CaptureWriter.swift */,
 				F80CF315E330ADCC67B510AE /* MotionCaptureRecorder.swift */,
 				644635E4437095ED60A74610 /* MotionCaptureView.swift */,
@@ -353,6 +362,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9BB2DF5AD17D235EBFA608EC /* AppShell.swift in Sources */,
+				A44AC865732E7C9E45772555 /* CaptureSink.swift in Sources */,
 				A9235B31DB3897085A0A59E0 /* CaptureWriter.swift in Sources */,
 				40C31DAF4D71281CB28733B2 /* ContentView.swift in Sources */,
 				AED3746CAC292A7CE62FFF8F /* HealthKitWorkoutSource.swift in Sources */,
@@ -373,6 +383,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				98193AE727C2D47041C7ADFB /* CaptureSinkTests.swift in Sources */,
+				B51D88B767274D0324FBFF0D /* CaptureWriterTests.swift in Sources */,
 				760BE38F535B7187260FD8B1 /* MotionAvailabilityTests.swift in Sources */,
 				60935782A7B0E35D7E97FEC6 /* ScaffoldingTests.swift in Sources */,
 			);

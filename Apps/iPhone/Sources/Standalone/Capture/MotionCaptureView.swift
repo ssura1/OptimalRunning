@@ -6,7 +6,15 @@ import SwiftUI
 /// running — which drives every layout decision here: one enormous mark target, large
 /// legible counters, and a stop control that cannot be hit by accident.
 struct MotionCaptureView: View {
-    @StateObject private var recorder = MotionCaptureRecorder()
+    /// Injected, never owned (S-056).
+    ///
+    /// This was a `@StateObject`, which ties the recorder's lifetime to the screen. Because
+    /// the screen is a `NavigationLink` destination, going back destroyed the recorder in
+    /// the middle of a capture: the sensors stopped, `finish` was never called, and no
+    /// assembled trace was written. The recorder is owned by the app so that a capture
+    /// survives the runner navigating away from it — which they will, because the phone is
+    /// in their hand for an hour.
+    @EnvironmentObject private var recorder: MotionCaptureRecorder
     @AppStorage("standalone.runnerHeightMetres") private var runnerHeightMetres: Double = 0
     @State private var showingStopConfirmation = false
 
@@ -28,6 +36,19 @@ struct MotionCaptureView: View {
                     Text(recorder.availability)
                         .font(.footnote.monospaced())
                         .foregroundStyle(.secondary)
+                }
+            }
+
+            // Surfaced before the run rather than discovered during it: without location
+            // authorisation the capture dies the moment the screen locks (CON-S-4).
+            if let warning = recorder.locationWarning {
+                Section {
+                    Label {
+                        Text(warning)
+                    } icon: {
+                        Image(systemName: "location.slash.fill")
+                    }
+                    .foregroundStyle(.orange)
                 }
             }
 
