@@ -581,6 +581,12 @@ a confident cadence.
   core track's own distinction (`design.md` §4): `Autocorrelator.fundamentalPreferenceRatio`,
   `StepDetector.fallbackLatenessFactor` and `CadenceEstimator.channelDisagreementThreshold` are
   algorithm correctness constants, not values a runner or a deployment might legitimately vary.
+- **`Tools/check-motion-fixtures.sh` was committed without its executable bit**, which only the
+  first push revealed. Every local run had invoked it as `bash Tools/check-motion-fixtures.sh`;
+  `gates.yml` invokes it directly, so CI failed with exit 126 — `Permission denied` — while the
+  gate passed on every machine it had ever been run on. The mode is now `100755`, and the other
+  five CI-invoked scripts were checked the same way rather than one at a time. The lesson is the
+  narrow one: a gate verified through an interpreter is not verified the way CI runs it.
 
 #### What is *not* built, and is not pretended to be
 
