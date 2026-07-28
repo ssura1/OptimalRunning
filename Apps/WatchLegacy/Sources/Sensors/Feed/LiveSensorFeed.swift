@@ -94,10 +94,19 @@ final class LiveSensorFeed: NSObject, RunSensorFeed {
         }
 
         if CMPedometer.isDistanceAvailable(), let startDate {
-            pedometer.startUpdates(from: startDate) { [weak self] data, _ in
+            // Explicitly typed and `@Sendable` (S-057). `CMPedometerHandler` is an
+            // Objective-C block with no `NS_SWIFT_SENDABLE`, so a closure literal here
+            // inherits this type's `@MainActor` isolation silently, and CMPedometer
+            // delivers on a background queue — so the previous form assigned to a
+            // main-actor property from the wrong executor. On Series 3 that is a trap the
+            // moment the watch first reports distance, which is roughly ten seconds into
+            // any run.
+            let handler: @Sendable (CMPedometerData?, (any Error)?) -> Void = {
+                [weak self] data, _ in
                 guard let distance = data?.distance else { return }
-                self?.pedometerDistance = distance.doubleValue
+                Task { @MainActor in self?.pedometerDistance = distance.doubleValue }
             }
+            pedometer.startUpdates(from: startDate, withHandler: handler)
         }
 
         // The 1 Hz tick. A single timer drives everything, so `ActiveClock`, the engine, and the

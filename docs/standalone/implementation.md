@@ -653,14 +653,92 @@ sensor. Marks are written **synchronously** — a mark is the one record a runne
 so it is on disk before the button's action returns rather than queued behind a backlog of samples.
 The recorder is owned by `OptimalRunnerApp` and injected, so a capture outlives the screen.
 
-**What is still not established.** Which defect actually killed the app has **not** been pinned down:
-that needs the device's crash report, and without it "the watchdog terminated a wedged main thread"
-remains the leading explanation rather than a demonstrated one. It is recorded that way on purpose.
+**What killed the app was none of the above** — see [S-057](#s-057). This section originally closed by
+naming "the watchdog terminated a wedged main thread" as the leading explanation, on the strength of
+defects 2 and 3. The crash reports say otherwise: `EXC_BREAKPOINT` in a Swift isolation check, not
+`0x8badf00d`. The guess is left recorded here rather than quietly deleted, because it is a fair
+illustration of how far a plausible mechanism can be from the real one when the evidence has not been
+read yet. Everything in the table above is a genuine defect and worth having fixed; none of them was
+the crash.
 
 **Tests.** Ten, where there were none: bytes-on-disk assertions for the writer (including a
 deliberately non-finite sample, which must surface rather than vanish), and concurrent multi-queue
 drivers for the sink asserting that no record is lost and no two writes interleave into invalid JSON.
 Every one asserts on the file, because the failure being chased wrote nothing while reporting nothing.
+
+---
+
+<a id="s-057"></a>
+### S-057 — The crash itself: a sensor callback that inherited main-actor isolation
+
+**Satisfies** FR-S-F-1, CON-S-1 · **Wave** S1 (unplanned)
+
+All five crash reports are identical, and none of them is a watchdog kill:
+
+```
+exception:   EXC_BREAKPOINT (SIGTRAP)
+queue:       NSOperationQueue (QOS: USER_INITIATED)
+
+  _dispatch_assert_queue_fail
+  dispatch_assert_queue
+  _swift_task_checkIsolatedSwift
+  swift_task_isCurrentExecutorWithFlagsImpl
+  closure #1 in MotionCaptureRecorder.startMotion()
+  thunk for @escaping @callee_guaranteed (CMDeviceMotion?, Error?) -> ()
+  -[NSBlockOperation main]
+```
+
+**The mechanism.** `CMDeviceMotionHandler` is a plain Objective-C block —
+`typedef void (^CMDeviceMotionHandler)(CMDeviceMotion *, NSError *)` — with no
+`NS_SWIFT_SENDABLE`. It therefore imports as a *non-Sendable* closure type, and a closure literal
+written inside a method of a `@MainActor` type **inherits main-actor isolation**. No diagnostic is
+possible: the imported block type carries no isolation information for the compiler to contradict.
+CoreMotion then invokes the closure on the `NSOperationQueue` it was handed, Swift's runtime checks
+the current executor, finds it is not the main one, and traps. The first motion sample arrives 10 ms
+after `startDeviceMotionUpdates`, which is why every capture died within seconds and why all five
+files were zero bytes: nothing survived long enough to be written.
+
+**Both directions were verified before the fix was accepted**, because "add `@Sendable` and hope" is
+not a diagnosis:
+
+| | Result |
+|---|---|
+| Handler declared `@Sendable`, main-actor access added inside | `error: main actor-isolated property 'motionSampleCount' can not be mutated from a Sendable closure` |
+| Original inline trailing closure, *identical* access added | `** BUILD SUCCEEDED **` |
+
+The second row is the bug in one line: the same code that is a compile error in a non-isolated
+closure compiles silently in an inferred-main-actor one, and only fails on hardware.
+
+**The fix** is to write the handler's type out and mark it `@Sendable`, which opts the closure out of
+isolation inference and moves the question to compile time. Any main-actor access added to a sensor
+handler in future is now a build error rather than a crash on a run.
+
+**Why the Simulator could never have caught it.** The handler is only invoked when a sample arrives,
+and the Simulator has no accelerometer at all ([CON-S-1](./requirements.md#con-s-1)). The constraint
+this whole track is built around turned up here as a crash rather than as a missing number — the
+`swift_task_isCurrentExecutor` check simply never runs where there is nothing to deliver.
+
+**Two more instances, found by the gate rather than by the crash.**
+[`Tools/check-sensor-handler-isolation.sh`](../../Tools/check-sensor-handler-isolation.sh) was written
+to prevent a recurrence and immediately failed on code that had shipped in Waves 2 and 4:
+
+- `Apps/WatchModern/.../LiveSensorFeed.swift` — the pedometer handler called
+  `MainActor.assumeIsolated` from CMPedometer's background queue. That is a hard fatal error, not a
+  check that quietly passes.
+- `Apps/WatchLegacy/.../LiveSensorFeed.swift` — the pedometer handler assigned to a main-actor
+  property directly from the same background queue. On a Series 3 that traps about ten seconds into
+  any run, as soon as the watch first reports distance.
+
+Neither had been observed because neither watch app has been run on real hardware. Both are fixed the
+same way. The altimeter calls in both tiers are left as they were and the gate exempts them: they
+pass `to: .main`, so the closure genuinely does run on the main actor, and the exemption is written
+in terms of the delivery queue rather than the API for exactly that reason.
+
+**What this says about the testing strategy.** Three of the four defects on this track that reached a
+device were invisible to every test that exists, because they live in the seam between a framework's
+threading contract and Swift's isolation model. The gate is the response: not a test, which would
+need the hardware it is trying to substitute for, but a structural rule that makes the dangerous form
+unrepresentable.
 
 ---
 

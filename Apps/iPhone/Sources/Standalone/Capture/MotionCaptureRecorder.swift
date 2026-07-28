@@ -205,9 +205,28 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
         // sink and nothing else. At 100 Hz that is the difference between a capture screen
         // that responds and one that does not (S-056).
         let sink = self.sink
-        motion.startDeviceMotionUpdates(
-            using: .xArbitraryZVertical, to: queue
-        ) { [weak self] data, error in
+
+        // ## The annotation below is the fix for S-057, and it is load-bearing
+        //
+        // `CMDeviceMotionHandler` is a plain Objective-C block with no `NS_SWIFT_SENDABLE`,
+        // so it imports as a *non-Sendable* closure type. A closure literal written inside
+        // a method of a `@MainActor` type therefore **inherits main-actor isolation** —
+        // silently, with no diagnostic, because the ObjC block type carries no isolation
+        // information for the compiler to contradict. CoreMotion then invokes it on the
+        // `NSOperationQueue` it was handed, Swift's runtime checks the executor, finds it
+        // is not the main one, and traps: `EXC_BREAKPOINT` in
+        // `swift_task_isCurrentExecutor`. Five field captures died this way within seconds
+        // of the first sample, which is why all five files were zero bytes.
+        //
+        // Writing the type out and marking it `@Sendable` opts the closure out of that
+        // inference and moves the whole question to compile time: any main-actor access
+        // added here in future is a build error rather than a crash on a run.
+        //
+        // The Simulator cannot catch this. It has no accelerometer (CON-S-1), so the
+        // handler is never invoked and the isolation check never runs — the one constraint
+        // this track is built around, arriving as a crash instead of a missing number.
+        let handler: @Sendable (CMDeviceMotion?, (any Error)?) -> Void = {
+            [weak self] data, error in
             guard let data else {
                 if let error {
                     Task { @MainActor in self?.lastError = error.localizedDescription }
@@ -231,6 +250,8 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
                 rotationRate: Vector3(
                     x: data.rotationRate.x, y: data.rotationRate.y, z: data.rotationRate.z)))
         }
+        motion.startDeviceMotionUpdates(
+            using: .xArbitraryZVertical, to: queue, withHandler: handler)
     }
 
     private func startLocation() {
@@ -255,7 +276,10 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
     private func startPedometer() {
         guard CMPedometer.isStepCountingAvailable() else { return }
         let sink = self.sink
-        pedometer.startUpdates(from: Date()) { data, _ in
+        // `CMPedometerHandler` carries no `NS_SWIFT_SENDABLE` either, and CMPedometer
+        // delivers on its own queue — the same trap as the motion handler above (S-057),
+        // and it would have fired the moment the first step was counted.
+        let handler: @Sendable (CMPedometerData?, (any Error)?) -> Void = { data, _ in
             guard let data else { return }
             sink.append(pedometer: MotionTrace.RecordedPedometerReading(
                 timestamp: data.endDate.timeIntervalSince(data.startDate),
@@ -263,6 +287,7 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
                 cumulativeDistanceMetres: data.distance?.doubleValue,
                 currentCadenceStepsPerSecond: data.currentCadence?.doubleValue))
         }
+        pedometer.startUpdates(from: Date(), withHandler: handler)
     }
 
     // MARK: - Helpers

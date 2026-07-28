@@ -214,10 +214,22 @@ final class LiveSensorFeed: NSObject, RunSensorFeed {
 
     private func startPedometer() {
         guard CMPedometer.isDistanceAvailable() else { return }
-        pedometer.startUpdates(from: Date()) { [weak self] data, _ in
-            guard let self, let metres = data?.distance?.doubleValue else { return }
-            MainActor.assumeIsolated { self.latestPedometerDistance = metres }
+        // Explicitly typed and `@Sendable` (S-057). `CMPedometerHandler` is an Objective-C
+        // block with no `NS_SWIFT_SENDABLE`, so a closure literal here would inherit this
+        // type's `@MainActor` isolation with no diagnostic — and unlike the altimeter above,
+        // which is delivered `to: .main`, CMPedometer delivers on a background queue. The
+        // previous form therefore called `MainActor.assumeIsolated` off the main actor,
+        // which is a hard fatal error, not a check that quietly passes.
+        //
+        // This was found by `Tools/check-sensor-handler-isolation.sh`, written after the
+        // same mistake in the phone's capture tool crashed five field recordings. It had
+        // never been observed here because the modern watch app has not been run on a real
+        // Series 4-or-later device — the Simulator's pedometer never delivers.
+        let handler: @Sendable (CMPedometerData?, (any Error)?) -> Void = { [weak self] data, _ in
+            guard let metres = data?.distance?.doubleValue else { return }
+            Task { @MainActor in self?.latestPedometerDistance = metres }
         }
+        pedometer.startUpdates(from: Date(), withHandler: handler)
     }
 }
 

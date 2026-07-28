@@ -63,3 +63,10 @@ fastlane/test_output
 
 # macOS
 .DS_Store
+
+# Local diagnostic scratch, deliberately not committed.
+# Crash reports carry device identifiers and a crashReporterKey, and this repository is
+# public; captures are raw recordings whose home is Fixtures/motion once they are worth
+# keeping, not the repository root.
+crashes/
+captures/

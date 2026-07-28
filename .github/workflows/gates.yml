@@ -24,6 +24,13 @@ jobs:
       - name: No synthetic signal backs an accuracy claim (CON-S-7)
         run: Tools/check-motion-fixtures.sh
 
+      # A sensor callback that inherits @MainActor isolation traps the moment the
+      # framework delivers it off the main queue — and never before, because the
+      # Simulator has no sensors to deliver (CON-S-1). This crashed five field
+      # captures and was latent in both watch tiers besides (S-057).
+      - name: Sensor callbacks are explicitly @Sendable (S-057, CON-S-1)
+        run: Tools/check-sensor-handler-isolation.sh
+
       - name: No availability conditionals in watch targets (CON-3, AC-FR-K-1-5)
         run: Tools/check-no-availability.sh
 
