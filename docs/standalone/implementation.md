@@ -589,9 +589,11 @@ a confident cadence.
   [validation-status table](./requirements.md#121-validation-status) says so, and
   `Tools/check-motion-fixtures.sh` makes it structurally impossible for a synthetic test to claim
   otherwise.
-- **The capture tool has not been run on a device.** It builds, and the Simulator confirms it
-  correctly refuses to record where there are no sensors ([S-004](#s-004)), but "records a clean
-  60-minute trace" is a claim only a phone can support.
+- **The capture tool has not been run on a device.** The app target builds and its suite passes, and
+  [S-004](#s-004) measured the Simulator reporting `deviceMotion`, `accelerometer`, `gyroscope` and
+  `pedometer` all **false** — which both confirms [CON-S-1](./requirements.md#con-s-1) and exercises
+  the tool's refusal path. But "records a clean 60-minute trace" is a claim only a phone can
+  support, and it has not been made.
 - **Waves S3–S5 are specified and not built.** The gate between S2 and S3 is deliberate: the shape of
   the standalone app legitimately depends on what the traces measure.
 

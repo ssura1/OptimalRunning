@@ -1140,7 +1140,7 @@ layout that does not reflow, so a glance lands where the last one did.
 | **Property** | Step detector, cadence estimator, model monotonicity, fusion monotonicity, handover bound | Linux | Fully automatable |
 | **Labelled synthetic** | Known cadence, known step count, known stationary intervals | Linux | Automatable, and **bounded in what it may claim** ([§8.3](#83-synthetic-signals-and-the-wall-between-them)) |
 | **Recorded-trace golden** | Cadence, step count, distance vs reference | Linux, once traces exist | **Blocked on hardware recording** |
-| **Adapter integration** | CoreMotion/CoreLocation → `MotionSample` | iOS simulator | Partial — **no motion sensors** ([CON-S-1](./requirements.md#con-s-1)) |
+| **Adapter integration** | CoreMotion/CoreLocation → `MotionSample` | iOS simulator | Partial — **no motion sensors**, measured, not assumed (below) |
 | **UI** | Live run screen, cue triggering | iOS simulator | Automatable |
 | **Field** | Accuracy, battery, background survival, audibility | Real device, real run | Manual protocol only |
 
@@ -1148,6 +1148,27 @@ The third row is the one that matters and the one that cannot be faked. Until a 
 exists, this track's accuracy requirements are **unvalidated**, and
 [requirements §12.1](./requirements.md#121-validation-status) says so in a table that is updated as
 traces land rather than in prose that quietly ages.
+
+**[CON-S-1](./requirements.md#con-s-1) is measured, not assumed.** The whole strategy above rests on
+the Simulator having no motion sensors, so `MotionAvailabilityTests` ([S-004](./implementation.md#s-004))
+asks it directly and prints the answer. On the iPhone 15 / iOS 17.5 simulator installed on this
+machine:
+
+```
+motion sensor availability in this test environment:
+  deviceMotion:   false
+  accelerometer:  false
+  gyroscope:      false
+  pedometer:      false
+```
+
+Every one of them, false. The test passes on a device too, where they are all true — it asserts the
+*invariant* (device motion cannot be available while the accelerometer and gyroscope are not) rather
+than a simulator-only fact, because a simulator-only assertion would fail the first time someone ran
+the suite on hardware and would train the next person to delete it. Its companion assertion covers
+the failure mode this constraint actually produces in practice: not an error dialog, but
+`startDeviceMotionUpdates()` appearing to succeed while recording nothing — which is the worst
+possible way to discover the problem, from a run that cannot be repeated.
 
 ### 10.2 Property tests
 
