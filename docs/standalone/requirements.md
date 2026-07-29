@@ -842,15 +842,28 @@ confirmed by GNSS track closure, with the runner's own lap and mile marks agreei
 
 | Requirement | Target | Measured | Status |
 |---|---|---|---|
-| NFR-S-7 (cadence ±3 spm) | ±3 spm | Against CMPedometer, time-aligned: **+0.5%** where true cadence is 145–200 spm (n=986), **+15.4%** at 120–145 (n=103), **+46.1%** below 120 (n=136) | **Holds at running cadences, fails below them.** The estimator reports ~160 spm in every band; the floor is [S-062](./implementation.md#s-062) |
-| NFR-S-8 (step count ±2%) | ±2% | Tempo run 6440 against CMPedometer's 6142, **+4.9%**; slow mile 1974 against 1594, **+23.8%** | **Not validated, and the spread across paces is [S-062](./implementation.md#s-062).** CMPedometer is not ground truth either; only counted steps are |
+| NFR-S-7 (cadence ±3 spm) | ±3 spm | Against a step rate measured by FFT from the recorded signal, per 30 s window: **+0.1%** on the tempo run (n=79) and **+0.1%** on the slow mile (n=23), **100% of windows within 3%** on both | **Holds, on the strongest reference available.** The arbiter shares no code with the estimator and consults no pedometer. Below running cadences it was doubling until [S-062](./implementation.md#s-062); walks now read within 0.3% |
+| NFR-S-8 (step count ±2%) | ±2% | Tempo run 6440 against CMPedometer's 6142, **+4.9%**; slow mile 1974 against 1594, **+23.8%** — but the cadence arbiter puts CMPedometer 20.7% low on the slow mile, so most of that gap is the pedometer's | **Not validated.** Neither figure is ground truth; only a `countedSteps` reference can settle it ([ADR-S-06 amendment 1](./design.md#adr-s-06-amendment-1)) |
 | NFR-S-9 (GNSS distance 3%) | 3% | GNSS read **+2.65%** long over a known 4.3 mi, systematically: +1.48 to +2.62% at every one of six laps | **Holds, and the sign is now known.** The error is a scale bias, not noise |
 | NFR-S-10 (outage distance 6%) | 6% | 67.9 s of real GNSS outage across four dropouts; the motion leg carried 95.3 m of it | **Partially exercised.** The outages were real but short; the bound is not yet demonstrated |
-| NFR-S-11 (uncalibrated distance 12%) | 12% | **Not validated.** The calibration constant the model requires differs by 24.1% between 2.83 and 2.16 m/s, but most of that is [S-062](./implementation.md#s-062) feeding the model a cadence 17.9% too high at the slower pace; the genuine cross-pace residual is nearer **9%** ([S-061 correction](./implementation.md#s-061)) | **Blocked on S-062.** The exponent cannot be fitted while cadence is clamped |
+| NFR-S-11 (uncalibrated distance 12%) | 12% | **Not validated, and the model is known not to generalise.** Cadence is flat across the two paces (0.975) while step length carries the whole 1.285 speed change (1.318). Weinberg at *p* = 0.25 supplies **32%** of that; the calibrator absorbs the rest, and its learned scales differ by **1.284** against a speed ratio of **1.285** — a constant tracking speed one-for-one ([S-061](./implementation.md#s-061)) | **Open, and not blocked.** Cadence input is sound; what is missing is a pace ladder ([protocol](../../Tools/pace-ladder-protocol.md)) |
 | NFR-S-12 (handover 5 m) | 5 m | Structurally tested, and now also exercised against four real dropouts | Holds |
-| — (fused distance) | — | **+1.27%** over 4.3 mi after [S-060](./implementation.md#s-060); +3.94% before it. Over the slow mile, **+3.00%** | Better than GNSS alone on the tempo run (+2.65%); on the slow mile GNSS itself read +3.25% and CMPedometer's own distance beat both at −0.30% |
+| — (fused distance) | — | **+1.27%** over 4.3 mi after [S-060](./implementation.md#s-060); +3.94% before it. Over the slow mile, **+3.00%**, of which GNSS contributed +3.25% and the fusion *recovered* 0.25 pp — every metre of it measured, none estimated | Better than GNSS alone on both runs. The slow mile's overshoot is inherited GNSS scale bias, not an estimator artifact and not cadence: see the decomposition below |
 | — (sample rate) | 100 Hz | **100.42 Hz**, median interval 9.958 ms, worst gap 12.4 ms across five captures totalling 68 minutes, including 37 s with the screen off | Holds comfortably |
 | — (sensor headroom) | no saturation | peak `userAcceleration` **50.25 m/s²** during hard tempo, against a ±16 g (157 m/s²) full scale | Holds with 3× headroom |
+
+**Decomposing the slow mile's +3.00%.** Three candidate causes were separated rather than lumped,
+because they have three different fixes:
+
+| Source | Contribution | Evidence |
+|---|---|---|
+| Inherited GNSS scale bias | **+3.25%** | GNSS alone read 1661.7 m against a stated 1609.3. The tempo run's six independent lap closures put the same bias at +2.65%, so this is a consistent scale error, not slow-mile noise |
+| Fusion | **−0.25 pp** | Fused 1657.6 m — the fusion pulled *toward* truth, and reported 0 m estimated, so it never left the measured leg |
+| Cadence contamination | **none** | Cadence is +0.1% against the spectral arbiter over this trace. This was the hypothesised cause and the data refuted it |
+| Step-length model | **not in this number** | The motion leg reads −2.01% here, but on a scale learned from this same run, so it is not independent evidence either way |
+
+The actionable conclusion is that the slow mile does not show an estimator defect. It shows the GNSS
+over-read already recorded under NFR-S-9, at a magnitude consistent with the tempo run.
 
 ### 12.2 What is hardware-verification-only
 

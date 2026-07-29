@@ -407,6 +407,45 @@ different thing from being invented.
 no distance, and says so. That is the correct behaviour and it is a requirement
 ([AC-FR-S-A-1-6](./requirements.md#fr-s-a-1--starting-a-standalone-run)), not a gap.
 
+<a id="adr-s-06-amendment-1"></a>
+#### ADR-S-06, amendment 1 (2026-07-29) — `CMPedometer` stays a baseline, never an input
+
+**Decision.** `CMPedometer` is recorded in every trace and used for comparison only. It is **not**
+adopted as a cadence prior, a stride/step disambiguator, or a fusion input. The boundary
+[`MotionTrace.pedometer`](../../Apps/iPhone/PhoneMotion/Sources/PhoneMotion/Trace/MotionTrace.swift)
+already states — "a comparison baseline, never an input" — is reaffirmed rather than relaxed.
+
+**Why this was reconsidered.** [S-062](./implementation.md#s-062) found the estimator doubling
+cadence below 120 spm, and Apple's pedometer was the obvious authority to lean on: it is
+well-validated, it is already in the trace, and it costs nothing. That is a reasonable proposal and
+it was taken seriously.
+
+**Why it was rejected — measured, not assumed.** Against a step rate obtained by FFT directly from
+the recorded signal, per 30 s window:
+
+| Trace | Spectral arbiter | `PhoneMotion` | `CMPedometer` counted |
+|---|---|---|---|
+| 4.3 mi tempo (n=79) | 159.3 spm | **+0.1%**, 100% of windows within 3% | −1.7%, 62% within 3% |
+| 1 mi slow (n=23) | 161.5 spm | **+0.1%**, 100% within 3% | **−20.7%**, 0% within 3% |
+
+`CMPedometer` undercounts a hand-held slow run by a fifth. Wiring it in as a prior would have
+imported a 20% error into the one quantity the distance model is most sensitive to, in exactly the
+regime — slow, hand-held — where this tier most needs to be right. It is a black box tuned for a
+pocketed phone at walking speeds, and [CON-S-5](./requirements.md#con-s-5) says the same thing about
+every published model: what was fitted elsewhere does not transfer here.
+
+**The wider point, which cost a day.** A second estimator is not an arbiter. Two estimators that
+disagree tell you something is wrong; they cannot tell you which one. Trusting `CMPedometer` as
+ground truth produced a confidently-argued and entirely wrong correction to
+[S-061](./implementation.md#s-061), reversed only once the raw signal itself was consulted. When a
+disagreement needs adjudicating, the adjudicator is the recording — or a
+[`countedSteps` reference](../../Fixtures/motion/README.md), which is the only exact one obtainable
+in the field.
+
+**Consequence.** The stride/step ambiguity is resolved from the signal alone — periodicity for the
+reading, amplitude for the gait — which keeps `PhoneMotion` a pure function of recorded samples
+([ADR-S-03](#adr-s-03)) and keeps every trace replayable without a live pedometer.
+
 <a id="adr-s-07"></a>
 ### ADR-S-07 — `HKWorkoutBuilder` at the iOS 17 floor, with the session path as a future backend
 

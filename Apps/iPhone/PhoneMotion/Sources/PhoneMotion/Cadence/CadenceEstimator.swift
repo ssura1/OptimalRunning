@@ -205,10 +205,57 @@ public struct CadenceEstimator: Sendable {
     ) -> CadenceEstimate? {
         guard let peak = correlator.dominantPeak() else { return nil }
         guard peak.correlation >= config.minimumPeakCorrelation else { return nil }
-        guard let resolved = resolve(lag: peak.lag, config: config) else { return nil }
+        guard var resolved = resolve(lag: peak.lag, config: config) else { return nil }
 
-        let harmonic = harmonicCheck(
+        var harmonic = harmonicCheck(
             reading: resolved.reading, lag: peak.lag, correlator: &correlator, config: config)
+
+        // ## S-062 — a stride reading must be earned, not assigned
+        //
+        // The disjoint-interval rule assigns the reading from the lag alone, which is exact
+        // *provided the true cadence is inside the configured range*. Outside it the rule
+        // does not degrade, it reinterprets: a 104 spm walk has a 0.579 s step period, which
+        // is not in the step interval, so it lands in the stride interval and is reported as
+        // 207.3 spm. Measured on the walk traces at 2.005x and 1.991x true.
+        //
+        // The signal already says which it is. A stride is two footfalls, so a genuine
+        // stride period must carry periodicity at half its lag; a walking step period
+        // carries none there, because half a step is the anti-correlation trough. That is
+        // exactly what `harmonicCheck` computes and, until now, only *discounted*: it
+        // detected the contradiction and reported the doubled number anyway, at reduced
+        // confidence. Confidence is the right response to a weak signal, not to a reading
+        // the signal contradicts.
+        //
+        // **The harmonic check alone is not enough**, and the property suite caught it: a
+        // running stride with a dominant arm swing and weak impacts (`armSwingAmplitude: 20,
+        // impactAmplitude: 4`) has a genuinely weak half-lag correlation too, because the
+        // arm swing's own anti-correlation at half its period swamps the small impact term.
+        // Read on periodicity alone, that case is indistinguishable from a walking step —
+        // both are "one dominant component at lag L, little at L/2". Acting on the harmonic
+        // check by itself therefore halved a true 140-200 spm cadence.
+        //
+        // What separates them is not periodicity but **amplitude**, which is the physical
+        // question anyway: walking or running? The two candidate readings of a lag in this
+        // interval are 60/L in [60, 120] spm and 120/L in [120, 240] — a walking cadence and
+        // a running one. Gait-band RMS over 5.12 s windows of the committed traces tops out
+        // at 3.64 m/s² walking and bottoms out at 7.09 running, a gap with nothing in it,
+        // consistent with the 0.25 / 2.30 / 10.44 standing/walking/running figures S-058
+        // measured independently on the bench trace.
+        //
+        // So the re-read requires *both*: the signal must contradict a stride, and it must
+        // be too quiet to be running. Running is therefore untouched by construction, at any
+        // harmonic ratio — which is what makes this safe rather than merely tested.
+        if resolved.reading == .stride, harmonic == .contradicted,
+            correlator.rootMeanSquare < config.strideReadingRMSFloor
+        {
+            let asStep = 60 / peak.lag
+            if asStep >= config.slowGaitFloorStepsPerMinute {
+                resolved = Resolution(
+                    stepsPerMinute: asStep, reading: .step, inGuardBand: resolved.inGuardBand)
+                harmonic = harmonicCheck(
+                    reading: .step, lag: peak.lag, correlator: &correlator, config: config)
+            }
+        }
 
         let sharpness = min(1, max(0, peak.correlation))
         let harmonicFactor: Double

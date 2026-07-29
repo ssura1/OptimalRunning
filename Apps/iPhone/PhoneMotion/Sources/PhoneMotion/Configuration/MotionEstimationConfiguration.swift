@@ -139,6 +139,52 @@ public struct CadenceConfiguration: Codable, Sendable, Hashable {
     /// Half-width of the low-confidence guard band around the lag where the two
     /// readings meet, in seconds.
     public var ambiguityGuardSeconds: Double
+    /// Cadence floor, steps per minute, for a lag the harmonic structure refuses to call a
+    /// stride ([S-062](../../../../../../docs/standalone/implementation.md#s-062)).
+    ///
+    /// The disjoint-interval rule assumes the true cadence is inside
+    /// `[minStepsPerMinute, maxStepsPerMinute]`. When it is not, the rule does not degrade —
+    /// it silently *reinterprets*. A walk at 104 spm has a step period of 0.579 s, which is
+    /// outside the step interval `[0.25, 0.5]` and therefore lands in the stride interval,
+    /// and 120/0.579 = 207.3 spm is reported. Measured on the two walk traces: 207.8 against
+    /// a true 103.7, and 211.2 against 106.1 — ratios of 2.005 and 1.991.
+    ///
+    /// So a stride reading is now required to *earn* it, from the periodicity at half the
+    /// lag that a stride must have and a walking step does not. A contradicted stride is
+    /// re-read as a step down to this floor rather than doubled.
+    ///
+    /// 60 spm is not arbitrary: the correlator already searches to `120/minStepsPerMinute`
+    /// = 1.0 s, and a step reading at that longest admissible lag is exactly 60 spm. This
+    /// widens the *interpretation*, not the search, which is why it costs nothing and
+    /// cannot destabilise the running path.
+    public var slowGaitFloorStepsPerMinute: Double
+    /// Gait-band RMS, m/s², at or above which a stride reading is credible on amplitude
+    /// alone and is never re-read as a slow step ([S-062](../../../../../../docs/standalone/implementation.md#s-062)).
+    ///
+    /// The harmonic check cannot carry this decision by itself. A running stride whose arm
+    /// swing dominates its impacts has a weak half-lag correlation for the same reason a
+    /// walking step does, so periodicity alone cannot separate a 160 spm runner from a 104
+    /// spm walker — the property suite proved it by halving the former.
+    ///
+    /// Amplitude can, and it is the physical question: the two readings of such a lag are a
+    /// walking cadence and a running one. Measured over 5.12 s windows of the same
+    /// gait-band signal this threshold is compared against — so these are the numbers the
+    /// code actually sees, not a proxy:
+    ///
+    /// | Trace | p5 | median | p95 |
+    /// |---|---|---|---|
+    /// | walk `…-1959` | 2.63 | 3.02 | 3.64 |
+    /// | walk `…-2023` | 2.14 | 2.68 | 3.49 |
+    /// | slow mile | 7.09 | 7.96 | 9.14 |
+    /// | tempo | 9.58 | 10.91 | 12.64 |
+    ///
+    /// The gap runs from 3.64 to 7.09 with nothing in it. 5.0 sits inside it at 1.37x the
+    /// loudest walking window and 0.71x the quietest running one.
+    ///
+    /// **Two gaits from one runner set this**, so it is a floor with real evidence behind it
+    /// and no claim to generality. It is deliberately placed so that *running is never
+    /// re-read*: being wrong here costs a walk shown at double, not a run shown at half.
+    public var strideReadingRMSFloor: Double
     /// Confidence in `[0, 1]` below which a cadence estimate is not trusted by downstream
     /// consumers — the calibrator, and the phase-locked step fallback.
     ///
@@ -157,8 +203,12 @@ public struct CadenceConfiguration: Codable, Sendable, Hashable {
         stabilityToleranceSpm: Double = 12,
         harmonicConfirmationRatio: Double = 0.5,
         ambiguityGuardSeconds: Double = 0.03,
+        slowGaitFloorStepsPerMinute: Double = 60,
+        strideReadingRMSFloor: Double = 5.0,
         minimumTrustedConfidence: Double = 0.4
     ) {
+        self.slowGaitFloorStepsPerMinute = slowGaitFloorStepsPerMinute
+        self.strideReadingRMSFloor = strideReadingRMSFloor
         self.windowSeconds = windowSeconds
         self.minStepsPerMinute = minStepsPerMinute
         self.maxStepsPerMinute = maxStepsPerMinute
@@ -194,6 +244,22 @@ public struct CadenceConfiguration: Codable, Sendable, Hashable {
                 field: "cadence.maxStepsPerMinute",
                 reason: "must be at most twice minStepsPerMinute, or the stride/step "
                     + "lag intervals overlap and the ambiguity is no longer resolvable")
+        }
+        // The re-read of a contradicted stride is bounded by what the correlator actually
+        // searched. Its longest admissible lag is `120/minStepsPerMinute`, and a *step*
+        // reading there is `minStepsPerMinute/2` — so a floor below that would promise a
+        // cadence no window could ever produce.
+        guard slowGaitFloorStepsPerMinute >= minStepsPerMinute / 2,
+            slowGaitFloorStepsPerMinute <= minStepsPerMinute
+        else {
+            throw MotionConfigurationError(
+                field: "cadence.slowGaitFloorStepsPerMinute",
+                reason: "must be in [minStepsPerMinute/2, minStepsPerMinute] — below that "
+                    + "the correlator never searched the lag, above it the floor is dead")
+        }
+        guard strideReadingRMSFloor > 0 else {
+            throw MotionConfigurationError(
+                field: "cadence.strideReadingRMSFloor", reason: "must be positive")
         }
         guard (0.0...1.0).contains(minimumPeakCorrelation) else {
             throw MotionConfigurationError(

@@ -42,13 +42,21 @@ is the whole point of the references block: a stated distance is evidence, a sur
 
 The two recordings that would close the remaining gaps, in priority order:
 
-1. **A pace ladder** — five or six two-minute segments from easy to near-threshold, marked, in one
-   capture. [S-062](../../docs/standalone/implementation.md#s-062) must land first — cadence is clamped at 120 spm, so a ladder recorded today would measure the clamp, not the runner. [S-061](../../docs/standalone/implementation.md#s-061) showed the step-length model may need
-   a different calibration constant at 2.16 m/s than at 2.83 m/s; two paces cannot fit an exponent,
-   six can.
+1. **A pace ladder** — seven two-minute segments spanning recovery to 10 k effort, specified in
+   [`Tools/pace-ladder-protocol.md`](../../Tools/pace-ladder-protocol.md).
+   [S-061](../../docs/standalone/implementation.md#s-061) showed the step-length model needs a
+   calibration constant that tracks speed one-for-one across the two paces recorded so far; two
+   points cannot fit an exponent, seven can.
 2. **A counted-step segment** — MARK, count footfalls aloud for 30–60 s, MARK, write the number down.
    It is the only *exact* reference obtainable in the field and the only thing that can turn NFR-S-8
-   from a comparison between two estimators into a measurement.
+   from a comparison between two estimators into a measurement. The ladder protocol folds this in as
+   an optional final segment, so one outing can close both.
+
+**On `CMPedometer` as a reference.** Every trace records it, and it is a *baseline, never an input*
+([ADR-S-06 amendment 1](../../docs/standalone/design.md#adr-s-06-amendment-1)). Measured against a
+step rate taken by FFT from the recorded signal, it undercounts the hand-held slow mile by **20.7%**.
+Treating it as ground truth produced a confident and entirely wrong conclusion about
+[S-061](../../docs/standalone/implementation.md#s-061). A second estimator is not an arbiter.
 
 ## What belongs here
 

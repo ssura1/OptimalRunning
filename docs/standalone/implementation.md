@@ -901,24 +901,28 @@ was written to predict and had never been able to test.
 | | Tempo | Slow mile | Ratio |
 |---|---|---|---|
 | Speed | 2.83 m/s | 2.16 m/s | 1.309 |
-| ~~Cadence~~ *(see correction)* | ~~159.6 spm~~ | ~~161.4 spm~~ | ~~**0.989**~~ |
+| Cadence | 159.6 spm | 161.4 spm | **0.989** |
 | True step length | 1.075 m | 0.815 m | 1.318 |
 | Calibration constant the model requires | 0.513 | 0.413 | **1.241** |
 
 **§5.1's conclusion is confirmed, and understated.** It argued from van Oeveren that cadence carries
-roughly 7% of a speed change and the amplitude term must carry the rest. ~~Measured here, cadence
+roughly 7% of a speed change and the amplitude term must carry the rest. Measured here, cadence
 carries **−3.6%** — not merely little, but slightly the wrong way, while step length carries
 essentially the whole of it. Any cadence-only model would have read these two runs as the same
-pace.~~
+pace.
 
 **But the model as shipped cannot express that.** The constant it needs differs by **24.1%** between
 the two paces, which is the definition of not generalising: calibration can absorb a fixed scale
 error, and this is not one. Solving for the exponent that would reconcile them gives **p ≈ 1.15**
 against the shipped 0.25 — Weinberg's fourth root, which the literature fitted to *walking*.
 
-> **Correction (2026-07-29) — the cadence row above was our own bug, not physiology.**
+> ## ~~Correction (2026-07-29) — the cadence row above was our own bug, not physiology~~
 >
-> The slow mile's "161.4 spm" is not a measurement. `CMPedometer` is recorded in every trace and was
+> **SUPERSEDED, same day, by the block that follows. Everything in this box is wrong.** It is kept
+> intact because the mistake in it is worth more than the conclusion was: it treats a second
+> estimator as an arbiter. Read it as a worked example, not as findings.
+>
+> ~~The slow mile's "161.4 spm" is not a measurement.~~ `CMPedometer` is recorded in every trace and was
 > never consulted when this was written; it is an independent estimator and it is the arbiter this
 > entry claimed did not exist. Time-aligned against it, per cadence band:
 >
@@ -951,13 +955,60 @@ against the shipped 0.25 — Weinberg's fourth root, which the literature fitted
 > before the pace ladder is recorded, or the ladder will measure the same clamp at six paces instead
 > of two.
 
+> ## Correction to the correction (2026-07-29, same day) — the original finding was right
+>
+> **The block above is wrong, and it is wrong because it trusted `CMPedometer`.** Two estimators that
+> disagree identify a problem; they cannot say whose. The strike-throughs it introduced into the
+> original entry have been reverted, because the original entry was correct.
+>
+> The actual arbiter is the recorded signal. Measured directly from the traces by FFT — sharing no
+> code with the autocorrelation path and consulting no pedometer — the gait spectrum is a clean
+> harmonic ladder at **1.33 / 2.66 / 3.99 / 5.32 Hz**, every rung an integer multiple of the 1.33 Hz
+> stride, putting the step rate at 2.66 Hz = 159.6 spm. Per 30 s window:
+>
+> | Trace | Spectral arbiter | PhoneMotion | CMPedometer counted |
+> |---|---|---|---|
+> | 4.3 mi tempo (n=79) | 159.3 spm | **159.3 (+0.1%, 100% of windows within 3%)** | 156.9 (−1.7%, 62%) |
+> | 1 mi slow (n=23) | 161.5 spm | **161.4 (+0.1%, 100% within 3%)** | 128.5 (**−20.7%**, 0%) |
+>
+> So PhoneMotion's cadence was correct on both runs all along, and `CMPedometer`'s `cumulativeSteps`
+> is what undercounts — by a fifth on the slow mile. The "+15.4% / +46.1% error" table above is
+> measuring the *pedometer's* error with the sign flipped. §12.1's NFR-S-7 row has been restored
+> accordingly.
+>
+> **The original S-061 finding therefore stands, and the strike-throughs above are reinstated:**
+> cadence really is flat across these two paces (159.6 vs 161.4 by our estimator, 159.3 vs 161.5 by
+> the arbiter — the two paces agree to 0.1% on both), and step length really does carry the whole
+> speed change. §5.1 is confirmed and understated, exactly as first written.
+>
+> **What the amplitude term actually does**, now measurable per-step from the raw signal:
+>
+> | | Tempo | Slow mile | Ratio |
+> |---|---|---|---|
+> | Speed | 2.863 m/s | 2.228 m/s | 1.285 |
+> | Cadence (spectral) | 158.5 spm | 162.6 spm | 0.975 |
+> | True step length | 1.084 m | 0.822 m | **1.318** |
+> | Per-step peak-to-peak vertical | 34.77 m/s² | 24.43 m/s² | 1.423 |
+> | Weinberg term at *p* = 0.25 | — | — | **1.092** |
+>
+> The shipped exponent captures **32%** of the step-length change it needs to. The rest is left to
+> calibration, and the calibrator duly absorbs it: the learned scales are 0.5198 and 0.4047, a ratio
+> of **1.284** against a speed ratio of **1.285**. Those agreeing to 0.1% is the sharpest statement of
+> the defect — the model's pre-calibration output is very nearly *speed-blind*, so the calibration
+> constant is forced to track speed one-for-one, which is precisely what a calibration constant must
+> not do.
+>
+> The exponent reconciling these two paces is **p ≈ 0.78** — superseding the "p ≈ 1.15" first
+> recorded, which came from RMS rather than per-step peak-to-peak. Still two points, still not a fit;
+> see the prescription below, which is unchanged and now the only open item here.
+
 **The default is deliberately left at 0.25.** Two paces from one runner in one session cannot
-support replacing a published exponent with one nearly five times larger; that would be fabricating
-a constant with extra steps, which is exactly what [ADR-S-06](./design.md#adr-s-06) exists to
-forbid. What the data supports is the *finding*, which is recorded here, and a prescription for the
-recording that would settle it: a deliberate **pace ladder** — five to six segments of two minutes
-each from easy to near-threshold, marked, in one capture — which turns two points into six and makes
-the exponent an actual fit rather than a line through two dots.
+support replacing a published exponent, whether the candidate is 1.15 or 0.78; that would be
+fabricating a constant with extra steps, which is exactly what [ADR-S-06](./design.md#adr-s-06)
+exists to forbid. What the data supports is the *finding*, which is recorded here, and a
+prescription for the recording that would settle it: a deliberate **pace ladder**, specified in
+[Tools/pace-ladder-protocol.md](../../Tools/pace-ladder-protocol.md), which turns two points into
+six and makes the exponent an actual fit rather than a line through two dots.
 
 Until then [NFR-S-11](./requirements.md#93-accuracy) stays unvalidated, and the honest reading of the
 calibrated distance figures is that they hold **at the pace the calibration was learned at**.
@@ -965,38 +1016,95 @@ calibrated distance figures is that they hold **at the pace the calibration was 
 ---
 
 <a id="s-062"></a>
-### S-062 — Cadence is clamped to 120 spm and doubles below it
+### S-062 — A cadence below the range floor is doubled, not rejected
 
-**Satisfies** FR-S-B-2, NFR-S-7, NFR-S-11 · **Wave** S2 · **Open**
+**Satisfies** FR-S-B-2, NFR-S-7 · **Wave** S2 · **Done**
 
-Found by the correction to [S-061](#s-061), which is the whole reason that entry's conclusion was
-wrong. `CadenceConfiguration.minStepsPerMinute = 120` makes the admissible band 120–240 spm. Two
-consequences, both measured:
+~~Found by the correction to [S-061](#s-061), which is the whole reason that entry's conclusion was
+wrong.~~ Found while investigating [S-061](#s-061), on a hypothesis that turned out to be wrong about
+the runs and right about everything slower than one.
 
-1. **Cadences below 120 spm cannot be reported.** Across both runs our estimator's minimum is 130.7
-   spm and it never reads below 147 on the slow mile, where `CMPedometer` puts 42% of samples below
-   120.
-2. **They are re-read as strides and doubled.** §4.3 resolves stride-versus-step by mapping the two
-   readings of a lag to disjoint intervals, which requires `max ≤ 2 × min`. A true step period
-   outside the step branch therefore lands in the stride branch and is multiplied by two. The two
-   walk traces read 207.8 and 211.2 spm against CMPedometer's 103.9 and 105.7 — a factor of
-   2.000 and 1.998.
+`CadenceConfiguration.minStepsPerMinute = 120` makes the admissible band 120–240 spm, and §4.3
+resolves stride-versus-step by mapping the two readings of a lag to disjoint intervals — which is
+exact **provided the true cadence is inside that band**. Outside it the rule does not degrade, it
+silently reinterprets. A 104 spm walk has a 0.579 s step period; that is outside the step interval
+`[0.25, 0.5]`, so it lands in the stride interval and is reported as `120/0.579` = 207.3 spm.
 
-The band was chosen as a *physiological* floor for running and it is defensible as one. It is not
-defensible as a floor on what the estimator may observe, because a run contains starts, stops, hills,
-recovery jogs and walk breaks, and NFR-S-11's uncalibrated distance is computed from cadence through
-all of them.
+Measured on the two walk traces, against a step rate taken by FFT from the recorded signal:
 
-**The fix is not simply lowering the floor.** Dropping `minStepsPerMinute` to ~50 breaks the
-`max ≤ 2 × min` invariant the configuration validates on line 192 and that §4.3's ambiguity
-resolution depends on — the two readings would overlap and the stride/step decision would need a
-mechanism that does not exist yet. That is the design question this task has to answer, and it
-should be answered before the pace ladder is recorded, or the ladder measures the clamp at six paces
-instead of two.
+| Trace | True (spectral) | Reported | Ratio | Predicted by the mechanism |
+|---|---|---|---|---|
+| `…-1959` | 103.7 spm | 207.8 | **2.005** | 120/0.579 = 207.3 |
+| `…-2023` | 106.1 spm | 211.2 | **1.991** | 120/0.566 = 212.2 |
 
-**Verification, both directions** (the [S-057](#s-057) bar): a fix must be shown to move the slow
-mile's cadence toward CMPedometer's distribution *and* to leave the tempo run's +0.5% agreement
-undisturbed, since the tempo run is the case the current code gets right.
+~~Cadences below 120 spm cannot be reported… it never reads below 147 on the slow mile, where
+CMPedometer puts 42% of samples below 120.~~ **Struck: that was the pedometer undercounting.** The
+slow mile is genuinely run at ~161 spm and the estimator was right about it. The defect is real but
+its blast radius is *slower than running* — walk breaks, warm-ups, the crossings in
+[DEG-S-8](./requirements.md#98-degraded-modes) — and it never touched the figures in §12.1.
+
+Severity is further limited by machinery that was already working: the doubled readings carried a
+median confidence of 0.29–0.34 against a `minimumTrustedConfidence` of 0.4, so only 8–20% of them
+were trusted and the calibrator never saw them. What was wrong was `current`, which is what a live
+UI shows — and 210 spm shown to someone walking is wrong whatever a confidence field says elsewhere.
+
+#### The fix — a stride reading must be earned
+
+Lowering the floor alone cannot work, for the reason first recorded here: it breaks the
+`max ≤ 2 × min` invariant that §4.3's disambiguation depends on. So the range is untouched and the
+*interpretation* is widened instead. When the dominant lag lands in the stride interval, a stride
+reading now has to be supported, and a contradicted one is re-read as a step down to
+`slowGaitFloorStepsPerMinute` (60 spm — exactly the step reading at the longest lag the correlator
+already searches, so this widens interpretation and not the search, and costs nothing).
+
+**Two conditions, and the second is the one that matters.** The harmonic check alone is not enough,
+and the property suite proved it: a running stride whose arm swing dominates its impacts
+(`armSwingAmplitude: 20, impactAmplitude: 4`) has a weak half-lag correlation *for the same reason a
+walking step does*, because the arm swing's own anti-correlation at half its period swamps the small
+impact term. Read on periodicity alone those two cases are identical, and the first attempt at this
+fix duly halved a true 140–200 spm cadence across 61 assertions.
+
+What separates them is **amplitude**, which is the physical question anyway — walking or running?
+The two candidate readings of such a lag are `60/L ∈ [60, 120]` and `120/L ∈ [120, 240]`: a walking
+cadence and a running one. Measured over 5.12 s windows of the same gait-band signal the threshold is
+compared against:
+
+| Trace | p5 | median | p95 |
+|---|---|---|---|
+| walk `…-1959` | 2.63 | 3.02 | **3.64** |
+| walk `…-2023` | 2.14 | 2.68 | 3.49 |
+| slow mile | **7.09** | 7.96 | 9.14 |
+| tempo | 9.58 | 10.91 | 12.64 |
+
+The gap runs 3.64 → 7.09 with nothing in it, consistent with the 0.25 / 2.30 / 10.44
+standing/walking/running figures [S-058](#s-058) measured independently on the bench trace.
+`strideReadingRMSFloor = 5.0` sits inside it, and is placed so that **running is never re-read**:
+being wrong here costs a walk shown at double, not a run shown at half.
+
+#### Verification, both directions ([S-057](#s-057) bar)
+
+| Trace | Before | After | Independent references |
+|---|---|---|---|
+| `…-1959` walk | 207.8 | **103.9** | spectral 103.7 · CMPedometer 103.9 |
+| `…-2023` walk | 211.2 | **105.7** | spectral 106.1 · CMPedometer 105.7 |
+| `…-1918` tempo | 159.578 | 159.573 | spectral 159.3 |
+| `…-2010` slow mile | 161.4 | 161.4 | spectral 161.5 |
+
+The walks converge onto *both* independent references, which agree with each other. The runs move by
+0.005 spm and 1 mm of fused distance over 7 km — not zero, and it should not be zero: both running
+traces contain stops, and during a stop the path is supposed to engage. A handful of firings in 41
+minutes and none during running is exactly that signature.
+
+`SlowGaitCadenceTests` asserts the before/after ratio is 2.0 rather than either figure against a
+constant, since the defect *is* a doubling and stating it that way needs no external number to stay
+correct. The pre-fix estimator is reproduced by setting `slowGaitFloorStepsPerMinute` to the range
+floor, which disables this path exactly and nothing else.
+
+**One lesson recorded deliberately.** The walking half of this is tested against the recorded traces,
+not the generator, because the generator lays *impulses* at the step rate and an impulse train is
+harmonic-rich in a way a recorded walk is not — its vertical channel is nearly a pure sinusoid at the
+step rate, 1.00 relative power against 0.03 at the subharmonic. A synthetic walk therefore never
+reaches the code path it was written to prove, and passed while the bug was still live.
 
 ---
 
