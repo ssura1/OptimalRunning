@@ -87,9 +87,22 @@ public struct CadenceEstimator: Sendable {
 
     public private(set) var flags: Set<MotionFlag> = []
 
-    public init(configuration: CadenceConfiguration, sampleRateHz: Double) {
+    /// Absolute gait-band RMS below which no cadence is reported at all (S-058).
+    ///
+    /// Not a second copy of the step detector's floor — it *is* the step detector's floor,
+    /// passed in by `MotionEstimator` from `steps.stationaryRMSThreshold`, because a signal
+    /// too quiet to contain a footfall is equally too quiet to contain a cadence, and two
+    /// numbers that must agree are one number waiting to disagree.
+    private let stationaryRMSThreshold: Double
+
+    public init(
+        configuration: CadenceConfiguration,
+        sampleRateHz: Double,
+        stationaryRMSThreshold: Double
+    ) {
         config = configuration
         self.sampleRateHz = sampleRateHz
+        self.stationaryRMSThreshold = stationaryRMSThreshold
         // Two updates per second: comfortably satisfies "at least once per second"
         // (AC-FR-S-B-2-1) without recomputing the correlation on every sample.
         updateIntervalSamples = max(1, Int((sampleRateHz / 2).rounded()))
@@ -124,6 +137,31 @@ public struct CadenceEstimator: Sendable {
     }
 
     private mutating func recompute() -> CadenceEstimate? {
+        // ## The stationarity gate, checked before any correlation is interpreted (S-058)
+        //
+        // Normalised autocorrelation is amplitude-blind: it divides out the window's
+        // energy, so sensor noise from a phone held perfectly still correlates just as
+        // strongly as a hard effort. In the first field bench test this produced 175–231
+        // spm at confidence up to **0.816** across thirty seconds of the runner standing
+        // motionless — comfortably above `minimumTrustedConfidence`, so the calibrator
+        // would have treated it as evidence and the runner would have been shown a running
+        // cadence while stopped at a crossing.
+        //
+        // Measured, not guessed: over that trace the gait-band RMS was 0.25 m/s² standing,
+        // 2.30 walking and 10.44 running, against a floor of 1.0 — roughly a ninefold
+        // margin on either side of the boundary.
+        //
+        // `previous` is cleared as well as `current`. Keeping it would let the stationary
+        // window seed the continuity preference of the first moving window, which is the
+        // one place a stale estimate does lasting damage.
+        if vertical.isReady, vertical.rootMeanSquare < stationaryRMSThreshold,
+            magnitude.rootMeanSquare < stationaryRMSThreshold
+        {
+            current = nil
+            previous = nil
+            return nil
+        }
+
         // Hoisted into locals, and the analysis made `static`, so that passing
         // `&vertical` does not overlap with an access to the rest of `self`. Calling any
         // method on `self` while one of its stored properties is exclusively borrowed is

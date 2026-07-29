@@ -24,7 +24,9 @@ final class CadenceTests: XCTestCase {
             lowCutoffHz: config.filters.gaitLowHz,
             highCutoffHz: config.filters.gaitHighHz,
             sampleRateHz: rate)
-        var estimator = CadenceEstimator(configuration: config.cadence, sampleRateHz: rate)
+        var estimator = CadenceEstimator(
+            configuration: config.cadence, sampleRateHz: rate,
+            stationaryRMSThreshold: config.steps.stationaryRMSThreshold)
         let orientation = OrientationResolver()
 
         var out: [CadenceEstimate] = []
@@ -106,7 +108,9 @@ final class CadenceTests: XCTestCase {
 
     func testAConstantSignalProducesNoCadence() {
         let rate = config.sampling.nominalHz
-        var estimator = CadenceEstimator(configuration: config.cadence, sampleRateHz: rate)
+        var estimator = CadenceEstimator(
+            configuration: config.cadence, sampleRateHz: rate,
+            stationaryRMSThreshold: config.steps.stationaryRMSThreshold)
         var produced: [CadenceEstimate] = []
         for i in 0..<Int(rate * 20) {
             _ = i
@@ -127,7 +131,9 @@ final class CadenceTests: XCTestCase {
             lowCutoffHz: config.filters.gaitLowHz,
             highCutoffHz: config.filters.gaitHighHz,
             sampleRateHz: rate)
-        var estimator = CadenceEstimator(configuration: config.cadence, sampleRateHz: rate)
+        var estimator = CadenceEstimator(
+            configuration: config.cadence, sampleRateHz: rate,
+            stationaryRMSThreshold: config.steps.stationaryRMSThreshold)
         let orientation = OrientationResolver()
 
         var firstAt: TimeInterval?
@@ -184,6 +190,75 @@ final class CadenceTests: XCTestCase {
         XCTAssertEqual(stepHigh, strideLow, accuracy: 1e-12, "the intervals must meet exactly")
         XCTAssertLessThan(stepLow, stepHigh)
         XCTAssertLessThan(strideLow, strideHigh)
+    }
+
+    // MARK: - Stationarity (S-058)
+
+    /// A quiet signal must produce **no** cadence, however periodic it happens to be.
+    ///
+    /// Found in the field, not here: across thirty seconds of a runner standing motionless
+    /// the estimator reported 175–231 spm at confidence up to 0.816 — above
+    /// `minimumTrustedConfidence`, so the calibrator would have learned from it. The cause
+    /// is that normalised autocorrelation divides out the window's energy and is therefore
+    /// blind to amplitude; noise is as periodic as running to a correlator.
+    ///
+    /// The signal here is a clean sinusoid at a *plausible cadence*, scaled to an amplitude
+    /// below the stationary floor. That combination is the point: it is exactly what a
+    /// correlator would score highly, so a test using shapeless noise could pass while the
+    /// bug survived.
+    func testAQuietButPerfectlyPeriodicSignalProducesNoCadence() {
+        let rate = config.sampling.nominalHz
+        var estimator = CadenceEstimator(
+            configuration: config.cadence, sampleRateHz: rate,
+            stationaryRMSThreshold: config.steps.stationaryRMSThreshold)
+
+        // 0.25 m/s², the gait-band RMS measured while standing still on the bench trace,
+        // against a floor of 1.0.
+        let amplitude = 0.25 * 2.0.squareRoot()
+        let frequency = 180.0 / 60.0
+        var produced: [CadenceEstimate] = []
+        for index in 0..<Int(rate * 30) {
+            let t = Double(index) / rate
+            let value = amplitude * sin(2 * .pi * frequency * t)
+            if let estimate = estimator.append(vertical: value, magnitude: abs(value)) {
+                produced.append(estimate)
+            }
+        }
+
+        XCTAssertTrue(
+            produced.isEmpty,
+            "a signal far below the stationary floor produced \(produced.count) cadence "
+                + "estimates, the highest at \(produced.map(\.confidence).max() ?? 0) "
+                + "confidence — this is the field failure")
+        XCTAssertNil(estimator.current)
+    }
+
+    /// The gate must not silence real running.
+    ///
+    /// The counterpart to the test above, and the reason the floor is an absolute value
+    /// rather than a relative one: the same waveform at running amplitude must still be
+    /// reported, or the fix would have traded a false positive for a false negative.
+    func testTheSameWaveformAtRunningAmplitudeIsStillReported() {
+        let rate = config.sampling.nominalHz
+        var estimator = CadenceEstimator(
+            configuration: config.cadence, sampleRateHz: rate,
+            stationaryRMSThreshold: config.steps.stationaryRMSThreshold)
+
+        // 10.4 m/s² RMS, measured over the running segment of the same trace.
+        let amplitude = 10.4 * 2.0.squareRoot()
+        let frequency = 180.0 / 60.0
+        var produced: [CadenceEstimate] = []
+        for index in 0..<Int(rate * 30) {
+            let t = Double(index) / rate
+            let value = amplitude * sin(2 * .pi * frequency * t)
+            if let estimate = estimator.append(vertical: value, magnitude: abs(value)) {
+                produced.append(estimate)
+            }
+        }
+
+        XCTAssertFalse(produced.isEmpty, "running amplitude must still produce cadence")
+        let last = try? XCTUnwrap(produced.last)
+        XCTAssertEqual(last?.stepsPerMinute ?? 0, 180, accuracy: 3, "±3 spm (NFR-S-7)")
     }
 
     /// The invariant above only holds while the range spans at most a factor of two, so

@@ -50,6 +50,25 @@ public struct Autocorrelator: Sendable {
 
     public var isReady: Bool { filled >= windowLength }
 
+    /// Root-mean-square of the analysis window, in the input's units.
+    ///
+    /// Exists because normalised autocorrelation is **amplitude-blind** (S-058). The
+    /// correlation divides out the signal's energy, so a window of near-zero sensor noise
+    /// yields the same high peak value as a window of vigorous running — and the estimator
+    /// happily reported ~200 spm at confidence 0.8 from a phone lying still on a table, or
+    /// held by a runner waiting at a lights.
+    ///
+    /// Amplitude is the information the correlation throws away, so it has to be carried
+    /// alongside it. Measured over exactly the window the correlation uses, rather than
+    /// over a separate trailing buffer, so the two can never describe different intervals.
+    public var rootMeanSquare: Double {
+        guard filled > 0 else { return 0 }
+        let count = min(filled, windowLength)
+        var sumOfSquares = 0.0
+        for index in 0..<count { sumOfSquares += buffer[index] * buffer[index] }
+        return (sumOfSquares / Double(count)).squareRoot()
+    }
+
     public mutating func append(_ value: Double) {
         buffer[writeIndex] = value.isFinite ? value : 0
         writeIndex = (writeIndex + 1) % windowLength

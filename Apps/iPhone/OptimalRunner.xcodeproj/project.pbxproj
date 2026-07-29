@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		2C49B3BDDCC148DBB8946590 /* WatchSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E07A3B3A3E2B2B9C974EB7B6 /* WatchSyncCoordinator.swift */; };
+		356C158C90122A22FFB9F046 /* LocationJitterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7180B915D38D29D88A968615 /* LocationJitterTests.swift */; };
 		3993403E52910F072DCAF2E6 /* PhoneMotion in Frameworks */ = {isa = PBXBuildFile; productRef = 47632724FA2154C03F0EC1F8 /* PhoneMotion */; };
 		3A9D0DD7CE25DBD0B0E84AE0 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A2F997968042C65D71A3B49 /* OnboardingView.swift */; };
 		3EC0DF1F87BCFBFC6DF2DEE0 /* ORAlerts in Frameworks */ = {isa = PBXBuildFile; productRef = 1523BC26694C0DBB7FBDE78F /* ORAlerts */; };
@@ -64,6 +65,7 @@
 		672E85C0A5BAC2D9146ECAFB /* OptimalRunner.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OptimalRunner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6A2F997968042C65D71A3B49 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		6D0B04CF3E7CC6C89AB5E66A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		7180B915D38D29D88A968615 /* LocationJitterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationJitterTests.swift; sourceTree = "<group>"; };
 		7AE095640438FE8742A8D112 /* CaptureWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureWriter.swift; sourceTree = "<group>"; };
 		A9CD25009BC8FCBF4D3D06A7 /* MotionAvailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionAvailabilityTests.swift; sourceTree = "<group>"; };
 		B8677FB795DB56B582549801 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -172,6 +174,7 @@
 			children = (
 				3A64E058ACC3A8003C8CEAED /* CaptureSinkTests.swift */,
 				DF3ABCFC9B8560A04F971ED8 /* CaptureWriterTests.swift */,
+				7180B915D38D29D88A968615 /* LocationJitterTests.swift */,
 				A9CD25009BC8FCBF4D3D06A7 /* MotionAvailabilityTests.swift */,
 				153DAA14C4A8CDE6469A24D6 /* ScaffoldingTests.swift */,
 			);
@@ -385,6 +388,7 @@
 			files = (
 				98193AE727C2D47041C7ADFB /* CaptureSinkTests.swift in Sources */,
 				B51D88B767274D0324FBFF0D /* CaptureWriterTests.swift in Sources */,
+				356C158C90122A22FFB9F046 /* LocationJitterTests.swift in Sources */,
 				760BE38F535B7187260FD8B1 /* MotionAvailabilityTests.swift in Sources */,
 				60935782A7B0E35D7E97FEC6 /* ScaffoldingTests.swift in Sources */,
 			);

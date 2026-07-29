@@ -364,6 +364,32 @@ extension MotionCaptureRecorder: CLLocationManagerDelegate {
         Task { @MainActor in self.lastError = error.localizedDescription }
     }
 
+    /// Speed below which a fix contributes no distance (S-058).
+    ///
+    /// GNSS position wanders while the phone is still, and an accuracy gate does not catch
+    /// it: in the first field bench test the accuracy was a healthy 5.1 m throughout, and
+    /// **70.9 m of distance accumulated over thirty seconds of the runner standing
+    /// motionless** — 15% of the whole session, fabricated. That number then becomes the
+    /// reference the calibrator fits the step-length model against, so the error does not
+    /// stay in the distance column.
+    ///
+    /// 0.5 m/s is 1.8 km/h, far below any running or ordinary walking pace, and the same
+    /// trace measured 0.07 m/s standing against 1.44 walking and 2.71 running — an order of
+    /// magnitude of headroom on both sides.
+    static let minimumMovingSpeed: CLLocationSpeed = 0.5
+
+    /// Whether the phone actually moved between two fixes.
+    ///
+    /// `CLLocation.speed` is Doppler-derived and reliable when present, so it is preferred.
+    /// It reports `-1` when unavailable, in which case the implied speed is used rather
+    /// than defaulting to "moving" — an unknown speed is not evidence of motion.
+    func isMoving(_ location: CLLocation, since previous: CLLocation) -> Bool {
+        if location.speed >= 0 { return location.speed >= Self.minimumMovingSpeed }
+        let elapsed = location.timestamp.timeIntervalSince(previous.timestamp)
+        guard elapsed > 0 else { return false }
+        return location.distance(from: previous) / elapsed >= Self.minimumMovingSpeed
+    }
+
     /// Location arrives at roughly 1 Hz, so building the record on the main actor costs
     /// nothing — unlike motion at 100 Hz, which is why only that stream bypasses it.
     private func record(_ location: CLLocation) {
@@ -373,7 +399,7 @@ extension MotionCaptureRecorder: CLLocationManagerDelegate {
         // (ADR-S-03). Only fixes that pass the accuracy gate contribute, so the recorded
         // cumulative is the same series a live run would fuse.
         if location.horizontalAccuracy >= 0, location.horizontalAccuracy <= 20 {
-            if let previous = previousLocation {
+            if let previous = previousLocation, isMoving(location, since: previous) {
                 cumulativeLocationMetres += location.distance(from: previous)
             }
             previousLocation = location

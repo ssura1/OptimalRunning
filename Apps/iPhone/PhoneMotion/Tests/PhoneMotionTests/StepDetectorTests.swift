@@ -22,7 +22,9 @@ final class StepDetectorTests: XCTestCase {
             sampleRateHz: rate)
         var envelope = EnvelopeFollower(
             cutoffHz: config.filters.impactEnvelopeHz, sampleRateHz: rate)
-        var cadence = CadenceEstimator(configuration: config.cadence, sampleRateHz: rate)
+        var cadence = CadenceEstimator(
+            configuration: config.cadence, sampleRateHz: rate,
+            stationaryRMSThreshold: config.steps.stationaryRMSThreshold)
         var detector = StepDetector(
             configuration: config.steps, sampleRateHz: rate,
             minimumStepPeriod: config.cadence.minimumStepPeriod,
@@ -124,7 +126,9 @@ final class StepDetectorTests: XCTestCase {
             lowCutoffHz: config.filters.gaitLowHz,
             highCutoffHz: config.filters.gaitHighHz,
             sampleRateHz: rate)
-        var cadence = CadenceEstimator(configuration: config.cadence, sampleRateHz: rate)
+        var cadence = CadenceEstimator(
+            configuration: config.cadence, sampleRateHz: rate,
+            stationaryRMSThreshold: config.steps.stationaryRMSThreshold)
         var detector = StepDetector(
             configuration: config.steps, sampleRateHz: rate,
             minimumStepPeriod: config.cadence.minimumStepPeriod,

@@ -3,18 +3,37 @@
 Recorded hand-held motion, and the only input from which the standalone tier may claim an accuracy
 figure.
 
-## Why this directory is currently empty
+## What is here
 
-The iOS Simulator has no accelerometer and no gyroscope at all
-([CON-S-1](../../docs/standalone/requirements.md#con-s-1)), so a trace can only be produced on real
-hardware, during a real run. The capture tool that produces one exists
-(`Apps/iPhone/Sources/Standalone/Capture/`); the runs have not been recorded yet.
+Two traces, recorded on 2026-07-28 on an iPhone 17e (iOS 26.5.2), hand-held, runner height 1.77 m.
+They are the first real motion data this track has ever had.
 
-Until a trace lands here, **every accuracy requirement on this track is unvalidated**, and
+| Trace | Duration | What it is |
+|---|---|---|
+| `capture-2026-07-28-1825.motion.json` | 10 s | A smoke check that the app no longer crashed on Start ([S-057](../../docs/standalone/implementation.md#s-057)) |
+| `capture-2026-07-28-1826.motion.json` | 199 s | The labelled bench test ([S-058](../../docs/standalone/implementation.md#s-058)) |
+
+**The bench trace carries a labelled timeline**, which is what makes it worth committing. The runner
+recorded, in order: 31 s standing motionless with a single deliberate **jump at t≈29 s**; 29 s
+walking with the screen on; 37 s walking with the screen **off**; then 99 s running. The four marks
+in the trace bound those segments at 31.19, 60.19, 96.94 and 196.16 s.
+
+Both carry `"references": []`, and that is deliberate rather than an oversight. Neither trace has a
+surveyed distance or a counted-step segment, so **neither can validate an accuracy bound** — the
+labels establish *state* (still / walk / run), not distance. `motionreplay` says as much when it
+replays them. They are diagnostic fixtures, and the two bugs they exposed are recorded in
+[S-058](../../docs/standalone/implementation.md#s-058).
+
+## What is still not validated
+
+**Every accuracy requirement**, and
 [§12.1 of the standalone requirements](../../docs/standalone/requirements.md#121-validation-status)
-says so in a table rather than in prose that quietly ages.
+still says so in a table. What these traces settled is different and, at this stage, more useful:
+sampling holds 100.41 Hz with a worst-case gap of 12.4 ms *including with the screen off*, and two
+at-rest failure modes exist that no synthetic signal had produced.
 
-To record one, follow [`Tools/motion-recording-protocol.md`](../../Tools/motion-recording-protocol.md).
+The next trace needs a **surveyed segment or a counted-step segment** — follow
+[`Tools/motion-recording-protocol.md`](../../Tools/motion-recording-protocol.md).
 
 ## What belongs here
 

@@ -742,6 +742,85 @@ unrepresentable.
 
 ---
 
+<a id="s-058"></a>
+### S-058 — What the first real trace said
+
+**Satisfies** FR-S-B-2, FR-S-C-1, CON-S-1, CON-S-7 · **Wave** S1 (unplanned)
+
+The first bench recording ran to 199 s on an iPhone 17e, hand-held, with a labelled timeline: 31 s
+standing motionless including one deliberate jump, 29 s walking screen-on, 37 s walking **screen-off**,
+then 99 s running. Both traces are committed under
+[`Fixtures/motion/`](../../Fixtures/motion/). Neither declares a reference, so **neither validates an
+accuracy bound** — what they establish is behaviour, and that turned out to be worth more at this
+stage than a number.
+
+**What held.** Sampling is better than the design assumed: 100.41 Hz mean, median interval 9.959 ms,
+**worst gap 12.4 ms, and not one gap above 50 ms across the whole session** — including the 37 s with
+the screen off. Background execution under the `location` mode ([CON-S-4](./requirements.md#con-s-4))
+is now a measurement rather than a hope. The labelled segments separate cleanly in gait-band RMS —
+**0.25 m/s² standing, 2.30 walking, 10.44 running** — and the jump appears as a 14.8 m/s² impulse at
+t=29.12 s, so the orientation projection is doing its job on real, continuously rotating hand-held
+data. The running segment produced a median 163 spm at 0.82 confidence, which is exactly what a
+runner of this height and effort should produce. Both diagnostic flags fired correctly and the
+calibrator refused to learn, which is the behaviour those mechanisms exist for.
+
+**Two failure modes, both at rest, neither reachable by any synthetic signal.**
+
+**1. Cadence was reported while standing perfectly still.** Across the stationary segment the
+estimator emitted 175–231 spm at confidence up to **0.816** — above `minimumTrustedConfidence` of
+0.4, so the calibrator would have treated it as evidence and a runner waiting at a crossing would
+have been shown a running cadence.
+
+The cause is that `stationaryRMSThreshold` was consulted **only** by `StepDetector`. Steps were
+correctly suppressed; cadence was not, because `CadenceEstimator` had no amplitude gate at all. And
+it needed one for a specific reason: **normalised autocorrelation is amplitude-blind.** It divides
+out the window's energy, so noise correlates exactly as strongly as running. Confidence built on
+correlation alone therefore cannot distinguish a stopped runner from a fast one — amplitude is the
+information the correlation throws away, so it has to be carried alongside it.
+
+The fix adds `Autocorrelator.rootMeanSquare` over precisely the window the correlation uses, and
+gates the estimate on the step detector's existing floor — *the same* value, passed in by
+`MotionEstimator`, not a second copy, because two numbers that must agree are one number waiting to
+disagree. Replaying the trace, confident cadence during the standing segment falls from **15 of 32
+seconds to 2**, and the two survivors are the seconds immediately after the jump, at confidence 0.164
+and 0.195 — below the trust threshold, and correct, because a real 14.8 m/s² impulse genuinely does
+put energy in the window. Walking and running are untouched (28/29, 36/36, 99/100), and the running
+median moves by 0.45 spm. The floor of 1.0 sits with roughly ninefold margin on either side of the
+measured boundary.
+
+**2. GNSS accumulated 70.9 m while the phone was motionless.** Fifteen per cent of the session,
+fabricated. The accuracy gate did not catch it and could not: horizontal accuracy was a healthy 5.1 m
+throughout, which is exactly when position wander is admitted rather than rejected. This does not
+stay in the distance column — the GNSS series is the reference the calibrator fits the step-length
+model against, so the fabricated distance becomes a fabricated scale.
+
+The gate is on speed rather than displacement, and the choice is forced by the fix rate: at 1 Hz a
+walker covers ~1.4 m per fix, which is *below* the position noise, so a displacement threshold large
+enough to reject jitter would also reject walking. `CLLocation.speed` is Doppler-derived and does not
+have that problem — the same trace measured **0.07 m/s standing, 1.44 walking, 2.71 running**. The
+threshold is 0.5 m/s, an order of magnitude clear of both sides. Replaying the recorded fixes through
+it returns **401.9 m against CMPedometer's independent 384.5 m**, where the ungated figure was 476.6 m:
++4.5% instead of +24%, with 100% of the standing jitter removed and 3 m of genuine slow walking lost
+with it.
+
+An unavailable speed (`-1`) falls back to the implied speed rather than defaulting to "moving", since
+an unknown speed is not evidence of motion.
+
+**Why the synthetic suite could not have found either.** Both are *at-rest* failures, and the
+synthetic generator's stationary intervals contain no signal — so there was nothing for a correlator
+to lock onto and no GNSS to wander. Real sensor noise has structure; synthetic silence does not. This
+is the same lesson as [S-057](#s-057) arriving from a different direction: thirty seconds of a runner
+standing still was worth more than any amount of generated data, and it cost nothing to record.
+
+**Still open.** The step-length model remains unvalidated — the calibration scale of 0.52 is fitted
+against a GNSS reference now known to have been 24% high, so it says nothing yet. `motionOnlyDistance`
+of 124.7 m over 168 s of movement is implausibly short and is the first thing the next trace should
+settle. Walking is reported at ~225 spm because the configured range is 120–240 spm and a hand-held
+walker's arm swing falls outside it; walking is out of scope for v1
+([CON-S-3](./requirements.md#con-s-3)) and this is recorded rather than fixed.
+
+---
+
 ## Wave S2 — Validation against recorded traces
 
 **This wave is blocked on hardware.** It cannot be started, let alone completed, without files from

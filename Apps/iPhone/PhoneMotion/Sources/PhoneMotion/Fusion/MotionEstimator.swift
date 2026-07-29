@@ -59,7 +59,10 @@ public struct MotionEstimator: Sendable {
             sampleRateHz: rate)
         envelope = EnvelopeFollower(
             cutoffHz: configuration.filters.impactEnvelopeHz, sampleRateHz: rate)
-        cadence = CadenceEstimator(configuration: configuration.cadence, sampleRateHz: rate)
+        cadence = CadenceEstimator(
+            configuration: configuration.cadence,
+            sampleRateHz: rate,
+            stationaryRMSThreshold: configuration.steps.stationaryRMSThreshold)
         detector = StepDetector(
             configuration: configuration.steps,
             sampleRateHz: rate,
