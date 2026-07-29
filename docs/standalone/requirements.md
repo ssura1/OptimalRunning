@@ -836,13 +836,21 @@ standalone requirement with no covering task, and a task citing an identifier th
 The accuracy requirements in [§9.3](#93-accuracy) are the ones where a false claim would matter most,
 so their status is tracked explicitly and updated as traces land. At the time of writing:
 
-| Requirement | Status |
-|---|---|
-| NFR-S-7 (cadence) | **Not validated on recorded data.** Property-tested against labelled synthetic signals only. |
-| NFR-S-8 (step count) | **Not validated on recorded data.** As above. |
-| NFR-S-9 (GNSS distance) | Not measured by this track; inherits GNSS behaviour. |
-| NFR-S-10, NFR-S-11 (motion distance) | **Not validated.** These are the two figures that require real traces and cannot be obtained any other way. |
-| NFR-S-12 (handover) | Structurally tested. |
+Updated after the 4.3 mi validation run of 2026-07-28 ([S-060](./implementation.md#s-060),
+[S-061](./implementation.md#s-061)). The reference is six laps of one loop, each lap independently
+confirmed by GNSS track closure, with the runner's own lap and mile marks agreeing to within 1–3 s.
+
+| Requirement | Target | Measured | Status |
+|---|---|---|---|
+| NFR-S-7 (cadence ±3 spm) | ±3 spm | median 159.6 spm over the tempo run, 161.4 over the slow mile; both physiologically consistent with the measured speeds | **Plausible, not bounded.** No independent cadence reference was recorded — a counted-step segment is still the missing measurement |
+| NFR-S-8 (step count ±2%) | ±2% | 6440 steps against CMPedometer's 6142, a +4.9% difference between two estimators with no arbiter | **Not validated.** CMPedometer is not ground truth; only counted steps are |
+| NFR-S-9 (GNSS distance 3%) | 3% | GNSS read **+2.65%** long over a known 4.3 mi, systematically: +1.48 to +2.62% at every one of six laps | **Holds, and the sign is now known.** The error is a scale bias, not noise |
+| NFR-S-10 (outage distance 6%) | 6% | 67.9 s of real GNSS outage across four dropouts; the motion leg carried 95.3 m of it | **Partially exercised.** The outages were real but short; the bound is not yet demonstrated |
+| NFR-S-11 (uncalibrated distance 12%) | 12% | **Not validated, and the model is known not to generalise:** the calibration constant the model requires differs by **24.1%** between 2.83 m/s and 2.16 m/s ([S-061](./implementation.md#s-061)) |
+| NFR-S-12 (handover 5 m) | 5 m | Structurally tested, and now also exercised against four real dropouts | Holds |
+| — (fused distance) | — | **+1.27%** over 4.3 mi after [S-060](./implementation.md#s-060); +3.94% before it | Better than GNSS alone (+2.65%) |
+| — (sample rate) | 100 Hz | **100.42 Hz**, median interval 9.958 ms, worst gap 12.4 ms across five captures totalling 68 minutes, including 37 s with the screen off | Holds comfortably |
+| — (sensor headroom) | no saturation | peak `userAcceleration` **50.25 m/s²** during hard tempo, against a ±16 g (157 m/s²) full scale | Holds with 3× headroom |
 
 ### 12.2 What is hardware-verification-only
 

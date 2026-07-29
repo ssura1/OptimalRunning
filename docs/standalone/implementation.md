@@ -821,6 +821,113 @@ walker's arm swing falls outside it; walking is out of scope for v1
 
 ---
 
+<a id="s-059"></a>
+### S-059 — A published trace is a home address
+
+**Satisfies** CON-S-7 · **Wave** S1 (unplanned)
+
+The two bench traces committed in the first revision of [S-058](#s-058) carried **276 absolute GNSS
+fixes** at 42.28 N, 71.60 W — recorded during a real run, from the runner's home, in a public
+repository. That commit was rewritten to exclude them and the history force-pushed; the traces
+returned scrubbed.
+
+Nothing in the estimator ever read `latitude` or `longitude` — distance arrives through
+`cumulativeDistanceMetres` and speed through `speedMetresPerSecond`. The coordinates rode along
+purely because the capture tool had them. `RecordedFix` therefore makes them optional and adds
+`eastMetres`/`northMetres` measured from the trace's own first fix, which preserves displacement,
+track shape, bearing change and turn radius while discarding the origin. Decoding tolerates both
+shapes so older traces still load.
+
+`Tools/scrub-trace.swift` performs the conversion and **re-reads its own output**, exiting non-zero
+if a coordinate survived; `check-motion-fixtures.sh` fails the build on any committed trace carrying
+one. Both were verified in both directions before being accepted — the gate flagged both files with
+exact counts, then passed after the scrub.
+
+**One consequence cannot be fixed from here.** A force-push removes the commit from `main` but GitHub
+retains unreachable objects and still serves them by SHA. Purging them requires asking GitHub Support
+to garbage-collect the repository. That is recorded because it is the part that is still outstanding,
+not because it is comfortable.
+
+---
+
+<a id="s-060"></a>
+### S-060 — An outage billed twice
+
+**Satisfies** FR-S-C-1, AC-FR-S-C-1-1, NFR-S-10 · **Wave** S2
+
+The 4.3 mi run produced a fused distance **worse than either leg feeding it**: +3.94%, against
++2.65% for GNSS and +1.13% for motion. A fusion that is worse than both its inputs is not a tuning
+problem, it is an accounting error, and six laps of one loop made it visible by giving six
+independent readings of the same distance.
+
+**Two mechanisms, and only one is fixed by the obvious repair.**
+
+`MotionCaptureRecorder` stamped every fix with `relativeTime()` — *now* — while CoreLocation buffers
+fixes whenever delivery is deferred and hands the backlog over in one call. The trace therefore holds
+**19 fixes at t=1126.071 spanning 50.9 m**, 34 at t=1171.4 spanning 97.2 m, and two smaller batches:
+**184.7 m of real running recorded as having taken zero seconds.** The fusion re-anchors on one delta
+when GNSS returns, so it discarded the first of those and added the other eighteen on top of motion
+distance already accrued for the same stretch.
+
+Using `CLLocation.timestamp` fixes the recorder. It does **not** fix the fusion, and reasoning about
+why is the more useful half: with honest timestamps the backlog still describes time before the
+handover, each delta is individually plausible, and the double-count returns by a route no
+plausibility bound can see. Two guards are therefore needed, and they catch different things:
+
+| Guard | Catches |
+|---|---|
+| `maxPlausibleSpeedMetresPerSecond` (12 m/s) | Deltas no elapsed time can justify. Zero elapsed admits zero distance — the general rule at its limit, not a special case |
+| `motionCoveredUntil` | Backlog fixes describing time the motion leg already billed, whose deltas are individually reasonable |
+
+**Verified in both directions**, per [S-057](#s-057)'s bar. Removing `motionCoveredUntil` makes the
+backlog test re-bill 87.0 m; removing the plausibility bound makes the collapsed-timestamp test
+contribute 51.3 m — against the 50.9 m the real trace actually holds. A third test asserts ordinary
+GNSS is untouched and passes in every configuration, so neither guard is a false negative.
+
+**Result on the real run:** fused error **+3.94% → +1.27%**, and the GNSS leg alone lands at −0.11%
+of the true 4.3 mi.
+
+---
+
+<a id="s-061"></a>
+### S-061 — The step-length model does not generalise across paces
+
+**Satisfies** FR-S-B-4, NFR-S-11, CON-S-5 · **Wave** S2 · **Open**
+
+One outing produced a hard tempo run and a slow mile from the same runner, in the same carry
+position, an hour apart. That is the comparison [design.md §5.1](./design.md#51-why-cadence-alone-cannot-work)
+was written to predict and had never been able to test.
+
+| | Tempo | Slow mile | Ratio |
+|---|---|---|---|
+| Speed | 2.83 m/s | 2.16 m/s | 1.309 |
+| Cadence | 159.6 spm | 161.4 spm | **0.989** |
+| True step length | 1.075 m | 0.815 m | 1.318 |
+| Calibration constant the model requires | 0.513 | 0.413 | **1.241** |
+
+**§5.1's conclusion is confirmed, and understated.** It argued from van Oeveren that cadence carries
+roughly 7% of a speed change and the amplitude term must carry the rest. Measured here, cadence
+carries **−3.6%** — not merely little, but slightly the wrong way, while step length carries
+essentially the whole of it. Any cadence-only model would have read these two runs as the same pace.
+
+**But the model as shipped cannot express that.** The constant it needs differs by **24.1%** between
+the two paces, which is the definition of not generalising: calibration can absorb a fixed scale
+error, and this is not one. Solving for the exponent that would reconcile them gives **p ≈ 1.15**
+against the shipped 0.25 — Weinberg's fourth root, which the literature fitted to *walking*.
+
+**The default is deliberately left at 0.25.** Two paces from one runner in one session cannot
+support replacing a published exponent with one nearly five times larger; that would be fabricating
+a constant with extra steps, which is exactly what [ADR-S-06](./design.md#adr-s-06) exists to
+forbid. What the data supports is the *finding*, which is recorded here, and a prescription for the
+recording that would settle it: a deliberate **pace ladder** — five to six segments of two minutes
+each from easy to near-threshold, marked, in one capture — which turns two points into six and makes
+the exponent an actual fit rather than a line through two dots.
+
+Until then [NFR-S-11](./requirements.md#93-accuracy) stays unvalidated, and the honest reading of the
+calibrated distance figures is that they hold **at the pace the calibration was learned at**.
+
+---
+
 ## Wave S2 — Validation against recorded traces
 
 **This wave is blocked on hardware.** It cannot be started, let alone completed, without files from

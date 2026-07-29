@@ -296,6 +296,28 @@ final class MotionCaptureRecorder: NSObject, ObservableObject {
         ProcessInfo.processInfo.systemUptime - startUptime
     }
 
+    /// When a fix *happened*, not when it was handed to us (S-060).
+    ///
+    /// CoreLocation buffers fixes whenever delivery is deferred — which is exactly what a
+    /// GNSS outage, a backgrounded app or a locked screen produce — and then hands the
+    /// whole backlog over in a single `didUpdateLocations` call. Stamping each one with
+    /// "now" collapses the entire outage into one instant.
+    ///
+    /// That is not cosmetic. In the 4.3 mi validation run it put **19 fixes at t=1126.071
+    /// spanning 50.9 m** and 34 more at t=1171.4 spanning 97.2 m: 184.7 m of real running
+    /// recorded as having taken zero seconds. The fusion re-anchors on one delta when GNSS
+    /// returns, so it discarded the first of those and then added the other eighteen on top
+    /// of the motion distance it had already accrued for the same stretch — double-counting
+    /// the outage and making the fused figure worse than either leg alone.
+    ///
+    /// `CLLocation.timestamp` is when the fix was *determined*, so it is the only correct
+    /// answer. Rebased onto the capture's own origin so it shares a timeline with the
+    /// motion stream.
+    private func relativeTime(of location: CLLocation) -> TimeInterval {
+        guard let startedAt else { return relativeTime() }
+        return location.timestamp.timeIntervalSince(startedAt)
+    }
+
     /// Publishes the counters twice a second.
     ///
     /// The counts are read from the sink rather than incremented per sample: an
@@ -405,7 +427,7 @@ extension MotionCaptureRecorder: CLLocationManagerDelegate {
             previousLocation = location
         }
         sink.append(location: MotionTrace.RecordedFix(
-            timestamp: relativeTime(),
+            timestamp: relativeTime(of: location),
             latitude: location.coordinate.latitude,
             longitude: location.coordinate.longitude,
             altitudeMetres: location.altitude,

@@ -23,6 +23,15 @@ public struct DistanceFusion: Sendable {
     /// below is the belt to that braces.
     public static let maxSwitchJumpMetres = 5.0
 
+    /// The fastest a runner may be assumed to travel, m/s, for bounding a GNSS delta.
+    ///
+    /// 12 m/s is a 2:14 mile — comfortably above any pace this app will see, so the bound
+    /// never binds on real running and only catches deltas that are not running at all.
+    ///
+    /// Like `maxSwitchJumpMetres` this is a correctness bound rather than a tunable, and
+    /// lives in the type that enforces it for the same reason (NFR-S-19).
+    public static let maxPlausibleSpeedMetresPerSecond = 12.0
+
     private let config: MotionFusionConfiguration
     /// The calibration window length. Lives on `CalibrationConfiguration` — the
     /// calibrator's own notion of what a usable window is — but the fusion layer is what
@@ -48,6 +57,16 @@ public struct DistanceFusion: Sendable {
     // GNSS tracking.
     private var locationAnchor: Double?
     private var lastUsableFixTime: TimeInterval?
+    /// When the last delta-contributing fix was seen, for the plausibility bound (S-060).
+    private var lastAnchoredFixTime: TimeInterval?
+    /// The instant up to which the **motion** leg has already accounted for distance.
+    ///
+    /// CoreLocation replays a buffered backlog when GNSS returns, and those fixes carry
+    /// their real timestamps — from *before* the handover. Counting their deltas adds
+    /// distance for a stretch the motion leg has already covered, which is the same
+    /// double-count the collapsed-timestamp bug produced, arriving by a second route that
+    /// correct timestamps do not fix (S-060).
+    private var motionCoveredUntil: TimeInterval?
     private var needsReanchor = true
     private var hasEverHadUsableFix = false
     private var justSwitched = false
@@ -104,7 +123,15 @@ public struct DistanceFusion: Sendable {
         guard source == .location else { return }
         guard let anchor = locationAnchor, !needsReanchor else {
             locationAnchor = fix.cumulativeDistanceMetres
+            lastAnchoredFixTime = fix.timestamp
             needsReanchor = false
+            return
+        }
+        // A backlog fix describing time the motion leg has already covered advances the
+        // anchor but contributes nothing. Without this the two legs both bill the outage.
+        if let covered = motionCoveredUntil, fix.timestamp <= covered {
+            locationAnchor = fix.cumulativeDistanceMetres
+            lastAnchoredFixTime = fix.timestamp
             return
         }
         var delta = fix.cumulativeDistanceMetres - anchor
@@ -113,6 +140,25 @@ public struct DistanceFusion: Sendable {
         // Monotonicity: a backwards-moving cumulative from the adapter is a bug upstream,
         // and propagating it would make the fused figure non-monotonic (AC-FR-S-C-1-1).
         delta = max(0, delta)
+
+        // A delta must be achievable in the time it claims to have taken (S-060).
+        //
+        // Re-anchoring on handover discards exactly one delta, which is the right amount
+        // when GNSS returns as a single fix. It is *not* enough when CoreLocation hands
+        // back a buffered backlog, because every fix after the first then contributes its
+        // own delta for a stretch the motion leg has already covered. The 4.3 mi run
+        // delivered 19 fixes bearing one timestamp and 50.9 m between them, and the fused
+        // distance ended up worse than either leg on its own.
+        //
+        // The recorder now stamps fixes with their own `CLLocation.timestamp`, which is the
+        // real fix; this is the belt to that braces, and it is what lets a trace recorded
+        // before that change still replay correctly. Zero elapsed time admits zero distance,
+        // which is not a special case but the general rule evaluated at its limit.
+        if let previous = lastAnchoredFixTime {
+            let elapsed = fix.timestamp - previous
+            delta = min(delta, max(0, elapsed) * Self.maxPlausibleSpeedMetresPerSecond)
+        }
+        lastAnchoredFixTime = fix.timestamp
         if justSwitched {
             delta = min(delta, Self.maxSwitchJumpMetres)
             justSwitched = false
@@ -186,6 +232,7 @@ public struct DistanceFusion: Sendable {
                 justSwitched = true
                 invalidateWindows()
             }
+            motionCoveredUntil = now
         }
     }
 

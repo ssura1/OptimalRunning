@@ -5,35 +5,50 @@ figure.
 
 ## What is here
 
-Two traces, recorded on 2026-07-28 on an iPhone 17e (iOS 26.5.2), hand-held, runner height 1.77 m.
-They are the first real motion data this track has ever had.
+Six traces, recorded on 2026-07-28 on an iPhone 17e (iOS 26.5.2), hand-held, runner height 1.77 m,
+across two outings. They are the only real motion data this track has.
 
 | Trace | Duration | What it is |
 |---|---|---|
 | `capture-2026-07-28-1825.motion.json` | 10 s | A smoke check that the app no longer crashed on Start ([S-057](../../docs/standalone/implementation.md#s-057)) |
 | `capture-2026-07-28-1826.motion.json` | 199 s | The labelled bench test ([S-058](../../docs/standalone/implementation.md#s-058)) |
+| `capture-2026-07-28-1918.motion.json` | 40.8 min | **The primary validation set.** 4.3 mi hard tempo, six laps of one neighbourhood loop, marked at each lap end and each mile |
+| `capture-2026-07-28-1959.motion.json` | 30 s | Walk between the tempo run and the slow mile |
+| `capture-2026-07-28-2010.motion.json` | 12.4 min | 1 mi slow run — the second pace that made [S-061](../../docs/standalone/implementation.md#s-061) measurable |
+| `capture-2026-07-28-2023.motion.json` | 2.9 min | Walk after the slow mile |
+
+**Why the 4.3 mi trace is the primary set.** Six passes of one loop is six independent readings of
+the same distance, so it separates a scale error from a drift — which a single out-and-back cannot.
+The lap boundaries are confirmed twice over: the GNSS track returns to within 30 m of its origin at
+t = 439, 841, 1238, 1640 and 2040 s, and the runner's own marks land within 1–3 s of each closure.
+Marks alternate lap ends with mile marks; mark #12 is 3.2 s after #11 and is the accidental tap.
 
 **The bench trace carries a labelled timeline**, which is what makes it worth committing. The runner
 recorded, in order: 31 s standing motionless with a single deliberate **jump at t≈29 s**; 29 s
 walking with the screen on; 37 s walking with the screen **off**; then 99 s running. The four marks
 in the trace bound those segments at 31.19, 60.19, 96.94 and 196.16 s.
 
-Both carry `"references": []`, and that is deliberate rather than an oversight. Neither trace has a
-surveyed distance or a counted-step segment, so **neither can validate an accuracy bound** — the
-labels establish *state* (still / walk / run), not distance. `motionreplay` says as much when it
-replays them. They are diagnostic fixtures, and the two bugs they exposed are recorded in
-[S-058](../../docs/standalone/implementation.md#s-058).
+All six carry `"references": []`, deliberately. No trace holds a surveyed distance or a counted-step
+segment, so **none validates an accuracy bound on its own** and `motionreplay` says so rather than
+printing a number that reads like one. What the 4.3 mi trace does carry is a *stated* total and a
+lap structure the GNSS track independently confirms, which is why §12.1 can now quote a measured
+figure for the fused distance while still calling NFR-S-8 and NFR-S-11 unvalidated. The distinction
+is the whole point of the references block: a stated distance is evidence, a surveyed one is proof.
 
 ## What is still not validated
 
-**Every accuracy requirement**, and
-[§12.1 of the standalone requirements](../../docs/standalone/requirements.md#121-validation-status)
-still says so in a table. What these traces settled is different and, at this stage, more useful:
-sampling holds 100.41 Hz with a worst-case gap of 12.4 ms *including with the screen off*, and two
-at-rest failure modes exist that no synthetic signal had produced.
+**Step count (NFR-S-8) and uncalibrated distance (NFR-S-11).** See
+[§12.1](../../docs/standalone/requirements.md#121-validation-status) for the full table.
 
-The next trace needs a **surveyed segment or a counted-step segment** — follow
-[`Tools/motion-recording-protocol.md`](../../Tools/motion-recording-protocol.md).
+The two recordings that would close the remaining gaps, in priority order:
+
+1. **A pace ladder** — five or six two-minute segments from easy to near-threshold, marked, in one
+   capture. [S-061](../../docs/standalone/implementation.md#s-061) showed the step-length model needs
+   a different calibration constant at 2.16 m/s than at 2.83 m/s; two paces cannot fit an exponent,
+   six can.
+2. **A counted-step segment** — MARK, count footfalls aloud for 30–60 s, MARK, write the number down.
+   It is the only *exact* reference obtainable in the field and the only thing that can turn NFR-S-8
+   from a comparison between two estimators into a measurement.
 
 ## What belongs here
 
@@ -91,6 +106,18 @@ swift run --package-path Apps/iPhone/PhoneMotion motionreplay --trace <path> \
 ## Privacy
 
 A motion trace is health data and a location trace is worse
-([NFR-S-16](../../docs/standalone/requirements.md#95-privacy--security)). Anything committed here is
-committed deliberately, by the person who recorded it, knowing that the location column describes
-where they run.
+([NFR-S-16](../../docs/standalone/requirements.md#95-privacy--security)).
+
+**Nothing here carries absolute position.** Every trace has been through
+[`Tools/scrub-trace.swift`](../../Tools/scrub-trace.swift), which replaces latitude and longitude
+with `eastMetres`/`northMetres` measured from the trace's own first fix — preserving displacement,
+shape, bearing change and turn radius, discarding the origin. `check-motion-fixtures.sh` fails the
+build if a coordinate ever reappears.
+
+This is enforced rather than remembered because remembering did not work: 276 absolute fixes were
+committed to this public repository before the tool existed
+([S-059](../../docs/standalone/implementation.md#s-059)). Scrub before promoting, always:
+
+```bash
+swift Tools/scrub-trace.swift captures/<name>.motion.json Fixtures/motion/<name>.motion.json
+```

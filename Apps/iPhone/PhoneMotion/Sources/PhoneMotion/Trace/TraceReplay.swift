@@ -36,6 +36,22 @@ public enum TraceReplay {
             public let stepsPerMinute: Double?
             public let confidence: Double
         }
+
+        /// The cumulative distance series, once per second (S-024, S-060).
+        ///
+        /// A single end-of-run total cannot distinguish a model that tracks the truth from
+        /// one whose errors happen to cancel, and it cannot say whether an error is a fixed
+        /// scale or a drift. Both questions are answerable from a trace with lap marks —
+        /// six passes of one loop is six independent readings of the same distance — but
+        /// only if the distance can be read *at* each mark rather than at the end.
+        public struct DistancePoint: Codable, Sendable, Hashable {
+            public let atSeconds: Double
+            public let fusedMetres: Double
+            public let motionOnlyMetres: Double
+            public let stepCount: Int
+        }
+
+        public let distanceSamples: [DistancePoint]
     }
 
     /// Runs a trace end to end.
@@ -72,6 +88,7 @@ public enum TraceReplay {
         var fixIndex = 0
         var nextTick = samples.first?.timestamp ?? 0
         var cadencePoints: [Result.CadencePoint] = []
+        var distancePoints: [Result.DistancePoint] = []
         var cadenceValues: [Double] = []
         var impactSteps = 0
         var phaseLocked = 0
@@ -98,6 +115,11 @@ public enum TraceReplay {
                     atSeconds: sample.timestamp,
                     stepsPerMinute: estimate.cadenceStepsPerMinute,
                     confidence: estimate.cadenceConfidence))
+                distancePoints.append(Result.DistancePoint(
+                    atSeconds: sample.timestamp,
+                    fusedMetres: estimate.cumulativeDistanceMetres,
+                    motionOnlyMetres: estimator.motionOnlyMetres,
+                    stepCount: estimate.stepCount))
                 if let spm = estimate.cadenceStepsPerMinute { cadenceValues.append(spm) }
                 nextTick += 1
             }
@@ -121,7 +143,8 @@ public enum TraceReplay {
             flags: (lastEstimate?.flags ?? []).map(\.rawValue).sorted(),
             calibrationScale: estimator.calibration.scale,
             calibrationObservations: estimator.calibration.observationCount,
-            isConverged: estimator.isConverged)
+            isConverged: estimator.isConverged,
+            distanceSamples: distancePoints)
     }
 
     /// Median rather than mean, because a cadence series contains genuine zeros and
