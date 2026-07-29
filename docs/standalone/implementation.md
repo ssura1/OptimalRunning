@@ -901,19 +901,55 @@ was written to predict and had never been able to test.
 | | Tempo | Slow mile | Ratio |
 |---|---|---|---|
 | Speed | 2.83 m/s | 2.16 m/s | 1.309 |
-| Cadence | 159.6 spm | 161.4 spm | **0.989** |
+| ~~Cadence~~ *(see correction)* | ~~159.6 spm~~ | ~~161.4 spm~~ | ~~**0.989**~~ |
 | True step length | 1.075 m | 0.815 m | 1.318 |
 | Calibration constant the model requires | 0.513 | 0.413 | **1.241** |
 
 **§5.1's conclusion is confirmed, and understated.** It argued from van Oeveren that cadence carries
-roughly 7% of a speed change and the amplitude term must carry the rest. Measured here, cadence
+roughly 7% of a speed change and the amplitude term must carry the rest. ~~Measured here, cadence
 carries **−3.6%** — not merely little, but slightly the wrong way, while step length carries
-essentially the whole of it. Any cadence-only model would have read these two runs as the same pace.
+essentially the whole of it. Any cadence-only model would have read these two runs as the same
+pace.~~
 
 **But the model as shipped cannot express that.** The constant it needs differs by **24.1%** between
 the two paces, which is the definition of not generalising: calibration can absorb a fixed scale
 error, and this is not one. Solving for the exponent that would reconcile them gives **p ≈ 1.15**
 against the shipped 0.25 — Weinberg's fourth root, which the literature fitted to *walking*.
+
+> **Correction (2026-07-29) — the cadence row above was our own bug, not physiology.**
+>
+> The slow mile's "161.4 spm" is not a measurement. `CMPedometer` is recorded in every trace and was
+> never consulted when this was written; it is an independent estimator and it is the arbiter this
+> entry claimed did not exist. Time-aligned against it, per cadence band:
+>
+> | CMPedometer band | n | Ours | CMPedometer | Error |
+> |---|---|---|---|---|
+> | 145–200 spm | 986 | 160.0 | 159.2 | **+0.5%** |
+> | 120–145 spm | 103 | 160.0 | 138.7 | **+15.4%** |
+> | below 120 spm | 136 | 160.6 | 109.9 | **+46.1%** |
+>
+> Ours reports ~160 spm *in every band*. On the tempo run that looks like excellent accuracy
+> (IQR 158.1–162.0 against CMPedometer's 157.2–162.1) only because the runner genuinely held ~159 spm
+> for 95% of it. On the slow mile, where CMPedometer spends 42% of its samples below 120 spm, ours
+> never once reads below 147.
+>
+> The mechanism is [`CadenceConfiguration.minStepsPerMinute = 120`](../../Apps/iPhone/PhoneMotion/Sources/PhoneMotion/Configuration/MotionEstimationConfiguration.swift):
+> the admissible band is 120–240 spm, so cadences below 120 are **structurally unrepresentable**, and
+> the disjoint-interval trick of §4.3 that resolves stride-versus-step re-reads such a lag as a
+> stride and doubles it. That is also why the two walk traces report 207.8 and 211.2 spm against
+> CMPedometer's 103.9 and 105.7 — a clean factor of two.
+>
+> **What this does to the finding.** Cadence *does* respond to speed: 159.2 → 136.9 spm, a 14% drop
+> across a 31% speed change, so it carries roughly half of it, not −3.6% and not §5.1's 7%. The
+> shipped model was then fed a cadence 17.9% too high on the slow mile, and the calibrator shrank the
+> scale to compensate — which is a large part of the 1.284 scale ratio observed. Dividing it out
+> leaves roughly **9%** of genuine cross-pace inconsistency, not 24.1%. That is a rough decomposition,
+> not a refit, and it is *smaller* than what was reported: the step-length model may well be within
+> what calibration absorbs once it is fed a correct cadence.
+>
+> The exponent question is therefore **not settled and not urgent**; [S-062](#s-062) is, and must land
+> before the pace ladder is recorded, or the ladder will measure the same clamp at six paces instead
+> of two.
 
 **The default is deliberately left at 0.25.** Two paces from one runner in one session cannot
 support replacing a published exponent with one nearly five times larger; that would be fabricating
@@ -925,6 +961,42 @@ the exponent an actual fit rather than a line through two dots.
 
 Until then [NFR-S-11](./requirements.md#93-accuracy) stays unvalidated, and the honest reading of the
 calibrated distance figures is that they hold **at the pace the calibration was learned at**.
+
+---
+
+<a id="s-062"></a>
+### S-062 — Cadence is clamped to 120 spm and doubles below it
+
+**Satisfies** FR-S-B-2, NFR-S-7, NFR-S-11 · **Wave** S2 · **Open**
+
+Found by the correction to [S-061](#s-061), which is the whole reason that entry's conclusion was
+wrong. `CadenceConfiguration.minStepsPerMinute = 120` makes the admissible band 120–240 spm. Two
+consequences, both measured:
+
+1. **Cadences below 120 spm cannot be reported.** Across both runs our estimator's minimum is 130.7
+   spm and it never reads below 147 on the slow mile, where `CMPedometer` puts 42% of samples below
+   120.
+2. **They are re-read as strides and doubled.** §4.3 resolves stride-versus-step by mapping the two
+   readings of a lag to disjoint intervals, which requires `max ≤ 2 × min`. A true step period
+   outside the step branch therefore lands in the stride branch and is multiplied by two. The two
+   walk traces read 207.8 and 211.2 spm against CMPedometer's 103.9 and 105.7 — a factor of
+   2.000 and 1.998.
+
+The band was chosen as a *physiological* floor for running and it is defensible as one. It is not
+defensible as a floor on what the estimator may observe, because a run contains starts, stops, hills,
+recovery jogs and walk breaks, and NFR-S-11's uncalibrated distance is computed from cadence through
+all of them.
+
+**The fix is not simply lowering the floor.** Dropping `minStepsPerMinute` to ~50 breaks the
+`max ≤ 2 × min` invariant the configuration validates on line 192 and that §4.3's ambiguity
+resolution depends on — the two readings would overlap and the stride/step decision would need a
+mechanism that does not exist yet. That is the design question this task has to answer, and it
+should be answered before the pace ladder is recorded, or the ladder measures the clamp at six paces
+instead of two.
+
+**Verification, both directions** (the [S-057](#s-057) bar): a fix must be shown to move the slow
+mile's cadence toward CMPedometer's distribution *and* to leave the tempo run's +0.5% agreement
+undisturbed, since the tempo run is the case the current code gets right.
 
 ---
 

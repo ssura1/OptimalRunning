@@ -43,7 +43,7 @@ is the whole point of the references block: a stated distance is evidence, a sur
 The two recordings that would close the remaining gaps, in priority order:
 
 1. **A pace ladder** — five or six two-minute segments from easy to near-threshold, marked, in one
-   capture. [S-061](../../docs/standalone/implementation.md#s-061) showed the step-length model needs
+   capture. [S-062](../../docs/standalone/implementation.md#s-062) must land first — cadence is clamped at 120 spm, so a ladder recorded today would measure the clamp, not the runner. [S-061](../../docs/standalone/implementation.md#s-061) showed the step-length model may need
    a different calibration constant at 2.16 m/s than at 2.83 m/s; two paces cannot fit an exponent,
    six can.
 2. **A counted-step segment** — MARK, count footfalls aloud for 30–60 s, MARK, write the number down.
