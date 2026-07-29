@@ -70,3 +70,7 @@ fastlane/test_output
 # keeping, not the repository root.
 crashes/
 captures/
+
+# Raw captures pulled off the device. These carry absolute GPS coordinates and are never
+# committed; Tools/scrub-trace.swift produces the publishable form under Fixtures/motion.
+data/

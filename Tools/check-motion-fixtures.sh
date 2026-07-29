@@ -64,7 +64,28 @@ if [ -d "Fixtures/motion" ]; then
   done < <(find Fixtures/motion -maxdepth 1 -name '*.motion.json' 2>/dev/null || true)
 fi
 
+# S-059 — no committed trace may carry absolute position.
+#
+# A recording made during a real run is a map of where its runner lives, and this
+# repository is public. One trace was committed with 276 absolute fixes intact before this
+# check existed. `Tools/scrub-trace.swift` replaces coordinates with offsets from the
+# trace's own first fix, which keeps every quantity the validation uses — displacement,
+# shape, bearing change — and discards the origin. The estimator never read the
+# coordinates, so nothing is lost by their absence.
+if [ -d "Fixtures/motion" ]; then
+  while IFS= read -r trace; do
+    if grep -qE '"(latitude|longitude)"' "$trace"; then
+      count=$(grep -oE '"latitude"' "$trace" | wc -l | tr -d ' ')
+      echo "::error::$trace carries $count absolute coordinates."
+      echo "         This repository is public and a route is a home address. Scrub it:"
+      echo "             swift Tools/scrub-trace.swift '$trace' '$trace.scrubbed'"
+      echo "             mv '$trace.scrubbed' '$trace'"
+      status=1
+    fi
+  done < <(find Fixtures/motion -name '*.motion.json' 2>/dev/null || true)
+fi
+
 if [ $status -eq 0 ]; then
-  echo "ok: no synthetic signal backs an accuracy claim"
+  echo "ok: no synthetic signal backs an accuracy claim, no trace carries absolute position"
 fi
 exit $status

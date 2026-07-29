@@ -184,10 +184,32 @@ public struct MotionTrace: Codable, Sendable {
 
     // MARK: - Other streams
 
+    /// One position fix.
+    ///
+    /// ## Absolute position is optional, and committed traces do not carry it (S-059)
+    ///
+    /// A recording made during a real run is a map of where its runner lives. This
+    /// repository is public, so a trace that leaves the device with absolute coordinates
+    /// intact publishes a home address alongside its accelerometer data — which is exactly
+    /// what happened once, in commit `ab44f40`, before `Tools/scrub-trace.swift` existed.
+    ///
+    /// Nothing in the estimator ever read `latitude` or `longitude`: distance arrives
+    /// through `cumulativeDistanceMetres`, and speed through `speedMetresPerSecond`. The
+    /// coordinates were carried purely because the capture tool had them. So they are
+    /// optional, a scrubbed trace omits them entirely, and `eastMetres`/`northMetres` carry
+    /// the same *relative* geometry — displacement, bearing change, track shape — with the
+    /// origin discarded. Validation loses nothing; a reader gains no location.
+    ///
+    /// Decoding tolerates both shapes, so traces recorded before the split still load.
     public struct RecordedFix: Codable, Sendable, Hashable {
         public let timestamp: Double
-        public let latitude: Double
-        public let longitude: Double
+        /// Absent on any trace that has been scrubbed for publication.
+        public let latitude: Double?
+        public let longitude: Double?
+        /// Metres east of the trace's first fix. Present on scrubbed traces.
+        public let eastMetres: Double?
+        /// Metres north of the trace's first fix. Present on scrubbed traces.
+        public let northMetres: Double?
         public let altitudeMetres: Double
         public let horizontalAccuracy: Double
         public let verticalAccuracy: Double
@@ -198,8 +220,10 @@ public struct MotionTrace: Codable, Sendable {
 
         public init(
             timestamp: Double,
-            latitude: Double,
-            longitude: Double,
+            latitude: Double? = nil,
+            longitude: Double? = nil,
+            eastMetres: Double? = nil,
+            northMetres: Double? = nil,
             altitudeMetres: Double,
             horizontalAccuracy: Double,
             verticalAccuracy: Double,
@@ -209,11 +233,33 @@ public struct MotionTrace: Codable, Sendable {
             self.timestamp = timestamp
             self.latitude = latitude
             self.longitude = longitude
+            self.eastMetres = eastMetres
+            self.northMetres = northMetres
             self.altitudeMetres = altitudeMetres
             self.horizontalAccuracy = horizontalAccuracy
             self.verticalAccuracy = verticalAccuracy
             self.speedMetresPerSecond = speedMetresPerSecond
             self.cumulativeDistanceMetres = cumulativeDistanceMetres
+        }
+
+        /// Hand-written so that a trace recorded before the coordinate split, and a trace
+        /// scrubbed after it, both decode — the same reason `SensorCapabilities` decodes
+        /// its newer fields with `decodeIfPresent` (core `design.md` ADR-002 territory).
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            timestamp = try container.decode(Double.self, forKey: .timestamp)
+            latitude = try container.decodeIfPresent(Double.self, forKey: .latitude)
+            longitude = try container.decodeIfPresent(Double.self, forKey: .longitude)
+            eastMetres = try container.decodeIfPresent(Double.self, forKey: .eastMetres)
+            northMetres = try container.decodeIfPresent(Double.self, forKey: .northMetres)
+            altitudeMetres = try container.decode(Double.self, forKey: .altitudeMetres)
+            horizontalAccuracy = try container.decode(
+                Double.self, forKey: .horizontalAccuracy)
+            verticalAccuracy = try container.decode(Double.self, forKey: .verticalAccuracy)
+            speedMetresPerSecond = try container.decodeIfPresent(
+                Double.self, forKey: .speedMetresPerSecond)
+            cumulativeDistanceMetres = try container.decode(
+                Double.self, forKey: .cumulativeDistanceMetres)
         }
 
         public var fix: LocationFix {
