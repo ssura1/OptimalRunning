@@ -18,38 +18,65 @@ import XCTest
 @MainActor
 final class StandaloneFeedbackTests: XCTestCase {
 
-    private var directory: URL!
-    private var feed: FakeStandaloneFeed!
-    private var store: StandaloneSampleStore!
-    private var cues: SpyCueSpeaker!
-    private var haptics: SpyHapticPlayer!
-    private var workout: SpyWorkoutWriter!
-    private var calibration: InMemoryCalibrationStore!
-
-    override func setUpWithError() throws {
-        directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        feed = FakeStandaloneFeed()
-        store = StandaloneSampleStore(directory: directory)
-        cues = SpyCueSpeaker()
-        haptics = SpyHapticPlayer()
-        workout = SpyWorkoutWriter()
-        calibration = InMemoryCalibrationStore()
+    /// A unique scratch directory, cleaned up when the test finishes.
+    ///
+    /// Deliberately **not** a stored property assigned in `setUp()`/`tearDown()`, and the
+    /// reason is recorded in `WatchSupport`'s `RunSessionModelTests` because that suite hit
+    /// it first: `XCTestCase`'s `setUp` is `nonisolated`, so touching main-actor state from
+    /// an override in a `@MainActor` class is an isolation violation that **some Swift
+    /// versions accept and some reject**. This suite reproduced the whole sequence — the
+    /// stored-property form compiled on Xcode 26 and failed CI's Xcode 16.4;
+    /// `MainActor.assumeIsolated` inverted it and failed locally with "sending 'self' risks
+    /// causing data races". Allocating per test in an already-isolated context is the shape
+    /// that compiles on both.
+    private func makeScratchDirectory() -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("StandaloneFeedbackTests-\(UUID().uuidString)")
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+        return url
     }
 
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: directory)
+    /// Everything one standalone run needs, built together so a test names only what it
+    /// asserts on.
+    private struct Harness {
+        let controller: StandaloneRunController
+        let feed: FakeStandaloneFeed
+        let store: StandaloneSampleStore
+        let cues: SpyCueSpeaker
+        let haptics: SpyHapticPlayer
+        let workout: SpyWorkoutWriter
+        let calibration: InMemoryCalibrationStore
+        /// Exposed so a test can open a *second* store over the same directory, which is how
+        /// a relaunch discovering an orphan is simulated.
+        let directory: URL
     }
 
-    private func makeController(
+    private func makeHarness(
         plan: WorkoutPlan = .steady(.tempo),
         profile: RunnerProfile = .standaloneDefault,
-        activity: RunActivityKind = .outdoorRun
-    ) -> StandaloneRunController {
-        StandaloneRunController(
-            plan: plan, activity: activity, profile: profile, feed: feed, store: store,
-            cues: cues, haptics: haptics, workout: workout, calibrationStore: calibration,
-            appVersion: "1.0-test")
+        activity: RunActivityKind = .outdoorRun,
+        store: ((URL) -> StandaloneSampleStore)? = nil
+    ) -> Harness {
+        let directory = makeScratchDirectory()
+        let feed = FakeStandaloneFeed()
+        let sampleStore = store?(directory) ?? StandaloneSampleStore(directory: directory)
+        let cues = SpyCueSpeaker()
+        let haptics = SpyHapticPlayer()
+        let workout = SpyWorkoutWriter()
+        let calibration = InMemoryCalibrationStore()
+
+        return Harness(
+            controller: StandaloneRunController(
+                plan: plan, activity: activity, profile: profile, feed: feed,
+                store: sampleStore, cues: cues, haptics: haptics, workout: workout,
+                calibrationStore: calibration, appVersion: "1.0-test"),
+            feed: feed,
+            store: sampleStore,
+            cues: cues,
+            haptics: haptics,
+            workout: workout,
+            calibration: calibration,
+            directory: directory)
     }
 
     // MARK: - The cue vocabulary (S-041, design.md §9.2)
@@ -146,49 +173,49 @@ final class StandaloneFeedbackTests: XCTestCase {
     func testDisablingSpokenCuesLeavesHapticsAsACompleteChannel() async throws {
         var profile = RunnerProfile.standaloneDefault
         profile.spokenCuesEnabled = false
-        let controller = makeController(profile: profile)
-        try await controller.start()
+        let h = makeHarness(profile: profile)
+        try await h.controller.start()
 
-        driveUntilAnAlertFires(controller)
+        driveUntilAnAlertFires(h)
 
-        XCTAssertTrue(cues.spoken.isEmpty, "nothing may be spoken")
-        XCTAssertFalse(haptics.played.isEmpty, "haptics must still carry the alert")
+        XCTAssertTrue(h.cues.spoken.isEmpty, "nothing may be spoken")
+        XCTAssertFalse(h.haptics.played.isEmpty, "h.haptics must still carry the alert")
     }
 
     func testDisablingPaceHapticsLeavesIntervalHapticsWorking() async throws {
         var profile = RunnerProfile.standaloneDefault
         profile.paceHapticsEnabled = false
-        let controller = makeController(plan: .intervals(), profile: profile)
-        try await controller.start()
+        let h = makeHarness(plan: .intervals(), profile: profile)
+        try await h.controller.start()
 
         for tick in 1...400 {
-            feed.emit(
+            h.feed.emit(
                 .running(at: Double(tick), metresPerSecond: 4.0),
                 telemetry: .runningTelemetry(at: tick))
         }
 
         XCTAssertFalse(
-            haptics.played.contains(.slowDown) || haptics.played.contains(.speedUp),
-            "pace haptics are off")
+            h.haptics.played.contains(.slowDown) || h.haptics.played.contains(.speedUp),
+            "pace h.haptics are off")
         XCTAssertTrue(
-            haptics.played.contains(.stepTransition),
-            "interval haptics must be unaffected: \(haptics.played)")
+            h.haptics.played.contains(.stepTransition),
+            "interval h.haptics must be unaffected: \(h.haptics.played)")
     }
 
     func testDisablingSplitAnnouncementsLeavesPaceCuesSpeaking() async throws {
         var profile = RunnerProfile.standaloneDefault
         profile.splitAnnouncementsEnabled = false
-        let controller = makeController(profile: profile)
-        try await controller.start()
+        let h = makeHarness(profile: profile)
+        try await h.controller.start()
 
-        driveUntilAnAlertFires(controller)
+        driveUntilAnAlertFires(h)
 
         XCTAssertFalse(
-            cues.spoken.contains { if case .split = $0.kind { return true } else { return false } },
+            h.cues.spoken.contains { if case .split = $0.kind { return true } else { return false } },
             "splits are off")
         XCTAssertTrue(
-            cues.spoken.contains { if case .pace = $0.kind { return true } else { return false } },
-            "pace cues are a different channel and must be unaffected")
+            h.cues.spoken.contains { if case .pace = $0.kind { return true } else { return false } },
+            "pace h.cues are a different channel and must be unaffected")
     }
 
     // MARK: - Splits (S-042)
@@ -199,11 +226,11 @@ final class StandaloneFeedbackTests: XCTestCase {
 
         // Three miles at a steady 3 m/s.
         for second in 1...1700 {
-            let cues = announcer.tick(
+            let produced = announcer.tick(
                 cumulativeDistance: Double(second) * 3.0,
                 activeElapsed: Double(second),
                 averagePace: Pace(minutesPerMile: 8.9))
-            for cue in cues {
+            for cue in produced {
                 if case let .split(index) = cue.kind { fired.append(index) }
             }
         }
@@ -252,10 +279,10 @@ final class StandaloneFeedbackTests: XCTestCase {
         var announcer = SplitAnnouncer(profile: .standaloneDefault)
         let mile = UnitPreference.miles.metresPerUnit
 
-        let cues = announcer.tick(
+        let produced = announcer.tick(
             cumulativeDistance: mile * 3.5, activeElapsed: 1500,
             averagePace: Pace(minutesPerMile: 8))
-        let indices = cues.compactMap { cue -> Int? in
+        let indices = produced.compactMap { cue -> Int? in
             if case let .split(index) = cue.kind { return index }
             return nil
         }
@@ -265,25 +292,25 @@ final class StandaloneFeedbackTests: XCTestCase {
     func testSplitsAndPaceAlertsDoNotSuppressEachOther() async throws {
         // ADR-S-05's reason for the separate channel, as a test: a runner who crosses a
         // mile boundary while drifting fast needs both sentences.
-        let controller = makeController()
-        try await controller.start()
+        let h = makeHarness()
+        try await h.controller.start()
 
         let mile = UnitPreference.miles.metresPerUnit
         // Run fast enough to earn a pace alert, far enough to cross a mile.
         for second in 1...700 {
-            feed.emit(
+            h.feed.emit(
                 .running(at: Double(second), metresPerSecond: mile / 420),
                 telemetry: .runningTelemetry(at: second))
         }
 
-        let hasSplit = cues.spoken.contains {
+        let hasSplit = h.cues.spoken.contains {
             if case .split = $0.kind { return true } else { return false }
         }
-        let hasPace = cues.spoken.contains {
+        let hasPace = h.cues.spoken.contains {
             if case .pace = $0.kind { return true } else { return false }
         }
-        XCTAssertTrue(hasSplit, "the mile boundary must be announced: \(cues.phrases)")
-        XCTAssertTrue(hasPace, "the pace excursion must be announced: \(cues.phrases)")
+        XCTAssertTrue(hasSplit, "the mile boundary must be announced: \(h.cues.phrases)")
+        XCTAssertTrue(hasPace, "the pace excursion must be announced: \(h.cues.phrases)")
     }
 
     func testTimeAnnouncementsAreOffByDefaultAndWorkWhenTurnedOn() {
@@ -310,32 +337,32 @@ final class StandaloneFeedbackTests: XCTestCase {
     // MARK: - The GNSS notice, said once (AC-FR-S-C-3-3)
 
     func testTheGNSSNoticeIsSaidOncePerTransitionAndNotRepeatedly() async throws {
-        let controller = makeController()
-        try await controller.start()
+        let h = makeHarness()
+        try await h.controller.start()
 
         // Twenty seconds of good fixes, then two minutes without one.
         for second in 1...20 {
-            feed.emit(.running(at: Double(second)), telemetry: .runningTelemetry(at: second))
+            h.feed.emit(.running(at: Double(second)), telemetry: .runningTelemetry(at: second))
         }
         for second in 21...140 {
-            feed.emit(
+            h.feed.emit(
                 .running(at: Double(second), source: .motionModel, hasFix: false),
                 telemetry: .runningTelemetry(
                     at: second, estimatedMetres: Double(second - 20) * 3,
                     flags: [.distanceEstimated]))
         }
 
-        let lost = cues.spoken.filter {
+        let lost = h.cues.spoken.filter {
             if case .gnssLost = $0.kind { return true } else { return false }
         }
-        XCTAssertEqual(lost.count, 1, "said once, not once a second: \(cues.phrases.count) cues")
+        XCTAssertEqual(lost.count, 1, "said once, not once a second: \(h.cues.phrases.count) h.cues")
         XCTAssertEqual(lost.first?.phrase, "GPS signal lost. Pace is estimated.")
 
         // And once more when it comes back.
         for second in 141...200 {
-            feed.emit(.running(at: Double(second)), telemetry: .runningTelemetry(at: second))
+            h.feed.emit(.running(at: Double(second)), telemetry: .runningTelemetry(at: second))
         }
-        let restored = cues.spoken.filter {
+        let restored = h.cues.spoken.filter {
             if case .gnssRestored = $0.kind { return true } else { return false }
         }
         XCTAssertEqual(restored.count, 1)
@@ -450,7 +477,7 @@ final class StandaloneFeedbackTests: XCTestCase {
     }
 
     func testALostFixIsStatedDifferentlyDependingOnWhetherThereIsACalibration() {
-        // DEG-S-1 versus DEG-S-2: with a calibration the run continues on estimated
+        // DEG-S-1 versus DEG-S-2: with a h.calibration the run continues on estimated
         // distance; without one there is no distance at all, and saying "pace estimated"
         // would be claiming an estimate that does not exist (ADR-S-06).
         let calibrated = StandaloneMetricsScreen.make(
@@ -494,9 +521,9 @@ final class StandaloneFeedbackTests: XCTestCase {
     // MARK: - Helpers
 
     /// Runs fast enough, for long enough, that `AlertPolicy`'s dwell is satisfied.
-    private func driveUntilAnAlertFires(_ controller: StandaloneRunController) {
+    private func driveUntilAnAlertFires(_ h: Harness) {
         for second in 1...120 {
-            feed.emit(
+            h.feed.emit(
                 .running(at: Double(second), metresPerSecond: 4.5),
                 telemetry: .runningTelemetry(at: second))
         }

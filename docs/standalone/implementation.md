@@ -1832,6 +1832,24 @@ back claiming a distance with nothing to say about where the distance came from.
 run controller is main-actor isolated and calls both synchronously from its tick, so the alternative
 is an enqueued hop between an alert being decided and the buzz arriving.
 
+**The `@MainActor` test-fixture trap, hit for the second time in this repository.** The three
+standalone suites held their fakes as stored properties assigned in `setUpWithError`. That compiled
+on Xcode 26 (Swift 6.3.3) and **failed CI's Xcode 16.4 (Swift 6.1)**: `XCTestCase.setUpWithError` is
+`nonisolated`, and the feed and the cue and haptic spies are `@MainActor` because they conform to
+main-actor protocols. Wrapping the body in `MainActor.assumeIsolated` inverted the failure — CI
+would have accepted it, and the local toolchain rejected it with "sending `self` risks causing data
+races". The async `setUp()` override compiled locally but was an untested bet on 6.1.
+
+`WatchSupport`'s `RunSessionModelTests` had already met this and written the answer down: allocate
+per test in an already-isolated context, register cleanup with `addTeardownBlock`, hold nothing in a
+stored property. The three suites now use that shape — a `Harness` struct built by `makeHarness()`
+— which is the one form both toolchains accept.
+
+The lesson is not about concurrency. **The precedent was in the repository and I did not look for it
+before writing the suites**, so a solved problem cost a red build. The comment on
+`makeScratchDirectory` in each suite now names the other suite, so the next person finds it from
+either end.
+
 **A local-environment note that will cost someone an hour otherwise.** Adding a *new file* to
 `ORModels` does not invalidate a dependent package's cached build plan on this SwiftPM version, so
 `swift test --package-path Apps/WatchModern/WatchSupport` failed with `cannot find type
