@@ -446,6 +446,57 @@ in the field.
 reading, amplitude for the gait — which keeps `PhoneMotion` a pure function of recorded samples
 ([ADR-S-03](#adr-s-03)) and keeps every trace replayable without a live pedometer.
 
+<a id="adr-s-06-amendment-2"></a>
+#### ADR-S-06, amendment 2 (2026-07-29) — rotation rate belongs in the step-length model
+
+**Decision.** Record the finding and open the design question; do **not** change the model yet. The
+capture already stores `rotationRate` on every sample and nothing reads it. On the evidence below it
+should, and [S-064](./implementation.md#s-064) has to be resolved first.
+
+**Why this was looked at.** Weinberg's amplitude-to-step-length relation was fitted for sensors on
+the waist or in a pocket, where vertical acceleration is the centre-of-mass bounce. A phone at the
+end of a swinging arm is a different mechanical system — a shoulder-elbow-wrist pendulum
+superimposed on that bounce — so there is no reason the *feature*, not just its coefficient, should
+transfer. That is a fair challenge to the whole model form and it deserved measuring rather than
+assuming.
+
+**What the pace ladder shows.** 27 non-overlapping 30 s windows, speed range 1.54×,
+`log(step length)` regressed on log features:
+
+| Model | R² | adj R² | AIC | coefficients |
+|---|---|---|---|---|
+| \|userAccel\| RMS **+ \|ω\| RMS** | **0.865** | **0.853** | **−164.1** | +0.447, +0.429 |
+| \|ω\| RMS alone | 0.812 | 0.805 | −157.3 | +0.785 |
+| \|userAccel\| RMS alone | 0.807 | 0.799 | −156.5 | +0.856 |
+| per-step peak-to-peak (shipped feature) | 0.773 | 0.764 | −152.1 | +0.670 |
+| cadence alone | 0.008 | −0.032 | −112.4 | +1.398 |
+
+Three things follow. **The shipped feature works** — it is the weakest of the four but it is not
+speed-blind, which was the hypothesis under test. **Angular velocity is the better single feature**,
+narrowly. And most usefully, **the two are complementary rather than redundant**: together they cut
+residual scatter from 5.1% to 4.3% and carry near-equal weight, so the gyroscope holds information
+the accelerometer does not. The pair also transfers best across sessions, predicting the tempo run
+and the slow mile with **+0.70%** and **−0.67%** bias.
+
+Adding cadence worsens AIC in every combination. Its coefficient flips sign and wanders between
+−0.18 and −1.47 depending on what it is paired with, which is what a variable carrying no signal
+looks like.
+
+**Where the literature sits.** Angular velocity is well established in handheld pedestrian dead
+reckoning, but for **step detection and heading** — the arm's periodic rotation gives a clean
+sinusoid to count against — rather than for step *length*, which is still dominated by
+Weinberg-family amplitude models whose gain is calibrated per user and whose ¼ exponent is inherited
+rather than refitted. The usual remedy for the speed range problem is speed-banded parameters, which
+is the same instinct as this track's own per-cadence-band gain
+([AC-FR-S-C-2-5](./requirements.md#fr-s-c-2--calibrating-the-step-length-model)). Using rotation rate
+as a step-*length* feature is therefore an extension of the published work rather than a
+contradiction of it, and it needs its own evidence, not a citation.
+
+**Consequence.** `MotionSample` and the trace format already carry rotation rate, so this costs no
+new capture and invalidates no committed trace — the eight traces on disk can all be re-analysed the
+day the model changes. What it does need is [S-064](./implementation.md#s-064) resolved, a second
+runner, and a carry position other than hand-held before any of it is a default.
+
 <a id="adr-s-07"></a>
 ### ADR-S-07 — `HKWorkoutBuilder` at the iOS 17 floor, with the session path as a future backend
 

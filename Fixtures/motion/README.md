@@ -5,8 +5,8 @@ figure.
 
 ## What is here
 
-Six traces, recorded on 2026-07-28 on an iPhone 17e (iOS 26.5.2), hand-held, runner height 1.77 m,
-across two outings. They are the only real motion data this track has.
+Seven traces, recorded on 2026-07-28 and 2026-07-29 on an iPhone 17e (iOS 26.5.2), hand-held,
+runner height 1.77 m, across three outings. They are the only real motion data this track has.
 
 | Trace | Duration | What it is |
 |---|---|---|
@@ -16,6 +16,7 @@ across two outings. They are the only real motion data this track has.
 | `capture-2026-07-28-1959.motion.json` | 30 s | Walk between the tempo run and the slow mile |
 | `capture-2026-07-28-2010.motion.json` | 12.4 min | 1 mi slow run — the second pace that made [S-061](../../docs/standalone/implementation.md#s-061) measurable |
 | `capture-2026-07-28-2023.motion.json` | 2.9 min | Walk after the slow mile |
+| `capture-2026-07-29-1757.motion.json` | 13.7 min | **The pace ladder** ([S-063](../../docs/standalone/implementation.md#s-063)). Four sections spanning 2.07-3.19 m/s, the only recording with deliberate, confound-controlled speed variation |
 
 **Why the 4.3 mi trace is the primary set.** Six passes of one loop is six independent readings of
 the same distance, so it separates a scale error from a drift — which a single out-and-back cannot.
@@ -28,7 +29,7 @@ recorded, in order: 31 s standing motionless with a single deliberate **jump at 
 walking with the screen on; 37 s walking with the screen **off**; then 99 s running. The four marks
 in the trace bound those segments at 31.19, 60.19, 96.94 and 196.16 s.
 
-All six carry `"references": []`, deliberately. No trace holds a surveyed distance or a counted-step
+All seven carry `"references": []`, deliberately. No trace holds a surveyed distance or a counted-step
 segment, so **none validates an accuracy bound on its own** and `motionreplay` says so rather than
 printing a number that reads like one. What the 4.3 mi trace does carry is a *stated* total and a
 lap structure the GNSS track independently confirms, which is why §12.1 can now quote a measured
@@ -42,11 +43,10 @@ is the whole point of the references block: a stated distance is evidence, a sur
 
 The two recordings that would close the remaining gaps, in priority order:
 
-1. **A pace ladder** — seven two-minute segments spanning recovery to 10 k effort, specified in
-   [`Tools/pace-ladder-protocol.md`](../../Tools/pace-ladder-protocol.md).
-   [S-061](../../docs/standalone/implementation.md#s-061) showed the step-length model needs a
-   calibration constant that tracks speed one-for-one across the two paces recorded so far; two
-   points cannot fit an exponent, seven can.
+1. ~~**A pace ladder**~~ — **recorded 2026-07-29**, four sections rather than seven and without
+   marks, but it carried the deliberate speed variation the fit needed. The exponent is now measured
+   ([S-063](../../docs/standalone/implementation.md#s-063)). A second ladder from a different runner,
+   with the interleaved pace order the protocol now specifies, is what would make it general.
 2. **A counted-step segment** — MARK, count footfalls aloud for 30–60 s, MARK, write the number down.
    It is the only *exact* reference obtainable in the field and the only thing that can turn NFR-S-8
    from a comparison between two estimators into a measurement. The ladder protocol folds this in as

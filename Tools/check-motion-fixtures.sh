@@ -85,7 +85,42 @@ if [ -d "Fixtures/motion" ]; then
   done < <(find Fixtures/motion -name '*.motion.json' 2>/dev/null || true)
 fi
 
+# S-059, second occurrence — the same rule, applied to *everything git is tracking*.
+#
+# The check above guards Fixtures/motion, and `.gitignore` guards data/. Neither guarded
+# the case that actually happened, twice, on 2026-07-29: a raw capture and a GPX were
+# `git add`-ed explicitly, and an explicit add silently overrides .gitignore. Both were
+# staged with live coordinates and caught by eye rather than by a gate.
+#
+# So the question this asks is not "is the file in the right directory" but "is git
+# tracking a coordinate", which is the thing that actually matters and the only phrasing
+# that survives someone adding a file from an unexpected place.
+#
+# The synthetic Core fixtures are exempt by content, not by path: they are anchored on
+# 51.5/-0.12, a deliberately fictional London origin, and that anchor is asserted rather
+# than assumed so a real trace cannot hide behind the exemption.
+SYNTHETIC_ANCHOR='"latitude"[[:space:]]*:[[:space:]]*51\.[0-9]'
+while IFS= read -r tracked; do
+  case "$tracked" in
+    Fixtures/motion/*) continue ;;   # covered above, with a better message
+  esac
+  if grep -qE '(<trkpt[^>]*[[:space:]]lat=)|("latitude"[[:space:]]*:[[:space:]]*-?[0-9])' \
+      "$tracked" 2>/dev/null; then
+    if grep -qE "$SYNTHETIC_ANCHOR" "$tracked" 2>/dev/null \
+        && ! grep -qE '"latitude"[[:space:]]*:[[:space:]]*(4[0-9]|3[0-9]|-)' "$tracked" 2>/dev/null; then
+      continue                        # synthetic London anchor, no real-world latitudes
+    fi
+    echo "::error::$tracked is tracked by git and contains absolute coordinates."
+    echo "         This repository is public and a route is a home address."
+    echo "         If it is a raw capture, it does not belong in git at all:"
+    echo "             git rm --cached '$tracked'"
+    echo "         If it belongs in Fixtures/motion, scrub it first:"
+    echo "             swift Tools/scrub-trace.swift '$tracked' Fixtures/motion/<name>.motion.json"
+    status=1
+  fi
+done < <(git ls-files 2>/dev/null || true)
+
 if [ $status -eq 0 ]; then
-  echo "ok: no synthetic signal backs an accuracy claim, no trace carries absolute position"
+  echo "ok: no synthetic signal backs an accuracy claim, nothing tracked carries absolute position"
 fi
 exit $status

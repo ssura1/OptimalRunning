@@ -22,6 +22,10 @@ func usage() -> Never {
       --suppress-gnss-after <seconds>
                               drop every fix after this timestamp, simulating an outage
                               over real motion data (implementation.md S-024)
+      --amplitude-exponent <p>
+                              override stepLength.amplitudeExponent for this run only.
+                              Exists so the exponent can be swept against recorded data
+                              rather than argued about (implementation.md S-063).
       --print-cadence         print the full cadence series rather than a summary
       --json                  emit the result as JSON
 
@@ -39,6 +43,7 @@ struct Options {
     var goldenPath: String?
     var updateGoldens = false
     var suppressAfter: TimeInterval?
+    var amplitudeExponent: Double?
     var printCadence = false
     var json = false
 }
@@ -53,6 +58,9 @@ while let argument = arguments.first {
     case "--update-goldens": options.updateGoldens = true
     case "--suppress-gnss-after":
         options.suppressAfter = arguments.first.flatMap(Double.init)
+        arguments = Array(arguments.dropFirst())
+    case "--amplitude-exponent":
+        options.amplitudeExponent = arguments.first.flatMap(Double.init)
         arguments = Array(arguments.dropFirst())
     case "--print-cadence": options.printCadence = true
     case "--json": options.json = true
@@ -74,7 +82,19 @@ do {
     exit(1)
 }
 
-let result = TraceReplay.run(trace: trace, suppressLocationAfter: options.suppressAfter)
+var configuration = MotionEstimationConfiguration.default
+if let p = options.amplitudeExponent {
+    configuration.stepLength.amplitudeExponent = p
+    do {
+        try configuration.validate()
+    } catch {
+        FileHandle.standardError.write(Data("error: \(error)\n".utf8))
+        exit(2)
+    }
+}
+
+let result = TraceReplay.run(
+    trace: trace, configuration: configuration, suppressLocationAfter: options.suppressAfter)
 
 // MARK: - Golden handling
 

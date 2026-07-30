@@ -36,20 +36,26 @@ profile's derivation puts your 10 k at roughly 8:50/mi and your easy pace near 1
 | # | Target pace | ≈ speed | Effort it should feel like |
 |---|---|---|---|
 | 1 | 12:00 /mi | 2.24 m/s | Recovery. Slower than easy — conversational, almost lazy |
-| 2 | 11:10 /mi | 2.40 m/s | Easy |
-| 3 | 10:25 /mi | 2.57 m/s | Easy-to-long |
-| 4 | 9:50 /mi | 2.73 m/s | Long-run pace |
-| 5 | 9:15 /mi | 2.90 m/s | Tempo — near where the 4.3 mi run sat |
-| 6 | 8:45 /mi | 3.07 m/s | 10 k effort. Comfortably hard, not a sprint |
+| 2 | 9:15 /mi | 2.90 m/s | Tempo — near where the 4.3 mi run sat |
+| 3 | 11:10 /mi | 2.40 m/s | Easy |
+| 4 | 8:45 /mi | 3.07 m/s | 10 k effort. Comfortably hard, not a sprint |
+| 5 | 10:25 /mi | 2.57 m/s | Easy-to-long |
+| 6 | 9:50 /mi | 2.73 m/s | Long-run pace |
 | 7 | 12:00 /mi | 2.24 m/s | **Repeat of #1.** The fatigue control |
 
 **Two minutes each**, running continuously through the pace changes — do not stop between segments.
 Twelve minutes of running in the ladder, plus warm-up.
 
-Segment 7 is what makes this a controlled experiment rather than six samples. If it produces a
-different amplitude and cadence from segment 1 at the same speed, fatigue is confounding the fit and
-the analysis needs to account for it. If it matches, the ladder is clean. Either answer is worth two
-minutes.
+**The order is deliberately not monotone, and that is a correction from the first attempt.** A ladder
+that only ascends confounds speed with elapsed time: fatigue, grip drift and arm tension all rise
+together with pace, and any of them would produce the same apparent relationship as speed. The first
+recording was monotone and survived only because segment 7 existed to break the tie
+([S-063](../docs/standalone/implementation.md#s-063)). Interleaving breaks it structurally instead of
+relying on one segment.
+
+Segment 7 stays regardless — it is what makes this a controlled experiment rather than six samples.
+If it produces a different amplitude and cadence from segment 1 at the same speed, fatigue is
+confounding the fit. If it matches, the ladder is clean. Either answer is worth two minutes.
 
 ## How to record it
 
@@ -100,6 +106,23 @@ shape, and re-reads its own output to prove no coordinate survived
 Tell me the counted-step number and anything that went differently from the plan — a segment cut
 short, a road crossing, a pace you could not hold. A noted deviation is data; an unnoted one is
 noise.
+
+## What the first run of this protocol showed (2026-07-29)
+
+Recorded as `Fixtures/motion/capture-2026-07-29-1757.motion.json`. Four sections landed rather than
+seven, no marks were tapped, and the counted-step segment was skipped. The fit still worked, and the
+reasons why are worth knowing before the next attempt:
+
+* **Missing marks cost less than expected.** The analysis was moved onto 30 s sliding windows, each
+  carrying its own measured speed, so segment boundaries were needed only for the fatigue check.
+  Tap them if you can — they make the reconciliation unambiguous — but the fit does not depend on them.
+* **The missing counted-step segment cost the most.** [NFR-S-8](../docs/standalone/requirements.md#93-accuracy)
+  is still unvalidated and nothing else in the recording can close it. It is 60 seconds of counting.
+* **Do not bother with a Strava export.** It re-exports the watch's own recording — the two integrate
+  to an identical 2149.9 m — resampled to 1 Hz with the accuracy fields stripped. The Apple Health
+  export carries `<speed>`, `<hAcc>` and `<vAcc>`; Strava carries none of them.
+* **Apple Watch Series 3 on watchOS 8 has no stride-length, ground-contact or vertical-oscillation
+  metrics.** Those need Series 8 or newer. Nothing was lost by asking, but do not plan around them.
 
 ## What will be done with it
 

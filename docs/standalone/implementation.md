@@ -848,6 +848,26 @@ retains unreachable objects and still serves them by SHA. Purging them requires 
 to garbage-collect the repository. That is recorded because it is the part that is still outstanding,
 not because it is comfortable.
 
+#### Second occurrence, 2026-07-29 — `.gitignore` is not a guard
+
+It happened again, twice in one session, and neither the original gate nor `.gitignore` saw it. The
+pace-ladder GPX and both raw captures arrived staged: **`git add` on a specific path overrides
+`.gitignore` silently**, and once a file is in the index the ignore rule stops applying to it
+forever. Nothing was committed — both were caught by reading `git status` — but "caught by eye" is
+not a control.
+
+The original check asked *is this file in `Fixtures/motion` and does it carry coordinates*, which is
+the wrong question. It now asks **is git tracking a coordinate anywhere**, which is the thing that
+actually matters and the only phrasing that survives a file arriving from a directory nobody
+anticipated. Raw captures live in `data/` and are ignored; the ignore is now backed by a gate that
+does not care where the file came from.
+
+The synthetic Core fixtures are exempted **by content rather than by path** — they must carry the
+fictional 51.5/−0.12 London anchor *and* no real-world latitude — so a genuine trace cannot be
+smuggled past by moving it into an exempt directory. Verified in both directions: staging either of
+the two files that actually caused this fails the gate with the remediation command, and the clean
+tree passes.
+
 ---
 
 <a id="s-060"></a>
@@ -1002,6 +1022,24 @@ against the shipped 0.25 — Weinberg's fourth root, which the literature fitted
 > recorded, which came from RMS rather than per-step peak-to-peak. Still two points, still not a fit;
 > see the prescription below, which is unchanged and now the only open item here.
 
+> ### Refinement (2026-07-29, pace ladder) — "speed-blind" was true of the model, not the feature
+>
+> The wording above says the model's output is "very nearly *speed-blind*". That is correct about the
+> **model** and was read, including by me, as an indictment of the **feature**. The pace ladder
+> separates them, and the distinction matters because it points at different fixes:
+>
+> * The amplitude feature is **not** speed-blind. Over 27 non-overlapping 30 s windows spanning a
+>   1.54× speed range, `log(step length)` on `log(per-step peak-to-peak)` fits with slope **0.670**,
+>   95% CI **[0.562, 0.837]** by moving-block bootstrap, **R² = 0.773**. Zero is nowhere near the
+>   interval.
+> * The **exponent throws that information away**. At the shipped 0.25 the model reproduces only
+>   about a third of the step-length change the feature is telling it about, which is what forces the
+>   calibration constant to track speed one-for-one.
+>
+> So the 1.284-vs-1.285 observation stands exactly as recorded, and its cause is now identified: not
+> a blind feature, a crushed one. [S-063](#s-063) has the fit and [S-064](#s-064) has the reason the
+> exponent still must not be changed on its own.
+
 **The default is deliberately left at 0.25.** Two paces from one runner in one session cannot
 support replacing a published exponent, whether the candidate is 1.15 or 0.78; that would be
 fabricating a constant with extra steps, which is exactly what [ADR-S-06](./design.md#adr-s-06)
@@ -1105,6 +1143,138 @@ not the generator, because the generator lays *impulses* at the step rate and an
 harmonic-rich in a way a recorded walk is not — its vertical channel is nearly a pure sinusoid at the
 step rate, 1.00 relative power against 0.03 at the subharmonic. A synthetic walk therefore never
 reaches the code path it was written to prove, and passed while the bug was still live.
+
+---
+
+<a id="s-063"></a>
+### S-063 — The amplitude exponent, measured: 0.25 is wrong, ~0.70 is right, and it must not ship alone
+
+**Satisfies** FR-S-B-4, NFR-S-11, CON-S-5 · **Wave** S2 · **Open**
+
+`StepLengthConfiguration.amplitudeExponent` has always carried the instruction that "whatever value
+ends up here must name the trace it came from". This is that trace:
+`capture-2026-07-29-1757.motion.json`, a deliberate pace ladder,
+[protocol](../../Tools/pace-ladder-protocol.md).
+
+#### What was recorded, against what was asked for
+
+The protocol specified seven segments. **No marks were tapped**, so boundaries had to be recovered
+from the signal, and only those both GNSS receivers agree on are used. At K=4 the phone and the
+watch put boundaries within 2 s of each other (≈264, 461, 693 s); at K≥5 they disagree, so the finer
+structure is not recoverable and is not claimed.
+
+| | Recorded | Consequence |
+|---|---|---|
+| Pace sections | **4** (3 ascending + 1 repeat), not 7 | Fewer, wider steps; range is still 1.54× |
+| Marks | **none** | Boundaries inferred; segment identity is a hypothesis, so the fit below deliberately does not use it |
+| Counted-step segment | **absent** | [NFR-S-8](./requirements.md#93-accuracy) stays unvalidated. This was the one measurement that could have closed it |
+| Fatigue-control repeat | **present** | Earned its keep twice over — see the confound test |
+
+The fit therefore runs on **27 non-overlapping 30 s windows**, not on segment means. That sidesteps
+the missing marks entirely: each window carries its own measured speed, so boundaries are needed only
+for the fatigue check.
+
+#### The fit
+
+Speed is CoreLocation Doppler from the same device as the motion, never position differencing —
+integrating position inflates distance with noise, and the inflation is speed-dependent (measured at
++8.0% to +10.6% across speed bands), which is exactly the bias that would corrupt a slope.
+
+| Feature | slope | 95% CI | R² |
+|---|---|---|---|
+| per-step peak-to-peak vertical | **0.670** | [0.562, 0.837] | 0.773 |
+| \|userAcceleration\| RMS | 0.856 | [0.729, 1.138] | 0.807 |
+| **\|ω\| RMS (gyroscope)** | 0.785 | [0.631, 0.905] | **0.812** |
+| cadence | 1.398 | [−3.794, 8.318] | **0.008** |
+
+Intervals are moving-block bootstrap, because adjacent windows of one continuous run are
+autocorrelated and ordinary standard errors would overstate the precision.
+
+Held out directly, which is the product's actual question — calibrate `C` on the slow windows, then
+predict the fast ones:
+
+| p | held-out bias | held-out scatter |
+|---|---|---|
+| **0.25 (shipped)** | **+8.86%** | 8.92% |
+| 0.67 | +0.88% | 4.51% |
+| **0.718** | **0.00%** | — |
+| 0.75 | −0.57% | 4.51% |
+| 1.00 | −4.98% | 6.58% |
+
+Both bias and scatter minimise together near **0.70**, and the regression slope and the zero-bias
+point agree. The shipped 0.25 under-predicts step length by nearly 9% one pace band away from where
+it calibrated.
+
+**Cadence contributes nothing.** R² 0.008, and a CI spanning [−3.8, +8.3]. Adding it to any model
+worsens AIC. Across all three running traces — 128 windows, speed 1.80–3.19 m/s, a **1.77× range** —
+cadence spans 154.8–165.3 spm, a 1.07× range. [design.md §5.1](./design.md#51-why-cadence-alone-cannot-work)
+is confirmed for a fourth time and can stop being an open question.
+
+#### The confound test, and why the fatigue repeat mattered
+
+A monotone-ascending ladder confounds speed with elapsed time: fatigue, grip drift or arm tension
+would all produce the same correlation. The final section returns to opening pace, which breaks it.
+
+| | speed | a_pp | \|ω\| RMS | cadence |
+|---|---|---|---|---|
+| S3 / S1 | 1.309 | 1.436 | 1.377 | 1.004 |
+| **S4 / S1** (repeat) | **1.035** | **1.056** | **1.115** | 1.006 |
+
+The features come back down with the speed instead of staying at their S3 values. The relationship
+is speed, not drift. **Future ladders should interleave the paces rather than ascend monotonically**
+— the protocol has been updated — but on this recording the repeat did the job.
+
+#### Why the exponent is still not changed
+
+Swept through the real pipeline it makes the product **worse**, monotonically: fused error under a
+simulated outage goes +6.11% at p=0.25 to +13.00% at p=0.67. That is not a contradiction of the fit
+above, it is [S-064](#s-064) — the motion leg carries an independent over-read that the compressed
+exponent was partly hiding. Fixing one of two compensating errors makes the visible error grow.
+
+So the number is recorded, with the trace it came from, and the default stays at 0.25 until S-064 is
+resolved and both can be validated together. Shipping a better-fitted exponent on top of a known
+accumulator defect would trade a documented inaccuracy for an undocumented one.
+
+**And it is one runner, one session.** The other two traces cannot corroborate it — see S-064 for why
+they are structurally unable to. A tight fit to this session is a real result; it is not evidence
+about anybody else, and [ADR-S-06](./design.md#adr-s-06) still governs.
+
+---
+
+<a id="s-064"></a>
+### S-064 — The motion leg over-reads independently of the exponent
+
+**Satisfies** FR-S-B-4, NFR-S-11 · **Wave** S2 · **Open**
+
+On the pace ladder the motion-only accumulator reports **2510.8 m over 2204 steps = 1.139 m/step**,
+against a measured mean step length of **1.008 m** (GNSS path ÷ steps) or 0.930 m (Doppler ÷ steps).
+An over-read of **+13% to +22%** that has nothing to do with the exponent, and grows with it.
+
+**It is not the step count.** That was the obvious suspect and it is innocent: integrating the
+spectral cadence over the capture gives **2200 steps**, against the detector's 2204 — **+0.2%**.
+CMPedometer's 2043 is **−7.1%**, its third disagreement with the arbiter in three traces
+([ADR-S-06 amendment 1](./design.md#adr-s-06-amendment-1)).
+
+**It is not the clamps.** They sit at 0.5–2.5 m and the mean is 1.139, though `stepLengthClamped`
+does fire on a minority of steps and that is worth understanding separately.
+
+That leaves the calibrated scale and the per-cadence-band gain of
+[AC-FR-S-C-2-5](./requirements.md#fr-s-c-2--calibrating-the-step-length-model) as the remaining
+candidates — the calibrator solves for `C` over qualifying GNSS windows while the accumulator applies
+it to every step, and any mismatch in which steps those are lands here.
+
+**Why the other two traces cannot help.** Neither the 4.3 mi tempo run nor the slow mile contains
+real speed variation to test against:
+
+* Tempo lap times are 400, 402, 397, 402, 400, 400 s — constant to **±0.6%**.
+* Folding the six laps onto a common phase, the lap-to-lap correlation of the speed profile is
+  **r = 0.000** (range −0.176 to +0.319).
+
+Their window-to-window speed spread is Doppler noise, not pacing. Regressing any feature against
+noise correctly returns a slope of zero, which is precisely what they do (tempo: slope 0.009,
+R² 0.000). **This retires "the features fail to transfer across sessions" as a reading of that
+result** — there was nothing there to transfer to. What does transfer is the level: fitted on the
+ladder, the two-feature model predicts the other two sessions with bias **+0.70%** and **−0.67%**.
 
 ---
 
