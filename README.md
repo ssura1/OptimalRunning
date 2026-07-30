@@ -81,6 +81,13 @@ The two watch tiers are **separate targets with no shared source**, because supp
 Series 3 from one target would mean gating every modern API behind `if #available` —
 and CI fails the build if one appears.
 
+The phone can also record a run on its own, with no watch, estimating distance from the
+motion of the phone in your hand. That estimator lives in `PhoneMotion/` and **exactly one
+directory of the app may import it** — the sensor-feed adapter. The run screen, the run
+list and the statistics see only `Core`'s output, so improving the estimator is a
+one-package change; `Tools/check-phonemotion-isolation.sh` fails the build if that stops
+being true.
+
 ## Documentation
 
 - [`docs/requirements.md`](docs/requirements.md) — goals, user stories, and strictly

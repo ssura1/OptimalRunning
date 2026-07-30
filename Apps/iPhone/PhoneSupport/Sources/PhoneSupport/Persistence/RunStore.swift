@@ -103,6 +103,11 @@ public struct RunRepository {
         record.packedSamples = try encoder.encode(envelope.samples)
         record.routeData = try envelope.route.map { try encoder.encode($0) }
         record.zoneTimelineData = try encoder.encode(envelope.zoneTimeline)
+        // Assigned unconditionally, including the `nil` case. A re-delivery that no longer
+        // carries standalone facts must clear them rather than leave the previous ones in
+        // place — the same reasoning as `routeData` above, and the failure it prevents is a
+        // backfilled watch run inheriting a phone run's provenance.
+        record.standaloneData = try envelope.standalone.map { try encoder.encode($0) }
         record.configSnapshotData = try encoder.encode(envelope.configSnapshot)
         record.profileSnapshotData = try encoder.encode(envelope.profileSnapshot)
         record.planData = try envelope.plan.map { try encoder.encode($0) }
@@ -173,7 +178,7 @@ public struct RunRepository {
             sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
         )
         descriptor.propertiesToFetch = [
-            \.runID, \.startedAt, \.endedAt, \.runTypeRaw,
+            \.runID, \.startedAt, \.endedAt, \.runTypeRaw, \.deviceTierRaw,
             \.distanceMetres, \.activeSeconds, \.averagePaceSecondsPerMetre,
             \.averageHeartRate, \.maxHeartRate, \.isDegraded,
         ]
@@ -212,6 +217,10 @@ public struct RunListItem: Sendable, Hashable, Identifiable {
     public let startedAt: Date
     public let endedAt: Date
     public let runType: RunType
+    /// Which tier recorded it (AC-FR-S-E-1-5). Projected onto the row rather than read
+    /// from the record because the run list badges a phone-only run, and faulting the
+    /// managed object to find out would undo what this projection exists for.
+    public let deviceTier: DeviceTier
     public let distanceMetres: Double
     public let activeSeconds: Double
     public let averagePace: Pace?
@@ -224,6 +233,7 @@ public struct RunListItem: Sendable, Hashable, Identifiable {
         startedAt = record.startedAt
         endedAt = record.endedAt
         runType = RunType(rawValue: record.runTypeRaw) ?? .easy
+        deviceTier = DeviceTier(rawValue: record.deviceTierRaw) ?? .modern
         distanceMetres = record.distanceMetres
         activeSeconds = record.activeSeconds
         averagePace = record.averagePaceSecondsPerMetre > 0
@@ -321,6 +331,11 @@ extension RunRecord {
 
     public func plan() throws -> WorkoutPlan? {
         try decode(WorkoutPlan.self, from: planData, field: "planData")
+    }
+
+    /// The standalone facts, or `nil` for a watch-originated run (FR-S-E-2).
+    public func standaloneFacts() throws -> StandaloneRunFacts? {
+        try decode(StandaloneRunFacts.self, from: standaloneData, field: "standaloneData")
     }
 
     public var stepSummaries: [StepSummary] {

@@ -868,15 +868,26 @@ over-read already recorded under NFR-S-9, at a magnitude consistent with the tem
 ### 12.2 What is hardware-verification-only
 
 Recorded here rather than discovered later. These cannot be automated on this project's CI, for the
-reasons given:
+reasons given. **The protocol for all of them is
+[`Tools/standalone-manual-protocol.md`](../../Tools/standalone-manual-protocol.md)**
+([S-054](./implementation.md#s-054)), which names the hardware, the steps and a results template.
 
-| Item | Why not automatable |
-|---|---|
-| AC-FR-S-A-2-1 — background survival | Requires a real device, a locked screen, and elapsed wall-clock time |
-| AC-FR-S-D-1-6 — a run conducted without looking | Requires a runner |
-| AC-FR-S-D-2-3 — background haptics | The Simulator has no Taptic Engine |
-| NFR-S-2, NFR-S-4, NFR-S-5 — CPU and battery | No simulator proxy is meaningful |
-| Every accuracy figure | [CON-S-1](#con-s-1): the Simulator has no motion sensors at all |
+| Item | Why not automatable | Status |
+|---|---|---|
+| AC-FR-S-A-2-1 — background survival | Requires a real device, a locked screen, and elapsed wall-clock time | Protocol §1, **not yet run** |
+| AC-FR-S-D-1-6 — a run conducted without looking | Requires a runner | Protocol §2, **not yet run** |
+| AC-FR-S-D-1-4 — audible on silent, ducks music | The Simulator has no ring switch and no audio route to change | Protocol §3.1, **not yet run** |
+| AC-FR-S-D-1-9 — cue intelligibility at speed | Requires ears, wind and music | Protocol §3.2, **not yet run** |
+| DEG-S-9, DEG-S-10 — route loss, interrupting call | XCTest cannot disconnect headphones or place a call | Protocol §3.3–3.4, **not yet run** |
+| AC-FR-S-D-2-1, AC-FR-S-D-2-3 — haptic distinctness, background haptics | The Simulator has no Taptic Engine | Protocol §4, **not yet run** |
+| NFR-S-2, NFR-S-4, NFR-S-5 — CPU and battery | No simulator proxy is meaningful | Protocol §6, **not yet run** |
+| AC-FR-S-D-3-3 — legible at arm's length in motion | Requires a runner | Protocol §2, **not yet run** |
+| Every accuracy figure | [CON-S-1](#con-s-1): the Simulator has no motion sensors at all | Recorded traces, per [§12.1](#121-validation-status) |
+
+**A protocol item with no recorded result is an unverified requirement**, and this table says so
+rather than implying otherwise. The tier's *logic* is covered — 170 tests in `PhoneSupport`, 104 in
+`PhoneMotion`, and the boundary suite in the app target — but the parts of the product a runner
+actually experiences are, at the time of writing, unverified on hardware.
 
 ---
 

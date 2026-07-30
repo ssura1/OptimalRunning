@@ -192,6 +192,30 @@ property ADR-002 gave the Legacy tier.
 [§7.4](#74-tier-divergence-matrix-standalone-row) is extended so the difference stays legible, and
 `DeviceTier` gains a `.phoneStandalone` case so a run's origin is never ambiguous in the store.
 
+<a id="adr-s-01-the-enforced-half"></a>
+#### The enforced half (Waves S3–S5)
+
+"The UI depends on `Core`'s output" is the load-bearing sentence of this ADR, and on its own it is
+only an intention. It is now a build failure:
+[`Tools/check-phonemotion-isolation.sh`](../../Tools/check-phonemotion-isolation.sh) permits
+`import PhoneMotion` in exactly two directories — the sensor-feed adapter
+(`Apps/iPhone/Sources/Standalone/Sensors/`) and the capture tool, which writes the estimator's own
+trace format — and forbids it everywhere else, forbids `PhoneSupport` and `Core` from declaring a
+build dependency on it, and forbids any tunable named in `MotionEstimationConfiguration` from
+appearing under a second name in the phone app (NFR-S-19).
+
+**What it buys is specific and dated.** [S-063](./implementation.md#s-063) has a measured amplitude
+exponent waiting to replace the shipped 0.25, [S-064](./implementation.md#s-064) has a calibration
+over-read that has to be fixed first, and [amendment 2](#adr-s-06-amendment-2) would add a whole
+gyroscope term to the step-length model. Each is a change to one package, and none should require
+opening a screen. `Apps/iPhone/Tests/StandaloneBoundaryTests.swift` demonstrates that positively
+rather than by absence: it swaps a field of the estimator's configuration, replays a committed
+trace, and asserts that the run list, the lifetime statistics, the run detail screen and the live
+screen all move — with no other file touched.
+
+The rule for anything that needs a fact the estimator has: put it on `ORModels.MotionTelemetry` and
+let the adapter fill it in.
+
 <a id="adr-s-02"></a>
 ### ADR-S-02 — The sensor contract gains *typed* capability facts, not more booleans
 
@@ -1038,12 +1062,27 @@ public struct MotionEstimate: Sendable, Hashable {
     public let cadenceConfidence: Double
     public let measuredMetres: Double            // running totals, for FR-S-E-2
     public let estimatedMetres: Double
-    public let flags: Set<MotionFlag>
+    public let stepCount: Int
+    public let calibration: CalibrationSummary   // ORModels — see below
+    public let flags: Set<MotionFlag>            // ORModels — see below
 }
 ```
 
 `tick(at:)` is the single output entry point, mirroring `RunEngine.tick` — one call, everything the
 caller needs, no properties to read in the right order.
+
+**`MotionFlag` and `CalibrationSummary` are declared in `ORModels`, not here**, and that is not an
+accident of layering. Both have to reach the *run record* and the detail screen (AC-FR-S-E-2-4,
+DEG-S-5), so a declaration inside this package could only get there by every screen that renders one
+importing the estimator — which is exactly what [ADR-S-01](#adr-s-01)'s consequence forbids and
+`Tools/check-phonemotion-isolation.sh` fails the build on. `PhoneMotion` depends on `ORModels`
+already, so there is one declaration and two sides rather than two that can drift.
+
+The same reasoning puts `MotionTelemetry` there — the per-tick companion to `EngineInput` that
+carries cadence and the measured/estimated split to the screen and the store without the engine ever
+seeing them — and `CalibrationStoring`, which is deliberately declared over opaque `Data` because the
+calibration's encoded shape belongs to this package and will change when
+[S-064](./implementation.md#s-064) lands.
 
 ### 7.2 The `SensorCapabilities` extension
 
@@ -1080,7 +1119,7 @@ review.
 | Tertiary feedback | — | Screen colour |
 | Interval segmentation | Native activities / workout events | Workout events on the builder |
 | Sensor placement | Wrist, fixed orientation | **Hand, continuously changing orientation** ([CON-S-3](./requirements.md#con-s-3)) |
-| Indoor support | Yes (pedometer) | **No** ([CON-S-8](./requirements.md#con-s-8)) |
+| Indoor support | Yes (pedometer) | **Timed only** — distance and pace suppressed *and stated as suppressed* ([CON-S-8](./requirements.md#con-s-8), DEG-S-6). The row previously read "No", which was accurate about distance and wrong about the run: an indoor standalone run is offered and recorded, it just has no distance to judge |
 | Simulator testability | Watch simulator for UI | **No motion sensors at all** ([CON-S-1](./requirements.md#con-s-1)) |
 | Tier logic package | `WatchSupport` / `LegacySupport` (macOS-hosted) | `PhoneMotion` (**Linux**) + `PhoneSupport` (macOS-hosted) |
 

@@ -95,19 +95,28 @@ one.
 
 ## Working with a trace
 
+**Use `-c release`.** It is not a micro-optimisation: replaying the 40.8-minute trace takes
+**110.9 s** in a debug build and **1.60 s** in release, a factor of 70. A tight numeric loop over
+a quarter of a million samples is exactly the shape that costs the most unoptimised. NFR-S-1's
+five-second budget holds comfortably in release and is missed by 33× in debug, which is why
+`core.yml` asserts it in a release build and the debug test run skips it saying so.
+
 ```bash
 # What does the estimator make of it, and how does that compare to its references?
-swift run --package-path Apps/iPhone/PhoneMotion motionreplay --trace Fixtures/motion/<name>.motion.json
+swift run -c release --package-path Apps/iPhone/PhoneMotion motionreplay \
+    --trace Fixtures/motion/<name>.motion.json
 
 # The full cadence series rather than a summary
-swift run --package-path Apps/iPhone/PhoneMotion motionreplay --trace <path> --print-cadence
+swift run -c release --package-path Apps/iPhone/PhoneMotion motionreplay \
+    --trace <path> --print-cadence
 
 # Simulate a GNSS outage over real motion data (S-024). Legitimate because the motion
 # underneath is real — the opposite of a synthetic signal.
-swift run --package-path Apps/iPhone/PhoneMotion motionreplay --trace <path> --suppress-gnss-after 600
+swift run -c release --package-path Apps/iPhone/PhoneMotion motionreplay \
+    --trace <path> --suppress-gnss-after 600
 
 # Regenerate a golden. A deliberate act, with a justification in the PR body.
-swift run --package-path Apps/iPhone/PhoneMotion motionreplay --trace <path> \
+swift run -c release --package-path Apps/iPhone/PhoneMotion motionreplay --trace <path> \
     --golden Fixtures/motion/golden/<name>.motion.golden.json --update-goldens
 ```
 

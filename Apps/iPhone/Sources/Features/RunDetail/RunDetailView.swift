@@ -32,6 +32,14 @@ struct RunDetailView: View {
                         DegradedNotice(analysis: analysis)
                     }
 
+                    // FR-S-E-2. Present only for a standalone run, which is the whole of
+                    // what AC-FR-S-E-1-2 permits this screen to change: a watch run renders
+                    // exactly as it did, because `analysis.standalone` is `nil` and every
+                    // one of these asks first.
+                    if analysis.showsDistanceProvenance {
+                        ProvenanceSection(analysis: analysis)
+                    }
+
                     if analysis.hasSamples {
                         PaceChartSection(analysis: analysis, unit: unit, axis: $axis)
 
@@ -114,6 +122,58 @@ private struct Metric: View {
             Text(value).font(.title3.weight(.semibold)).monospacedDigit()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Where a standalone run's distance came from (S-034, FR-S-E-2).
+///
+/// **Provenance is visible, not hidden.** The whole reason this tier is honest is that it
+/// can say which metres it observed and which it inferred — and a screen that showed one
+/// distance without saying which was which would be claiming GNSS precision for a modelled
+/// number. Every string comes from `RunAnalysis`, which reads what the run *stored*: a run
+/// is not re-derived when calibration later improves (AC-FR-S-E-2-5).
+private struct ProvenanceSection: View {
+    let analysis: RunAnalysis
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Phone run", systemImage: "iphone.gen3")
+                .font(.headline)
+
+            if let fraction = analysis.standalone?.measuredFraction {
+                // A bar rather than only a sentence: the split is a proportion, and a
+                // proportion is read faster as a length than as a percentage.
+                ProgressView(value: fraction)
+                    .tint(.green)
+                    .accessibilityLabel("Measured by GPS")
+                    .accessibilityValue("\(Int(fraction * 100)) percent")
+            }
+
+            if let text = analysis.distanceProvenanceText {
+                Text(text).font(.caption).foregroundStyle(.secondary)
+            }
+
+            if let cadence = analysis.averageCadenceText {
+                // AC-FR-S-E-2-2 — first-class, because on this tier it is measured rather
+                // than derived.
+                LabeledContent("Average cadence") { Text(cadence).monospacedDigit() }
+                    .font(.subheadline)
+            }
+
+            if let reason = analysis.lowerConfidenceReason {
+                Label(reason, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            ForEach(analysis.motionNotices, id: \.self) { notice in
+                Label(notice, systemImage: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding()
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
     }
 }
 

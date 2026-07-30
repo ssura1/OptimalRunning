@@ -494,6 +494,49 @@ public struct CalibrationConfiguration: Codable, Sendable, Hashable {
     }
 }
 
+// MARK: - Carry position
+
+/// Detecting the phone leaving the hand mid-run (DEG-S-7).
+public struct CarryPositionConfiguration: Codable, Sendable, Hashable {
+    /// GNSS speed, m/s, above which the runner counts as moving for the purposes of this
+    /// detector.
+    ///
+    /// 1.5 m/s is a brisk walk. Deliberately well below any running speed and well above
+    /// GNSS noise while standing still: the question this answers is "is the runner
+    /// stationary?", not "are they running?", because a runner walking a hill with the
+    /// phone in their pocket is exactly the case that should be caught.
+    public var movingSpeedMetresPerSecond: Double
+    /// How long the swing signal must be absent *while moving* before the carry position is
+    /// judged to have changed, seconds.
+    ///
+    /// Long enough that a few bad correlation windows — an arm raised to check a watch, a
+    /// road crossing, a bottle switched between hands — do not trip it, and short enough
+    /// that a pocketed phone is caught within a calibration window rather than after it has
+    /// taught the calibrator something wrong.
+    public var incoherentSwingSeconds: Double
+
+    public init(
+        movingSpeedMetresPerSecond: Double = 1.5,
+        incoherentSwingSeconds: Double = 20
+    ) {
+        self.movingSpeedMetresPerSecond = movingSpeedMetresPerSecond
+        self.incoherentSwingSeconds = incoherentSwingSeconds
+    }
+
+    func validate() throws {
+        guard movingSpeedMetresPerSecond > 0 else {
+            throw MotionConfigurationError(
+                field: "carry.movingSpeedMetresPerSecond", reason: "must be positive")
+        }
+        guard incoherentSwingSeconds >= 5 else {
+            throw MotionConfigurationError(
+                field: "carry.incoherentSwingSeconds",
+                reason: "must be at least 5 — below that a single bad correlation window "
+                    + "trips the detector")
+        }
+    }
+}
+
 // MARK: - Fusion
 
 /// Distance fusion (standalone/design.md §6.1, §6.3).
@@ -572,6 +615,7 @@ public struct MotionEstimationConfiguration: Codable, Sendable, Hashable {
     public var stepLength: StepLengthConfiguration
     public var calibration: CalibrationConfiguration
     public var fusion: MotionFusionConfiguration
+    public var carry: CarryPositionConfiguration
 
     public init(
         sampling: MotionSamplingConfiguration = .init(),
@@ -580,7 +624,8 @@ public struct MotionEstimationConfiguration: Codable, Sendable, Hashable {
         steps: StepDetectionConfiguration = .init(),
         stepLength: StepLengthConfiguration = .init(),
         calibration: CalibrationConfiguration = .init(),
-        fusion: MotionFusionConfiguration = .init()
+        fusion: MotionFusionConfiguration = .init(),
+        carry: CarryPositionConfiguration = .init()
     ) {
         self.sampling = sampling
         self.filters = filters
@@ -589,6 +634,7 @@ public struct MotionEstimationConfiguration: Codable, Sendable, Hashable {
         self.stepLength = stepLength
         self.calibration = calibration
         self.fusion = fusion
+        self.carry = carry
     }
 
     public static let `default` = MotionEstimationConfiguration()
@@ -602,6 +648,7 @@ public struct MotionEstimationConfiguration: Codable, Sendable, Hashable {
         try stepLength.validate()
         try calibration.validate()
         try fusion.validate()
+        try carry.validate()
     }
 }
 

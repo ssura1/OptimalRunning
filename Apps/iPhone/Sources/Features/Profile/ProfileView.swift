@@ -25,6 +25,7 @@ struct ProfileView: View {
                 unitsSection
                 displaySection
                 alertsSection
+                standaloneSection
                 disclaimerSection
                 developerSection
             }
@@ -39,6 +40,22 @@ struct ProfileView: View {
                     save()
                 }
             }
+        }
+    }
+
+    /// Settings for runs recorded on the phone alone (S-052, FR-S-G-1).
+    ///
+    /// A push rather than an inline block: height, cue preferences and calibration are
+    /// meaningless to a runner who only ever uses the watch, and putting five more rows in
+    /// front of them would make the settings screen worse for the majority to serve the
+    /// minority. A single labelled row costs them one line.
+    private var standaloneSection: some View {
+        Section {
+            NavigationLink("Phone Runs") { StandaloneSettingsView() }
+        } header: {
+            Text("Phone runs")
+        } footer: {
+            Text("Height, spoken cues, and the stride calibration used when GPS is weak.")
         }
     }
 

@@ -31,6 +31,14 @@ jobs:
       - name: Sensor callbacks are explicitly @Sendable (S-057, CON-S-1)
         run: Tools/check-sensor-handler-isolation.sh
 
+      # ADR-S-01's claim is that the standalone UI depends on Core's output and never on
+      # how that output was obtained. S-063 (a measured exponent), S-064 (a calibration
+      # over-read) and ADR-S-06 amendment 2 (a gyroscope term) are all queued changes to
+      # the estimator, and every one of them should be a one-package change. This is what
+      # keeps that true after the fifth screen is written.
+      - name: Only the sensor-feed adapter depends on PhoneMotion (ADR-S-01)
+        run: Tools/check-phonemotion-isolation.sh
+
       - name: No availability conditionals in watch targets (CON-3, AC-FR-K-1-5)
         run: Tools/check-no-availability.sh
 

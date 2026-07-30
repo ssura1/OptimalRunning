@@ -24,6 +24,8 @@
 	<true/>
 	<key>NSHealthShareUsageDescription</key>
 	<string>OptimalRunner reads your past runs from Health so it can show your training history, personal bests, and lifetime statistics. Your data is never sent anywhere else.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>OptimalRunner saves runs you record on your phone to Health, with their distance and route, so they appear alongside your other workouts. It never writes a heart rate, because your phone cannot measure one.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>OptimalRunner uses GPS to measure your distance and pace during a run, and to record your route. Your location is never sent anywhere.</string>
 	<key>NSMotionUsageDescription</key>

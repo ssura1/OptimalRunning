@@ -45,6 +45,14 @@ public final class RunRecord {
     /// The run-length-encoded zone timeline, JSON-encoded. Small enough to live inline,
     /// and the detail view always wants it.
     public var zoneTimelineData: Data?
+    /// `StandaloneRunFacts`, JSON-encoded. `nil` for every watch-originated run
+    /// (AC-FR-S-A-4-5).
+    ///
+    /// Inline rather than external: it is a few hundred bytes and the detail view always
+    /// reads it for a standalone run. Optional rather than a second record type, because
+    /// FR-S-E-1-4 forbids a second store and a nullable column is what "the same record,
+    /// with more known about it" looks like.
+    public var standaloneData: Data?
 
     /// Snapshots, so a run stays interpretable against the settings that were in force
     /// (design.md §9.1). Not external: the detail view reads them to draw the band.
@@ -84,6 +92,7 @@ public final class RunRecord {
         packedSamples: Data? = nil,
         routeData: Data? = nil,
         zoneTimelineData: Data? = nil,
+        standaloneData: Data? = nil,
         configSnapshotData: Data? = nil,
         profileSnapshotData: Data? = nil,
         planData: Data? = nil,
@@ -109,6 +118,7 @@ public final class RunRecord {
         self.packedSamples = packedSamples
         self.routeData = routeData
         self.zoneTimelineData = zoneTimelineData
+        self.standaloneData = standaloneData
         self.configSnapshotData = configSnapshotData
         self.profileSnapshotData = profileSnapshotData
         self.planData = planData

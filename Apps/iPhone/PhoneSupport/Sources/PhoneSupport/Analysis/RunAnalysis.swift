@@ -32,12 +32,18 @@ public struct RunAnalysis: Sendable {
     /// is why every chart has to tolerate its absence rather than force-unwrap.
     public let configuration: PaceEngineConfiguration?
     public let profile: RunnerProfile?
+    public let deviceTier: DeviceTier
+    /// Present only for a standalone run (FR-S-E-2). Every standalone-specific section of
+    /// the detail screen asks for this first, so a watch run renders exactly as it did.
+    public let standalone: StandaloneRunFacts?
 
     // MARK: - Construction
 
     public init(record: RunRecord) throws {
         runID = record.runID
         runType = record.runType
+        deviceTier = record.deviceTier
+        standalone = try record.standaloneFacts()
         startedAt = record.startedAt
         isDegraded = record.isDegraded
         degradations = record.degradationFlags.compactMap(DegradationFlag.init(rawValue:))
@@ -85,6 +91,53 @@ public struct RunAnalysis: Sendable {
     }
 
     public var hasRoute: Bool { route.count >= 2 }
+
+    // MARK: - Standalone provenance (FR-S-E-2)
+
+    /// Whether the provenance panel should be shown at all. Only a standalone run has a
+    /// measured/estimated split to show — a watch run's distance comes from HealthKit's own
+    /// fused estimate, and inventing a split for it would be a fabrication.
+    public var showsDistanceProvenance: Bool {
+        standalone?.measuredFraction != nil
+    }
+
+    /// AC-FR-S-E-2-1, as a sentence.
+    public var distanceProvenanceText: String? {
+        guard let fraction = standalone?.measuredFraction else { return nil }
+        return StandaloneStrings.provenance(measuredFraction: fraction)
+    }
+
+    /// AC-FR-S-E-2-2 — cadence is first-class on this tier because it is directly measured.
+    public var averageCadenceText: String? {
+        guard let spm = standalone?.averageCadenceStepsPerMinute, spm.isFinite, spm > 0 else {
+            return nil
+        }
+        return "\(Int(spm.rounded())) spm"
+    }
+
+    /// AC-FR-S-E-2-4 — why this run's distance is lower-confidence, or `nil` when it is
+    /// not.
+    ///
+    /// **Read from what was stored, never recomputed.** AC-FR-S-E-2-5 forbids retroactively
+    /// rewriting a run when calibration later improves, and the way that rule gets broken is
+    /// by deriving this from today's calibration instead of the run's own.
+    public var lowerConfidenceReason: String? {
+        guard let standalone, standalone.isLowerConfidence else { return nil }
+        return StandaloneStrings.lowerConfidenceReason(standalone.calibration)
+    }
+
+    /// The conditions worth explaining after the fact, in a stable order so the same run
+    /// always reads the same way.
+    public var motionNotices: [String] {
+        guard let standalone else { return [] }
+        return MotionFlag.allCases
+            .filter { standalone.flags.contains($0) }
+            // `distanceEstimated` is already said, better, by the provenance sentence —
+            // repeating "part of this run was estimated" under it would read as two
+            // different problems.
+            .filter { $0 != .distanceEstimated }
+            .map(\.runnerFacingExplanation)
+    }
 
     /// True when the run carries a per-rep table worth showing (AC-FR-F-2-6).
     public var isStructured: Bool { runType.isStructured && !steps.isEmpty }

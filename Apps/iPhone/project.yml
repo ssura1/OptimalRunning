@@ -97,6 +97,15 @@ targets:
           OptimalRunner reads your past runs from Health so it can show your training
           history, personal bests, and lifetime statistics. Your data is never sent
           anywhere else.
+        # Added with the standalone tier (S-033). Until then this app only *read* from
+        # Health — the watch owned live capture and wrote the HKWorkout. A phone-recorded
+        # run has no watch to write it, so the phone does, and iOS requires a separate
+        # description for the write half. Its absence is not a warning: `requestAuthorization`
+        # traps at runtime without it, on the one path the Simulator does exercise.
+        NSHealthUpdateUsageDescription: >-
+          OptimalRunner saves runs you record on your phone to Health, with their distance
+          and route, so they appear alongside your other workouts. It never writes a heart
+          rate, because your phone cannot measure one.
         # NFR-14 — declared for completeness even though this app makes no network
         # calls; check-no-network.sh (NFR-14/15) is what actually enforces it.
         ITSAppUsesNonExemptEncryption: false
@@ -143,9 +152,20 @@ targets:
       - package: Core
         product: ORModels
       - package: Core
+        product: ORPace
+      - package: Core
         product: ORStats
       - package: PhoneSupport
         product: PhoneSupport
+      # The test bundle is the one place both sides of the PhoneMotion boundary are
+      # visible, and that is deliberate rather than a leak. `StandaloneBoundaryTests`
+      # has to mutate the estimator's configuration and then assert that the run list,
+      # the statistics and the live screen move — a test that could not import the
+      # estimator could only prove the boundary exists, not that it works.
+      # `Tools/check-phonemotion-isolation.sh` exempts tests for exactly this reason and
+      # keeps the ban on `Sources`, which is where coupling would cost something.
+      - package: PhoneMotion
+        product: PhoneMotion
     settings:
       base:
         SWIFT_VERSION: "6.0"

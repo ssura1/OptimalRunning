@@ -178,6 +178,31 @@ public struct RunnerProfile: Codable, Sendable, Hashable {
     /// Opt-in crown-rotation detent for manual advance (AC-FR-C-3-3).
     public var crownAdvanceEnabled: Bool
 
+    // MARK: Standalone tier (FR-S-G-1)
+    //
+    // These live on the one profile rather than in a second standalone-only store, because
+    // AC-FR-S-G-1-4 requires them to persist through the existing profile and sync to a
+    // watch without disturbing it. A watch decodes them and ignores them, which is what
+    // "without disturbing" means in practice.
+
+    /// The runner's height, metres. Feeds the step-length model (AC-FR-S-B-4-1) and is
+    /// offered from HealthKit rather than asked for twice (AC-FR-S-G-1-1).
+    ///
+    /// `nil` is a supported state, not a missing value: AC-FR-S-B-4-6 requires a documented
+    /// default and a lower-confidence marking, which is a different behaviour from having
+    /// been told.
+    public var heightMetres: Double?
+    /// Spoken cues, the standalone tier's *primary* channel (AC-FR-S-D-1-1). Disabling them
+    /// leaves haptics as a complete channel (AC-FR-S-D-1-7).
+    public var spokenCuesEnabled: Bool
+    /// Split announcements, on their own channel and independently disableable
+    /// (AC-FR-S-D-1-5). On by default: a mile split is the thing a runner most wants said.
+    public var splitAnnouncementsEnabled: Bool
+    /// Periodic elapsed-time announcements, seconds. `nil` is off, and off is the default —
+    /// AC-FR-S-D-1-5 says so explicitly, and a clock that speaks every five minutes is the
+    /// fastest way to make a runner turn the voice off entirely.
+    public var timeAnnouncementIntervalSeconds: TimeInterval?
+
     public init(
         tempoPace: Pace? = nil,
         easyPace: Pace? = nil,
@@ -185,7 +210,11 @@ public struct RunnerProfile: Codable, Sendable, Hashable {
         units: UnitPreference = .miles,
         palette: PaletteChoice = .standard,
         paceHapticsEnabled: Bool = true,
-        crownAdvanceEnabled: Bool = false
+        crownAdvanceEnabled: Bool = false,
+        heightMetres: Double? = nil,
+        spokenCuesEnabled: Bool = true,
+        splitAnnouncementsEnabled: Bool = true,
+        timeAnnouncementIntervalSeconds: TimeInterval? = nil
     ) {
         self.tempoPace = tempoPace
         self.easyPace = easyPace
@@ -194,6 +223,36 @@ public struct RunnerProfile: Codable, Sendable, Hashable {
         self.palette = palette
         self.paceHapticsEnabled = paceHapticsEnabled
         self.crownAdvanceEnabled = crownAdvanceEnabled
+        self.heightMetres = heightMetres
+        self.spokenCuesEnabled = spokenCuesEnabled
+        self.splitAnnouncementsEnabled = splitAnnouncementsEnabled
+        self.timeAnnouncementIntervalSeconds = timeAnnouncementIntervalSeconds
+    }
+
+    /// Hand-written because the standalone fields are **not** optional and a synthesised
+    /// decoder would therefore reject every profile snapshot written before they existed.
+    ///
+    /// This is not hypothetical: `RunEnvelope` snapshots the profile into every stored run
+    /// (design.md §9.1), `Fixtures/legacy-tier-envelope.payload` is one such payload
+    /// committed to this repository, and a `keyNotFound` here would make every run in a
+    /// runner's history unreadable after an app update. The same reasoning, and the same
+    /// remedy, as `SensorCapabilities.init(from:)`.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        tempoPace = try container.decodeIfPresent(Pace.self, forKey: .tempoPace)
+        easyPace = try container.decodeIfPresent(Pace.self, forKey: .easyPace)
+        longPace = try container.decodeIfPresent(Pace.self, forKey: .longPace)
+        units = try container.decode(UnitPreference.self, forKey: .units)
+        palette = try container.decode(PaletteChoice.self, forKey: .palette)
+        paceHapticsEnabled = try container.decode(Bool.self, forKey: .paceHapticsEnabled)
+        crownAdvanceEnabled = try container.decode(Bool.self, forKey: .crownAdvanceEnabled)
+        heightMetres = try container.decodeIfPresent(Double.self, forKey: .heightMetres)
+        spokenCuesEnabled =
+            try container.decodeIfPresent(Bool.self, forKey: .spokenCuesEnabled) ?? true
+        splitAnnouncementsEnabled =
+            try container.decodeIfPresent(Bool.self, forKey: .splitAnnouncementsEnabled) ?? true
+        timeAnnouncementIntervalSeconds = try container.decodeIfPresent(
+            TimeInterval.self, forKey: .timeAnnouncementIntervalSeconds)
     }
 
     /// The stored base pace for a run type, or `nil` if none is set.

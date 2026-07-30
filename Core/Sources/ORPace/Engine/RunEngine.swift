@@ -165,9 +165,23 @@ public struct RunEngine: Sendable {
 
         // 1. Rolling pace. A fix that fails the accuracy test still advances distance
         //    but must not anchor the window.
+        //
+        //    With no fix at all, whether the distance still counts as trusted depends on
+        //    *why* there is no fix. A treadmill run has none and never will, and calling
+        //    it permanently GPS-degraded would widen the band for the whole session and
+        //    record a degradation that describes nothing (DEG-10 is the honest flag
+        //    there). An outdoor run whose fixes have stopped arriving is a different
+        //    situation with the same shape, and AC-FR-S-C-3-2 requires it to widen the
+        //    band by 50% for exactly as long as the distance is inferred.
+        //
+        //    The sources are what separate them. `.pedometer` and `.healthKit` with no
+        //    fix mean indoors; `.motionModel` means this project's own model is carrying
+        //    an outdoor run through a GNSS outage (DEG-S-1). Neither watch tier ever emits
+        //    `.motionModel`, so their behaviour under this line is unchanged — which
+        //    AC-FR-S-A-3-4 requires and the tier-equivalence goldens check.
         let trusted = input.location.map {
             $0.isAcceptable(maxHorizontalAccuracy: config.rollingPace.maxHorizontalAccuracyMetres)
-        } ?? (input.distanceSource != .location)
+        } ?? (input.distanceSource == .pedometer || input.distanceSource == .healthKit)
 
         let paceResult = rollingPace.ingest(DistanceSample(
             timestamp: input.timestamp,

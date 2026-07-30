@@ -1,4 +1,5 @@
 import Foundation
+import ORModels
 
 /// The persistable result of calibrating the step-length model against GNSS.
 ///
@@ -13,11 +14,47 @@ public struct CalibrationState: Codable, Sendable, Hashable {
     public var observationCount: Int
     /// Per-cadence-band gains relative to the global scale, keyed by band index.
     public var bands: [Int: BandGain]
+    /// GNSS metres divided by counted steps, averaged over the qualifying windows.
+    ///
+    /// **A measurement, not a model output**, and that is the whole reason it is kept.
+    /// AC-FR-S-C-2-8 requires the calibration reset to state what it does, and "your phone
+    /// has learned that you cover about 1.01 m per step" is a sentence a runner can check
+    /// against their own experience — where "scale 1.284" is not. Deriving it from the
+    /// model instead would need a representative amplitude, which is exactly the kind of
+    /// fabricated constant ADR-S-06 forbids; this needs none, because both terms were
+    /// observed over the same window.
+    ///
+    /// `nil` until the first qualifying window, and optional in the encoding so a
+    /// calibration persisted before this existed still decodes.
+    public var measuredMetresPerStep: Double?
 
-    public init(scale: Double? = nil, observationCount: Int = 0, bands: [Int: BandGain] = [:]) {
+    public init(
+        scale: Double? = nil,
+        observationCount: Int = 0,
+        bands: [Int: BandGain] = [:],
+        measuredMetresPerStep: Double? = nil
+    ) {
         self.scale = scale
         self.observationCount = observationCount
         self.bands = bands
+        self.measuredMetresPerStep = measuredMetresPerStep
+    }
+
+    /// What the rest of the app is told (AC-FR-S-C-2-6, AC-FR-S-G-1-3).
+    ///
+    /// The conversion to `ORModels.CalibrationSummary` happens here, in the type that owns
+    /// the numbers, rather than at the adapter — so there is one definition of "converged"
+    /// and of "a band with evidence", and a caller cannot arrive at a different one.
+    public func summary(configuration: CalibrationConfiguration) -> CalibrationSummary {
+        CalibrationSummary(
+            isCalibrated: scale != nil,
+            isConverged: scale != nil && observationCount >= configuration.convergenceObservations,
+            observationCount: observationCount,
+            bandsWithEvidence: bands.values.count {
+                $0.observationCount >= configuration.minimumObservationsPerBand
+            },
+            metresPerStepAtTypicalCadence: measuredMetresPerStep
+        )
     }
 
     public struct BandGain: Codable, Sendable, Hashable {
@@ -40,6 +77,21 @@ public struct CalibrationObservation: Sendable, Hashable {
     public let unscaledSum: Double
     /// Mean cadence over the window, spm, which decides the band.
     public let meanStepsPerMinute: Double
+    /// Steps detected over the window. Feeds `measuredMetresPerStep` and nothing else —
+    /// the scale is fitted against `unscaledSum`, not against a step count.
+    public let stepCount: Int
+
+    public init(
+        referenceMetres: Double,
+        unscaledSum: Double,
+        meanStepsPerMinute: Double,
+        stepCount: Int = 0
+    ) {
+        self.referenceMetres = referenceMetres
+        self.unscaledSum = unscaledSum
+        self.meanStepsPerMinute = meanStepsPerMinute
+        self.stepCount = stepCount
+    }
 }
 
 /// Learns the step-length model's scale from GNSS (standalone/design.md §6.2).
@@ -94,6 +146,8 @@ public struct Calibrator: Sendable {
         let observed = observation.referenceMetres / observation.unscaledSum
         guard observed.isFinite, observed > 0 else { return false }
 
+        recordMeasuredStepLength(observation)
+
         guard let current = state.scale else {
             // Bootstrap. Taken whole rather than through the bounded update: averaging
             // toward a nonexistent prior is meaningless, and the alternative — a
@@ -111,6 +165,24 @@ public struct Calibrator: Sendable {
         state.observationCount += 1
         applyBand(observed: observed, scale: updated, spm: observation.meanStepsPerMinute)
         return true
+    }
+
+    /// Folds this window's directly-measured metres-per-step into the running figure.
+    ///
+    /// Averaged with the same learning rate as the scale, so one window with a long red
+    /// light in it does not redefine the runner's stride — but deliberately *not* bounded
+    /// or clamped like the gain, because this value feeds no calculation. It is shown to a
+    /// runner, and a display value that has been quietly limited is a display value that
+    /// lies about what was measured.
+    private mutating func recordMeasuredStepLength(_ observation: CalibrationObservation) {
+        guard observation.stepCount > 0 else { return }
+        let metresPerStep = observation.referenceMetres / Double(observation.stepCount)
+        guard metresPerStep.isFinite, metresPerStep > 0 else { return }
+        guard let existing = state.measuredMetresPerStep else {
+            state.measuredMetresPerStep = metresPerStep
+            return
+        }
+        state.measuredMetresPerStep = existing + config.learningRate * (metresPerStep - existing)
     }
 
     private mutating func applyBand(observed: Double, scale: Double, spm: Double) {

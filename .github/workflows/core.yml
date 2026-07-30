@@ -62,3 +62,16 @@ jobs:
 
       - name: Coverage gate (NFR-S-21)
         run: Tools/coverage-gate.sh 85 Apps/iPhone/PhoneMotion
+
+      # NFR-S-1 — a 60-minute trace replays offline in under 5 s — is a *release*-build
+      # bound, and the difference is not marginal: the same replay of the same trace takes
+      # 110.9 s in debug and 1.60 s in release, a factor of 70. The debug run above skips
+      # the assertion and says so; this is where it is actually checked.
+      #
+      # Only the performance suite, because a full release test build costs more than it
+      # buys — every other test in this package asserts behaviour, which optimisation does
+      # not change (and NFR-S-14's determinism check would catch it if it did).
+      - name: Offline throughput in release (NFR-S-1)
+        run: |
+          swift test --package-path Apps/iPhone/PhoneMotion -c release \
+            --filter StandalonePerformanceTests

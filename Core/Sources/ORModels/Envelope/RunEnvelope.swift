@@ -86,6 +86,14 @@ public struct RunEnvelope: Codable, Sendable, Hashable {
     public let samples: PackedSamples
     public let route: [RoutePoint]?
     public let degradations: [DegradationFlag]
+    /// Present only for `deviceTier == .phoneStandalone` (AC-FR-S-A-4-5).
+    ///
+    /// Optional rather than a version bump: a synthesised `Codable` omits an absent
+    /// optional's key entirely, so every payload written before this field existed —
+    /// including `Fixtures/legacy-tier-envelope.payload` — still decodes, and the bytes of
+    /// a watch envelope are unchanged. `RunEnvelopeCodingTests` asserts both halves rather
+    /// than trusting the reasoning.
+    public let standalone: StandaloneRunFacts?
 
     public init(
         schemaVersion: Int = RunEnvelope.currentSchemaVersion,
@@ -104,7 +112,8 @@ public struct RunEnvelope: Codable, Sendable, Hashable {
         zoneTimeline: [ZoneSpan],
         samples: PackedSamples,
         route: [RoutePoint]?,
-        degradations: [DegradationFlag]
+        degradations: [DegradationFlag],
+        standalone: StandaloneRunFacts? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.runID = runID
@@ -123,6 +132,7 @@ public struct RunEnvelope: Codable, Sendable, Hashable {
         self.samples = samples
         self.route = route
         self.degradations = degradations
+        self.standalone = standalone
     }
 }
 

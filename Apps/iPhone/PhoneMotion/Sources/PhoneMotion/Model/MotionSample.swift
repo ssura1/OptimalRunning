@@ -104,27 +104,13 @@ public enum StepEventOrigin: String, Codable, Sendable, Hashable, CaseIterable {
     case phaseLocked
 }
 
-/// A condition worth recording about an estimate.
-public enum MotionFlag: String, Codable, Sendable, Hashable, CaseIterable {
-    /// Sample delivery fell below the configured fraction of nominal (AC-FR-S-B-1-4).
-    case sampleStarvation
-    /// The gravity-projected and magnitude channels disagreed persistently, which is
-    /// the signature of a degraded attitude estimate rather than of a bad cadence
-    /// (design.md §4.4).
-    case gravityEstimateSuspect
-    /// A step-length estimate hit a clamp (AC-FR-S-B-4-4).
-    case stepLengthClamped
-    /// GNSS and motion distance disagreed over a window (AC-FR-S-C-1-6).
-    case sourceDisagreement
-    /// Distance for part of this run came from the motion model (DEG-S-1).
-    case distanceEstimated
-    /// The step-length model has no calibration and is running on the published prior
-    /// (DEG-S-2, design.md §5.4).
-    case usingUncalibratedPrior
-    /// Swing periodicity vanished while the runner kept moving — the signature of the
-    /// phone being pocketed or handed over mid-run (DEG-S-7).
-    case carryPositionChanged
-}
+// `MotionFlag` is declared in `ORModels`, not here.
+//
+// It used to live in this file, which read naturally — it is the estimator's own vocabulary
+// for what went wrong. But these values have to reach the run record and the detail screen
+// (AC-FR-S-E-2-4, DEG-S-5), and a type declared here can only get there by every screen that
+// shows it importing this package. `Tools/check-phonemotion-isolation.sh` forbids exactly
+// that, so the declaration moved to the layer both sides already share.
 
 /// Everything the caller needs, from one call (design.md §7.1).
 public struct MotionEstimate: Sendable, Hashable {
@@ -140,6 +126,10 @@ public struct MotionEstimate: Sendable, Hashable {
     public let estimatedMetres: Double
     /// Cumulative count of detected step events.
     public let stepCount: Int
+    /// The calibration as it stands, in the form that crosses the package boundary
+    /// (AC-FR-S-C-2-6). Carried on the estimate rather than read from a property so
+    /// `tick(at:)` stays the single output entry point it was designed to be.
+    public let calibration: CalibrationSummary
     public let flags: Set<MotionFlag>
 
     public init(
@@ -150,6 +140,7 @@ public struct MotionEstimate: Sendable, Hashable {
         measuredMetres: Double,
         estimatedMetres: Double,
         stepCount: Int,
+        calibration: CalibrationSummary,
         flags: Set<MotionFlag>
     ) {
         self.cumulativeDistanceMetres = cumulativeDistanceMetres
@@ -159,6 +150,7 @@ public struct MotionEstimate: Sendable, Hashable {
         self.measuredMetres = measuredMetres
         self.estimatedMetres = estimatedMetres
         self.stepCount = stepCount
+        self.calibration = calibration
         self.flags = flags
     }
 }

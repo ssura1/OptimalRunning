@@ -5,8 +5,8 @@
 | Document | `docs/standalone/implementation.md` |
 | Track | **Standalone** — pace management on iPhone alone, no paired watch |
 | Version | 1.0 |
-| Status | Executing |
-| Last updated | 2026-07-27 |
+| Status | Executing — Waves S0–S5 built; [S-063](#s-063) and [S-064](#s-064) open |
+| Last updated | 2026-07-30 |
 | Companions | [`requirements.md`](./requirements.md), [`design.md`](./design.md) |
 | Depends on | [`../implementation.md`](../implementation.md) — the core track's Waves 0–4 are complete and are the substrate this builds on |
 
@@ -605,8 +605,11 @@ a confident cadence.
   `pedometer` all **false** — which both confirms [CON-S-1](./requirements.md#con-s-1) and exercises
   the tool's refusal path. But "records a clean 60-minute trace" is a claim only a phone can
   support, and it has not been made.
-- **Waves S3–S5 are specified and not built.** The gate between S2 and S3 is deliberate: the shape of
-  the standalone app legitimately depends on what the traces measure.
+- ~~**Waves S3–S5 are specified and not built.** The gate between S2 and S3 is deliberate: the shape
+  of the standalone app legitimately depends on what the traces measure.~~ **Built.** Wave S2
+  produced the traces and the accuracy figures the gate was waiting for, and Waves S3–S5 were built
+  against them — see [Waves S3–S5 — as built](#waves-s3s5--as-built). The paragraph above is left
+  standing rather than deleted because the gate is the reason the wave took the shape it did.
 
 ---
 
@@ -1276,6 +1279,30 @@ R² 0.000). **This retires "the features fail to transfer across sessions" as a 
 result** — there was nothing there to transfer to. What does transfer is the level: fitted on the
 ladder, the two-feature model predicts the other two sessions with bias **+0.70%** and **−0.67%**.
 
+**Addendum (Waves S3–S5) — the same structure seen from the product end.** Building the isolation
+boundary's acceptance test produced an independent observation of this cancellation, from a
+different direction and without any of the analysis above.
+[`StandaloneBoundaryTests`](../../Apps/iPhone/Tests/StandaloneBoundaryTests.swift) replays the 4.3 mi
+trace twice with `amplitudeExponent` at 0.25 and 0.670. With GNSS available throughout, **the two
+runs' distances differ by less than the display's own resolution** — the calibrator re-fits `C`
+against the same reference, so the change in the unscaled model is very nearly cancelled. Suppress
+GNSS after the tenth minute and the difference appears immediately, at **2.6%** over the outage.
+
+Two things follow that were not obvious from the offline fit. **The exponent is nearly unobservable
+on a well-calibrated GNSS run and fully observable during an outage** — which is exactly the regime
+[NFR-S-10](./requirements.md#93-accuracy) bounds and exactly the one with the least evidence behind
+it. And **the direction of its effect is not predictable from the model in isolation**: a larger `p`
+produces a smaller fitted `C`, so the residual's sign depends on how the outage stretch's amplitudes
+compare with the calibration stretch's. It came out *negative* here, against the model's positive
+prediction, which is worth knowing before anyone reasons about which way a refit will move a runner's
+distance.
+
+Separately, the same test tried the per-cadence-band gain as its second knob and found it produces
+**bit-identical** distances at band widths of 5 spm and 40 spm on this trace — the run holds
+154–165 spm throughout, so every window lands in the same band either way. **The band gain is not
+testable against any trace currently committed**, which is a second reason a second pace ladder
+matters.
+
 ---
 
 ## Wave S2 — Validation against recorded traces
@@ -1623,6 +1650,228 @@ discipline the core track's "Wave 4 — as built" section established.
 
 **Done when:** the validation-status table is current; the tier divergence matrix is accurate; every
 deviation from this plan is written up with its reasoning.
+
+---
+
+<a id="waves-s3s5--as-built"></a>
+### Waves S3–S5 — as built
+
+Deviations and findings from executing this plan, recorded here rather than in commit messages.
+
+**The wave was built boundary-first, and that was a deliberate reordering.** The plan lists S-031
+(the feed) before S-032 (the controller) before the UI; what was actually built first was the
+*adapter seam*, the gate that enforces it, and one integration test that proves it — before any
+screen existed. The reason is that the boundary's value is entirely in what it prevents, and
+prevention has to be in place before the thing it prevents has been written. Every screen added
+afterwards was added against a build that would have failed if it reached for the estimator.
+
+<a id="s3s5-the-boundary"></a>
+#### The isolation boundary, and what it cost
+
+[`Tools/check-phonemotion-isolation.sh`](../../Tools/check-phonemotion-isolation.sh) enforces three
+rules: no `import PhoneMotion` outside the sensor-feed adapter, no build dependency on it from
+`PhoneSupport` or `Core`, and no estimator tunable named anywhere else in the phone app. It is
+verified to fail on a planted violation of each, in both directions, on the same terms as every
+other gate.
+
+Making that enforceable required four changes that were not in the plan:
+
+1. **`MotionFlag` moved from `PhoneMotion` to `ORModels`.** These values have to reach the run
+   record and the detail screen (AC-FR-S-E-2-4, DEG-S-5), and a type declared in the estimator can
+   only get there by every screen importing the estimator. One declaration, both sides.
+2. **`ORModels` gained `MotionTelemetry`, `CalibrationSummary` and `CalibrationStoring`.** The
+   sensor contract already lived in `Core` ([ADR-S-02](./design.md#adr-s-02)); these extend it with
+   the facts a motion-sensing tier reports that a watch has no equivalent of. `CalibrationStoring`
+   is deliberately declared over opaque `Data` — the encoded shape belongs to the estimator and
+   will change when [S-064](#s-064) lands, and a store that knew the field names would change with
+   it.
+3. **`RunEnvelope` gained an optional `standalone: StandaloneRunFacts?`** rather than a schema
+   version bump. A synthesised `Codable` omits an absent optional's key entirely, so
+   `Fixtures/legacy-tier-envelope.payload` still decodes and a watch envelope's bytes are
+   unchanged — asserted by a test rather than reasoned about, because "adding an optional is safe"
+   is true of synthesised coding and false of several hand-written alternatives.
+4. **`RunnerProfile` gained four standalone fields and a hand-written `init(from:)`.** The fields
+   are non-optional, so a synthesised decoder would have rejected every profile snapshot written
+   before they existed — and `RunEnvelope` snapshots the profile into every stored run, so that
+   would have made a runner's whole history unreadable after an update. Same remedy as
+   `SensorCapabilities.init(from:)`.
+
+**The gate had a bug that made one of its four checks vacuous, and verifying it is what found the
+bug.** The manifest-dependency check was written as `printf … | grep -q …` under `set -o pipefail`.
+`grep -q` exits the instant it matches; the writer ahead of it takes `SIGPIPE`; `pipefail` then
+reports the *pipeline* as failed — so the condition was false exactly when the check found
+something. A deliberately planted `.package(path: "../PhoneMotion")` in `PhoneSupport/Package.swift`
+passed. Fixed with a here-string, and the trap is written into the script, because the same shape
+silently disables any `producer | grep -q` under `pipefail`.
+
+<a id="s3s5-the-acceptance-test"></a>
+#### The acceptance test, and what it measured on the way
+
+`Apps/iPhone/Tests/StandaloneBoundaryTests.swift` replays a committed 4.3 mi trace through the
+production adapter, composer, hub ingest, analysis and screen model — twice, with one field of
+`MotionEstimationConfiguration` changed between the runs — and asserts the run list, the lifetime
+statistics, the detail screen and the live screen all move. It lives in the app's test bundle
+because that is the only place both sides of the boundary are visible; the gate exempts tests for
+that reason and keeps the ban on `Sources`.
+
+Three findings came out of getting it to pass, and all three are about the estimator rather than
+about the test:
+
+**1. On a run with good GNSS throughout, the calibrator absorbs an exponent change almost
+entirely.** The first version of the test left GNSS on and asserted that swapping `p` from 0.25 to
+0.670 moved the distance; it moved it by less than the display's own resolution. That is the
+calibrator working correctly — it re-fits `C` against the same GNSS reference, so a change in the
+unscaled model is very nearly cancelled by an equal and opposite change in the scale. The test now
+suppresses GNSS after the tenth minute, which is where the exponent *matters*: while the motion leg
+is carrying the run on a scale learned earlier (DEG-S-1).
+
+This is the same compensating-errors structure [S-064](#s-064) records, arrived at from a different
+direction, and it is worth stating plainly: **the exponent is nearly unobservable on a
+well-calibrated GNSS run and fully observable during an outage.** That is exactly the regime
+[NFR-S-10](./requirements.md#93-accuracy) bounds and exactly the one with the least evidence behind
+it.
+
+**2. The direction of the exponent's effect is not predictable from the model alone.** The test
+originally asserted that a larger exponent produces a larger distance, which is true of
+`C · h · (A/(h·f²))^p` in isolation for a group above 1. With the calibrator in the loop it came out
+**2.6% lower**, because a larger `p` produces a smaller fitted `C` and the sign of the residual
+depends on how the outage stretch's amplitudes compare with the calibration stretch's. The
+assertion is now on magnitude, with the reasoning recorded next to it.
+
+**3. The per-cadence-band gain has no observable effect on the tempo trace.** It was the natural
+second knob to demonstrate the boundary with — it is the other half of what S-064 will touch — and
+band widths of 5 spm and 40 spm produced bit-identical distances. The run holds 154–165 spm
+throughout, so every window lands in the same band either way. That is a true fact about the
+recording rather than a broken boundary, and the test uses the step-detection threshold instead
+with the negative result written down. **The band gain needs the pace ladder's speed range to be
+observable at all**, which is a second reason a second ladder matters.
+
+<a id="s3s5-deg-s-7"></a>
+#### DEG-S-7 had a flag and no detector
+
+Writing the S-051 coverage table — one named test per degraded mode — found that
+`MotionFlag.carryPositionChanged` was declared, that `DistanceFusion` exposed `insert(flag:)` and
+`disqualifyCurrentWindow()` for it, and that nothing called either. The mode was specified,
+plumbed, and never implemented, and no test failed because no test asked.
+
+It is implemented now, in `PhoneMotion`, because the detection is a signal question. The design is
+worth recording because the obvious version is wrong: cadence confidence collapsing is *evidence*
+of a pocketed phone, but on its own it is also what a traffic light looks like, and a flag that
+fires every time a runner stops is a flag that means nothing. The detector requires a
+**contradiction between two live sources** — swing periodicity gone while GNSS says the runner is
+still moving — and it introduced `CarryPositionConfiguration` for its two tunables.
+
+**The first implementation had a stale-witness bug**, caught by the test that says the flag must not
+fire during a GNSS outage. Holding the last fix's speed without its timestamp made the witness
+immortal: during an outage the last good fix kept testifying that the runner was moving, so every
+outage long enough to also lose cadence confidence reported a carry-position change. Staleness is
+now judged against the same dropout window the fusion uses to switch legs, so "GNSS is carrying the
+run" and "GNSS can witness the carry position" are one condition rather than two that can drift
+apart.
+
+<a id="s3s5-deviations"></a>
+#### Other deviations, each with its reason
+
+**AC-FR-S-C-1-5's "per sample" provenance is stored as run-length-encoded spans, not a column.**
+The literal reading is a `distanceSource` column in `PackedSamples`. That would change a columnar
+format the watch tiers' goldens are written against, to carry a value that is constant across
+minutes at a time. `StandaloneRunFacts.estimatedSpans` is exact, is a few dozen bytes, and lets the
+detail chart shade the estimated stretches — which the column would also have allowed and nothing
+else would. The in-flight requirement is unaffected: `EngineInput.distanceSource` is per tick and is
+what drives the accumulation.
+
+**`RunEngine`'s "trusted with no fix" rule now distinguishes `.motionModel` from `.pedometer`.**
+AC-FR-S-C-3-2 requires the pace band to widen by 50% while distance is estimated, and the engine
+widens it on `isGPSDegraded`, which was false for a standalone outage: with no fix, any non-location
+source counted as trusted. That rule exists for treadmills — a permanently GPS-degraded indoor run
+would widen the band for the whole session and record a degradation describing nothing. So the line
+now names `.pedometer` and `.healthKit` rather than "not location". Neither watch tier emits
+`.motionModel`, so their behaviour is unchanged, which AC-FR-S-A-3-4 requires and the
+tier-equivalence goldens check.
+
+**`NSHealthUpdateUsageDescription` was missing.** The app previously only *read* from Health — the
+watch owned live capture and wrote the workout — so the write description had never been needed.
+Its absence is not a warning: `requestAuthorization(toShare:)` traps without it. Added, and
+`StandalonePermissionsTests` now reads all four descriptions out of the built bundle's own
+`Info.plist` rather than out of `project.yml`, because a project regenerated from a stale spec would
+pass a source-file check and ship without them.
+
+**Heart rate is stripped structurally in `StandaloneWorkoutComposer`, not merely never supplied.**
+The tier has no heart-rate sensor and the feed always reports `nil`, so this looked unnecessary
+until a test composed a Wave 1 fixture — recorded on a watch, and carrying heart rate — as a
+standalone run and got a phone-only run with a full HR series. AC-FR-S-A-4-3 is now enforced at the
+composer rather than trusted upstream, and `StandaloneWorkoutWriting` has no parameter that could
+carry one.
+
+**Indoors there is no distance, not a hidden one.** DEG-S-6 says distance and pace are
+"suppressed *and stated as suppressed*", and the first implementation read that as a display rule —
+the screen showed `--` while the pipeline kept accumulating metres underneath. Reviewing the split
+announcer caught what that meant: a treadmill run would have called out mile splits it had not
+covered, and would have stored a distance in the run record. A belt gives the phone nothing to
+measure displacement against, so the metres the step-length model produces indoors describe
+nothing. `MotionPipeline` now reports zero distance for an indoor run — one place, so no surface
+can disagree with another — and the composer records `DegradationFlag.indoorRun` so the run says
+*why* it has none. It is added there rather than inferred by `RunEngine` from `.pedometer` with no
+fix, because this tier does not use `CMPedometer` at all and misreporting the source to trigger an
+inference would be a lie in the record.
+
+That change has a consequence worth following through rather than leaving: **every interval preset's
+steps end at a distance**, so indoors a rep would never end and the runner would be stuck on step
+one with nothing to advance it — `canAdvanceManually` is true only for open goals. The start flow
+therefore offers the three steady types indoors and the full five outdoors, and says why. Hiding
+them is the honest form of DEG-S-6's "offer a timed-only run"; showing them and letting one hang
+would not be.
+
+**`StandaloneSampleStore` duplicates the watch's `SampleStore` rather than sharing it.** Not
+laziness and not tier-isolation dogma: what differs is what has to survive. A watch run's samples
+are the whole record; a standalone run's are not, because its cadence, provenance, calibration state
+and estimated spans are facts no `RunSample` carries. A recovered orphan that lost them would come
+back claiming a distance with nothing to say about where the distance came from.
+
+**`CueSpeaking` and `HapticPlaying` are `@MainActor`**, for the same reason `RunSensorFeed` is: the
+run controller is main-actor isolated and calls both synchronously from its tick, so the alternative
+is an enqueued hop between an alert being decided and the buzz arriving.
+
+**A local-environment note that will cost someone an hour otherwise.** Adding a *new file* to
+`ORModels` does not invalidate a dependent package's cached build plan on this SwiftPM version, so
+`swift test --package-path Apps/WatchModern/WatchSupport` failed with `cannot find type
+'StandaloneRunFacts' in scope` — an error inside `Core`, from a package that had not changed. Both
+watch packages needed `rm -rf .build` once and then passed unchanged (WatchSupport 160 tests,
+LegacySupport 39). CI checks out fresh and never sees it; a contributor pulling this commit will.
+
+**The boundary test replays 12 minutes rather than the full 40.8.** Six full replays of 245 000
+samples took eleven minutes in a debug simulator build, for a claim that is structural rather than
+statistical. Twelve minutes of the same recorded signal fits a calibration, exercises an outage and
+propagates a configuration change; the suite runs in about four.
+
+**NFR-S-1 is a release-build bound, and the margin is 70×.** Writing the performance test found it
+failing by a factor of 33 — and the same replay of the same trace on the same machine takes
+**110.9 s** in debug and **1.60 s** in release, which scales to 163 s and 2.36 s per hour of
+trace against a five-second budget. So the requirement holds comfortably, and only in release.
+
+Two of the three available responses were wrong. Relaxing the bound to 165 s would restate a
+published requirement to match an unoptimised build; asserting it in `swift test` would make the
+suite permanently red. The debug run now **skips**, naming the figure it measured, and `core.yml`
+re-runs the performance suite with `-c release` where the bound is genuinely checked — 3.7 s for
+the whole suite. `Fixtures/motion/README.md`'s `motionreplay` invocations gained `-c release` for
+the same reason: two minutes versus two seconds is the difference between the tool being used and
+not.
+
+<a id="s3s5-not-built"></a>
+#### What is *not* built, and is not pretended to be
+
+- **Nothing in `Tools/standalone-manual-protocol.md` has been run.** Background survival, cue
+  intelligibility at speed, haptic distinctness in the hand, battery and CPU are all unverified —
+  [§12.2](./requirements.md#122-what-is-hardware-verification-only) says which and why. The protocol
+  exists and has a results template; it is waiting on a device and a runner.
+- **The live screen has never been seen on hardware.** Its *model* is tested exhaustively without a
+  simulator, which is the point of `StandaloneMetricsScreen` being a value type — but "legible at
+  arm's length in motion" (AC-FR-S-D-3-3) is a claim only a run can support.
+- **`HKWorkoutBuilder` has never written a real workout.** The composition and the authorization
+  paths are tested against a fake; the framework call is not, and cannot be in CI.
+- **[S-063](#s-063) and [S-064](#s-064) remain open**, and this wave does not touch them. What it
+  does is make them a one-package change when they land — which the acceptance test now demonstrates
+  rather than asserts.
 
 ---
 

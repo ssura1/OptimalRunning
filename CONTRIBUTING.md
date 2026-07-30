@@ -34,7 +34,16 @@ send your data anywhere" is only credible if something checks it.
 
 **Every tunable lives in `PaceEngineConfiguration`.** A numeric literal in engine logic
 is a review rejection. A constant at its use site cannot be tuned, cannot be
-snapshotted into a run record, and cannot be validated.
+snapshotted into a run record, and cannot be validated. The standalone tier's equivalent
+is `MotionEstimationConfiguration`, and a tunable named there may not be named anywhere
+else in the phone app.
+
+**Only the sensor-feed adapter imports `PhoneMotion`.** The phone's motion estimator is
+still being improved — a refitted exponent, a calibration correction, possibly a
+gyroscope term — and each of those should be a change to one package, not a hunt through
+screens. So the run controller, the live screen, Statistics, Settings and the hub see
+`Core` types only. If you need a fact the estimator has, put it on
+`ORModels.MotionTelemetry` and let the adapter fill it in.
 
 **Percentages are percentages of *pace*, never of speed.** 9:00/mi is 12.5% slower than
 8:00/mi because 540/480 = 1.125. Getting this backwards does not crash anything — it

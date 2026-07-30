@@ -328,7 +328,8 @@ public struct DistanceFusion: Sendable {
         calibrator.apply(CalibrationObservation(
             referenceMetres: windowReferenceMetres,
             unscaledSum: windowUnscaledSum,
-            meanStepsPerMinute: windowCadenceSum / Double(windowCadenceCount)))
+            meanStepsPerMinute: windowCadenceSum / Double(windowCadenceCount),
+            stepCount: windowStepCount))
     }
 
     /// Marks the window in flight as unusable — for conditions the fusion layer cannot

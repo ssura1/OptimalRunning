@@ -36,6 +36,21 @@ public struct MotionEstimator: Sendable {
     private var starvationWindowStart: TimeInterval?
     private var flags: Set<MotionFlag> = []
 
+    /// Instantaneous GNSS speed from the most recent *usable* fix, m/s, with the time it
+    /// arrived. The independent witness the carry-position detector needs.
+    ///
+    /// The timestamp is not decoration. Holding the speed alone made the witness immortal:
+    /// during a GNSS outage the last good fix kept testifying that the runner was moving,
+    /// so every outage long enough to also lose cadence confidence reported a
+    /// carry-position change. The detector's whole premise is a *contradiction between two
+    /// live sources*, and a source that stopped reporting is not one.
+    private var latestFix: (speed: Double?, at: TimeInterval)?
+    /// When the swing signal was last present while the runner was moving.
+    private var lastCoherentSwingTime: TimeInterval?
+    /// Whether the carry position is currently judged to have changed, so the flag and the
+    /// window disqualification fire on the transition rather than on every tick.
+    private var carryPositionIsSuspect = false
+
     public init(
         configuration: MotionEstimationConfiguration = .default,
         carryPosition: CarryPosition = .handHeld,
@@ -79,6 +94,11 @@ public struct MotionEstimator: Sendable {
     /// The calibration to persist when the run ends (AC-FR-S-C-2-2).
     public var calibration: CalibrationState { fusion.calibration }
 
+    /// The same calibration in the form anything outside this package is allowed to see.
+    public var calibrationSummary: CalibrationSummary {
+        fusion.calibration.summary(configuration: config.calibration)
+    }
+
     /// Feeds one motion sample. Returns the step events it completed.
     @discardableResult
     public mutating func ingest(_ sample: MotionSample) -> [StepEvent] {
@@ -117,12 +137,16 @@ public struct MotionEstimator: Sendable {
 
     /// Feeds one position fix.
     public mutating func ingest(_ fix: LocationFix) {
+        if fix.isUsable(maxHorizontalAccuracy: config.fusion.maxHorizontalAccuracyMetres) {
+            latestFix = (fix.speedMetresPerSecond, fix.timestamp)
+        }
         fusion.ingest(fix: fix)
     }
 
     /// Advances the clock and returns the current estimate.
     public mutating func tick(at now: TimeInterval) -> MotionEstimate {
         fusion.tick(at: now)
+        detectCarryPositionChange(at: now)
         let current = cadence.current
         return MotionEstimate(
             cumulativeDistanceMetres: fusion.cumulativeMetres,
@@ -132,6 +156,7 @@ public struct MotionEstimator: Sendable {
             measuredMetres: fusion.measuredMetres,
             estimatedMetres: fusion.estimatedMetres,
             stepCount: stepCount,
+            calibration: calibrationSummary,
             flags: flags.union(fusion.flags))
     }
 
@@ -176,6 +201,67 @@ public struct MotionEstimator: Sendable {
             unscaled: unscaled,
             stepsPerMinute: spm,
             cadenceIsConfident: confident)
+    }
+
+    /// Detects the phone leaving the hand mid-run (DEG-S-7).
+    ///
+    /// **The signature is a contradiction between two sources, not a threshold on one.**
+    /// A hand-held phone swings at stride frequency and produces a strong, stable
+    /// periodicity; a pocketed one is quasi-rigidly coupled to the pelvis and produces a
+    /// different signal the estimator is not fitted for (ADR-S-04). Cadence confidence
+    /// collapsing is therefore *evidence* — but on its own it is also what a traffic light
+    /// looks like, and flagging a carry-position change every time a runner stops would
+    /// make the flag meaningless.
+    ///
+    /// GNSS is the witness that separates them: confidence gone **while the runner is
+    /// demonstrably still moving** is the pocket case, and confidence gone while they are
+    /// stationary is DEG-S-8, which is already handled by the stationary threshold.
+    ///
+    /// The consequence is deliberately conservative — flag it, and stop the calibrator
+    /// learning from the window — rather than switching legs. AC-FR-S-C-1-6's reasoning
+    /// applies unchanged: the damage a bad window does to a persisted calibration is
+    /// permanent, while a few tens of metres of degraded distance is not. GNSS is already
+    /// preferred whenever it is available, which is exactly when this fires.
+    private mutating func detectCarryPositionChange(at now: TimeInterval) {
+        // Needs a *live* GNSS witness saying the runner is moving. With no recent fix there
+        // is no witness, and the honest answer is to make no claim: an outage is already
+        // flagged as an outage, and adding a carry-position flag to every underpass would
+        // be inventing a second reason for the same event.
+        //
+        // Staleness is judged against the same dropout window the fusion uses to switch
+        // legs, so "GNSS is carrying the run" and "GNSS can witness the carry position" are
+        // one condition rather than two that could drift apart.
+        guard let latest = latestFix,
+            now - latest.at <= config.fusion.gnssDropoutSeconds,
+            let speed = latest.speed,
+            speed >= config.carry.movingSpeedMetresPerSecond
+        else {
+            lastCoherentSwingTime = now
+            return
+        }
+
+        let confidence = cadence.current?.confidence ?? 0
+        if confidence >= config.cadence.minimumTrustedConfidence {
+            lastCoherentSwingTime = now
+            if carryPositionIsSuspect {
+                // Recovered. The flag stays on the run — it is a record of what happened —
+                // but the calibrator is allowed to learn again.
+                carryPositionIsSuspect = false
+            }
+            return
+        }
+
+        guard let since = lastCoherentSwingTime else {
+            lastCoherentSwingTime = now
+            return
+        }
+        guard now - since >= config.carry.incoherentSwingSeconds else { return }
+        guard !carryPositionIsSuspect else { return }
+
+        carryPositionIsSuspect = true
+        flags.insert(.carryPositionChanged)
+        fusion.insert(flag: .carryPositionChanged)
+        fusion.disqualifyCurrentWindow()
     }
 
     /// Watches sample delivery against the configured rate (AC-FR-S-B-1-4).

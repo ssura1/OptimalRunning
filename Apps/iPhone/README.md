@@ -33,6 +33,39 @@ usefully faked at this level (`WCSession`, `HKHealthStore`). Everything else is 
 | `Analysis/RunAnalysis.swift` | Charts, zones, splits, reps, route segments | T-056…T-060 |
 | `Downlink/PhoneContextPublisher.swift` | The one application context, plus `ProfileRepository` | T-050, T-062 |
 | `Profile/PaceDerivation.swift` | Riegel normalisation and pace suggestions | T-062 |
+| `Standalone/StandaloneRunController.swift` | The phone-only run: feed, engine, store, cues, haptics | S-032 |
+| `Standalone/StandaloneMetricsScreen.swift` | The live screen, as a value type | S-044 |
+| `Standalone/CueComposer.swift` | `AlertCommand` → spoken cue. **A renderer, not a policy** | S-041 |
+| `Standalone/SplitAnnouncer.swift` | Splits, on their own channel and not through `AlertPolicy` | S-042 |
+| `Standalone/StandaloneHaptics.swift` | The tactile vocabulary and which switch gates it | S-043 |
+| `Standalone/WorkoutComposition.swift` | The envelope, and the HealthKit seam | S-033, S-034 |
+| `Standalone/StandaloneSampleStore.swift` | Crash-durable capture, and orphan recovery | S-032 |
+| `Standalone/CalibrationFileStore.swift` | The calibration between runs, as opaque bytes | S-052 |
+
+## The standalone tier, and the one boundary that matters
+
+The phone can record a run on its own ([ADR-S-01](../../docs/standalone/design.md#adr-s-01)) — not
+as a second app, but as a second personality of this one. The estimation behind it lives in
+`PhoneMotion/`, a pure package that builds on Linux
+([ADR-S-03](../../docs/standalone/design.md#adr-s-03)).
+
+**Exactly one directory in this target may import it**: `Sources/Standalone/Sensors/`, the
+sensor-feed adapter. The capture tool is the only other exemption, because it writes
+`PhoneMotion`'s own trace format. Everything else — the run controller, the live screen,
+Statistics, Settings, the hub — sees `Core` types only, and
+[`Tools/check-phonemotion-isolation.sh`](../../Tools/check-phonemotion-isolation.sh) fails the
+build otherwise.
+
+That is not architectural tidiness. [S-063](../../docs/standalone/implementation.md#s-063) has a
+measured amplitude exponent waiting to replace the shipped one,
+[S-064](../../docs/standalone/implementation.md#s-064) has a calibration over-read to fix first, and
+[ADR-S-06 amendment 2](../../docs/standalone/design.md#adr-s-06-amendment-2) has a gyroscope term
+that would add a whole feature to the model. Every one of those should be a one-package change, and
+`Tests/StandaloneBoundaryTests.swift` demonstrates it by swapping a configuration field and
+asserting the run list, the statistics and the live screen all move.
+
+If you need a fact the estimator has, add it to `ORModels.MotionTelemetry` and have the adapter
+fill it in. Do not reach for the import.
 
 ### Why `Tests/` exists as well
 
