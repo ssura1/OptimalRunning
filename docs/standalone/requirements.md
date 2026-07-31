@@ -865,6 +865,17 @@ because they have three different fixes:
 The actionable conclusion is that the slow mile does not show an estimator defect. It shows the GNSS
 over-read already recorded under NFR-S-9, at a magnitude consistent with the tempo run.
 
+**The first figure from the shipped product, 2026-07-30.** A 2.8 mi hand-held outdoor run reported
+**2.88 mi, +2.9%** — inside NFR-S-9's bound, and consistent in sign and magnitude with the +2.65%
+GNSS scale bias above. It is recorded as an observation and **not** as validation of that
+requirement: the reference was a single unsurveyed distance rather than a closed loop with
+independently confirmed laps, and one run cannot separate a scale bias from a coincidence.
+
+It carries one piece of evidence for [S-064](./implementation.md#s-064) that the traces could not:
+the run raised `stepLengthClamped` and told the runner that some step lengths had been limited. That
+is the over-read appearing on a **different runner's gait** from the one every committed trace was
+recorded with — which is the generality question S-064 and the second pace ladder both turn on.
+
 ### 12.2 What is hardware-verification-only
 
 Recorded here rather than discovered later. These cannot be automated on this project's CI, for the

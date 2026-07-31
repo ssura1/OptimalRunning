@@ -1303,6 +1303,20 @@ Separately, the same test tried the per-cadence-band gain as its second knob and
 testable against any trace currently committed**, which is a second reason a second pace ladder
 matters.
 
+**Addendum (field, 2026-07-30) — the first sighting on a different runner.** The 2.88 mi hand-held
+run recorded by the shipped product raised `stepLengthClamped` and surfaced "some step lengths were
+outside the plausible range and were limited" on the run detail screen. Every trace this task has
+been reasoned about was recorded by one runner; this is the same over-read on **a different gait**,
+which is the generality question the whole task turns on. It is one observation and it is not a
+measurement — nobody counted steps and the distance reference was unsurveyed — but it is the first
+evidence that the clamps firing is not a property of one person's stride.
+
+Two things would now make this measurable, and neither is new: the 60-second counted-step segment
+([NFR-S-8](./requirements.md#121-validation-status), still missing from every trace) and a second
+pace ladder from a different runner. A run recorded by the shipped app can now be exported whole
+([S-067](#s-067)), so a field run and a capture from the same session can be compared against each
+other rather than described.
+
 ---
 
 ## Wave S2 — Validation against recorded traces
