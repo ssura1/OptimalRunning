@@ -202,6 +202,26 @@ public struct RunnerProfile: Codable, Sendable, Hashable {
     /// AC-FR-S-D-1-5 says so explicitly, and a clock that speaks every five minutes is the
     /// fastest way to make a runner turn the voice off entirely.
     public var timeAnnouncementIntervalSeconds: TimeInterval?
+    /// How fast cues are spoken, as a multiple of the platform's default rate.
+    ///
+    /// A *scale* rather than an absolute rate because "the default rate" is a property of
+    /// the speech engine, not of this app, and it differs by platform and by voice. Storing
+    /// 0.45 here would silently mean something different on a device where the default is
+    /// not 0.5.
+    ///
+    /// Below 1 by default. The first field test found the previous 1.1 hard to parse while
+    /// running, which is the condition that matters — a cue that has to be replayed in your
+    /// head is a cue you acted on late.
+    public var speechRateScale: Double
+    /// Which installed system voice speaks, or `nil` for the best one available.
+    ///
+    /// An opaque identifier, and deliberately so: it is `AVSpeechSynthesisVoice.identifier`,
+    /// a string only the app target can interpret, and `Core` has no business importing
+    /// AVFoundation to hold it. The same reasoning as `CalibrationStoring`'s opaque `Data`.
+    ///
+    /// `nil` is the normal state, not a missing value — it means "whatever is best on this
+    /// device today", which stays correct after the runner downloads a better voice.
+    public var speechVoiceIdentifier: String?
 
     public init(
         tempoPace: Pace? = nil,
@@ -214,7 +234,9 @@ public struct RunnerProfile: Codable, Sendable, Hashable {
         heightMetres: Double? = nil,
         spokenCuesEnabled: Bool = true,
         splitAnnouncementsEnabled: Bool = true,
-        timeAnnouncementIntervalSeconds: TimeInterval? = nil
+        timeAnnouncementIntervalSeconds: TimeInterval? = nil,
+        speechRateScale: Double = RunnerProfile.defaultSpeechRateScale,
+        speechVoiceIdentifier: String? = nil
     ) {
         self.tempoPace = tempoPace
         self.easyPace = easyPace
@@ -227,6 +249,31 @@ public struct RunnerProfile: Codable, Sendable, Hashable {
         self.spokenCuesEnabled = spokenCuesEnabled
         self.splitAnnouncementsEnabled = splitAnnouncementsEnabled
         self.timeAnnouncementIntervalSeconds = timeAnnouncementIntervalSeconds
+        self.speechRateScale = speechRateScale
+        self.speechVoiceIdentifier = speechVoiceIdentifier
+    }
+
+    /// Slightly under the platform default. See `speechRateScale`.
+    public static let defaultSpeechRateScale = 0.9
+
+    /// The range a rate scale is meaningful over.
+    ///
+    /// Clamped where a profile crosses a trust boundary — on decode, and again where the
+    /// speaker reads it. A profile arrives from a synced watch, from a stored envelope, or
+    /// from a version of this app that has not been written yet, and a value of `0` from any
+    /// of those is a run with no spoken feedback and no indication why.
+    public static let speechRateScaleRange = 0.6...1.3
+
+    /// A usable rate scale from an arbitrary stored `Double`.
+    ///
+    /// Written out rather than composed from `min`/`max` because those propagate `NaN`
+    /// — `Swift.max(.nan, 0.6)` is `.nan`, not `0.6` — and a `NaN` rate is an utterance
+    /// AVFoundation declines to speak.
+    public static func validSpeechRateScale(_ raw: Double) -> Double {
+        guard raw.isFinite else { return defaultSpeechRateScale }
+        if raw < speechRateScaleRange.lowerBound { return speechRateScaleRange.lowerBound }
+        if raw > speechRateScaleRange.upperBound { return speechRateScaleRange.upperBound }
+        return raw
     }
 
     /// Hand-written because the standalone fields are **not** optional and a synthesised
@@ -253,6 +300,12 @@ public struct RunnerProfile: Codable, Sendable, Hashable {
             try container.decodeIfPresent(Bool.self, forKey: .splitAnnouncementsEnabled) ?? true
         timeAnnouncementIntervalSeconds = try container.decodeIfPresent(
             TimeInterval.self, forKey: .timeAnnouncementIntervalSeconds)
+        let rate =
+            try container.decodeIfPresent(Double.self, forKey: .speechRateScale)
+            ?? RunnerProfile.defaultSpeechRateScale
+        speechRateScale = RunnerProfile.validSpeechRateScale(rate)
+        speechVoiceIdentifier = try container.decodeIfPresent(
+            String.self, forKey: .speechVoiceIdentifier)
     }
 
     /// The stored base pace for a run type, or `nil` if none is set.

@@ -874,20 +874,34 @@ reasons given. **The protocol for all of them is
 
 | Item | Why not automatable | Status |
 |---|---|---|
-| AC-FR-S-A-2-1 — background survival | Requires a real device, a locked screen, and elapsed wall-clock time | Protocol §1, **not yet run** |
+| AC-FR-S-A-2-1 — background survival | Requires a real device, a locked screen, and elapsed wall-clock time | Protocol §1, **not yet run** as specified; incidentally exercised 2026-07-30 over a 25-minute run |
 | AC-FR-S-D-1-6 — a run conducted without looking | Requires a runner | Protocol §2, **not yet run** |
-| AC-FR-S-D-1-4 — audible on silent, ducks music | The Simulator has no ring switch and no audio route to change | Protocol §3.1, **not yet run** |
-| AC-FR-S-D-1-9 — cue intelligibility at speed | Requires ears, wind and music | Protocol §3.2, **not yet run** |
+| AC-FR-S-D-1-4 — audible on silent, ducks music | The Simulator has no ring switch and no audio route to change | Protocol §3.1 — **failed 2026-07-30**, fixed in [S-065](./implementation.md#s-065), **retest pending** |
+| AC-FR-S-D-1-9 — cue intelligibility at speed | Requires ears, wind and music | Protocol §3.2 — **partially failed 2026-07-30** (first cue unparseable; voice robotic and too fast), addressed in [S-065](./implementation.md#s-065) and [S-066](./implementation.md#s-066), **retest pending** |
+| S-066 — voice choice and speed | Which voices exist is a property of the device, not of the build | Protocol §3.2a, **not yet run** |
 | DEG-S-9, DEG-S-10 — route loss, interrupting call | XCTest cannot disconnect headphones or place a call | Protocol §3.3–3.4, **not yet run** |
-| AC-FR-S-D-2-1, AC-FR-S-D-2-3 — haptic distinctness, background haptics | The Simulator has no Taptic Engine | Protocol §4, **not yet run** |
+| AC-FR-S-D-2-1, AC-FR-S-D-2-3 — haptic distinctness, background haptics | The Simulator has no Taptic Engine | Protocol §4 — **informally passed 2026-07-30** ("could feel the haptics working"); the blind distinctness test is **not yet run** |
 | NFR-S-2, NFR-S-4, NFR-S-5 — CPU and battery | No simulator proxy is meaningful | Protocol §6, **not yet run** |
-| AC-FR-S-D-3-3 — legible at arm's length in motion | Requires a runner | Protocol §2, **not yet run** |
+| AC-FR-S-D-3-3 — legible at arm's length in motion | Requires a runner | Protocol §2 — **informally passed 2026-07-30**; the structured-session form is **not yet run** |
 | Every accuracy figure | [CON-S-1](#con-s-1): the Simulator has no motion sensors at all | Recorded traces, per [§12.1](#121-validation-status) |
 
 **A protocol item with no recorded result is an unverified requirement**, and this table says so
-rather than implying otherwise. The tier's *logic* is covered — 170 tests in `PhoneSupport`, 104 in
-`PhoneMotion`, and the boundary suite in the app target — but the parts of the product a runner
-actually experiences are, at the time of writing, unverified on hardware.
+rather than implying otherwise. The tier's *logic* is covered — 180 tests in `PhoneSupport`, 104 in
+`PhoneMotion`, and the boundary and audio-session suites in the app target — but most of what a
+runner actually experiences is still unverified on hardware.
+
+**The first field session, 2026-07-30**, is why several rows above changed from "not yet run" to a
+result. Two hand-held outdoor phone runs with music playing. It found one severe defect
+([S-065](./implementation.md#s-065) — the runner's music ducked at the first cue and stayed down for
+the whole run) and two quality defects ([S-066](./implementation.md#s-066)), none of which any test
+in this repository could have caught, and all of which sat in the layer §12.2 exists to describe.
+It also produced the tier's first hardware distance figure: **2.88 mi against a 2.8 mi reference,
++2.9%**, inside [NFR-S-9](#nfr-s-9)'s 3% bound but from a single unsurveyed reference, so it is
+recorded as an observation and not as validation of that requirement.
+
+Entries marked *informally passed* were observed in passing rather than run as the protocol
+specifies, and are **not** a substitute for it — "I could feel the haptics" is not the blind
+four-pattern distinctness test that AC-FR-S-D-2-1 asks for.
 
 ---
 

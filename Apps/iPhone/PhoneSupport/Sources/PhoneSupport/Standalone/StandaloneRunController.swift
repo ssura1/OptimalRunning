@@ -151,6 +151,11 @@ public final class StandaloneRunController {
         wasGPSDegraded = false
         store.startRun(runID: runID, startedAt: startedAt, runType: plan.runType)
 
+        // Before the first sensor tick, so the voice asset is loaded by the time an alert
+        // can fire. `prepare` deliberately does not touch the audio session — warming the
+        // engine must not duck the runner's music while they are still standing still.
+        cues.prepare(SpeechSettings(profile: profile))
+
         // AC-FR-S-A-4-4: a declined write is a handled state. The run starts either way —
         // refusing to record because Health said no would lose the run to a permission the
         // run does not need.
@@ -334,7 +339,12 @@ public final class StandaloneRunController {
     public func apply(profile updated: RunnerProfile) {
         let engineAffecting = updated.paceHapticsEnabled != profile.paceHapticsEnabled
             || updated.basePace(for: plan.runType) != profile.basePace(for: plan.runType)
+        let speech = SpeechSettings(profile: updated)
+        let speechChanged = speech != SpeechSettings(profile: profile)
         profile = updated
+        // Only when they actually changed: `prepare` renders a warm-up utterance, and doing
+        // that on every unrelated settings write would be work done mid-run for nothing.
+        if speechChanged { cues.prepare(speech) }
         if engineAffecting, phase == .idle {
             engine = RunEngine(configuration: configuration, plan: plan, profile: updated)
         }

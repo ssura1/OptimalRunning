@@ -70,6 +70,8 @@ final class FakeStandaloneFeed: MotionTelemetryReporting, CalibrationProducing {
 final class SpyCueSpeaker: CueSpeaking {
     private(set) var spoken: [SpokenCue] = []
     private(set) var stopCount = 0
+    private(set) var prepared: [SpeechSettings] = []
+    func prepare(_ settings: SpeechSettings) { prepared.append(settings) }
     func speak(_ cue: SpokenCue) { spoken.append(cue) }
     func stop() { stopCount += 1 }
     var phrases: [String] { spoken.map(\.phrase) }

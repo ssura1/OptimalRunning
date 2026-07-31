@@ -37,6 +37,45 @@ final class StandaloneContractTests: XCTestCase {
         XCTAssertNil(
             profile.timeAnnouncementIntervalSeconds,
             "AC-FR-S-D-1-5: elapsed-time announcements are off by default")
+        XCTAssertEqual(profile.speechRateScale, RunnerProfile.defaultSpeechRateScale)
+        XCTAssertNil(
+            profile.speechVoiceIdentifier,
+            "no stored voice means best-available, which stays right after the runner "
+                + "downloads a better one")
+    }
+
+    /// A rate scale arrives from a synced watch, a stored envelope, or a build that does not
+    /// exist yet. `0` is a run with no spoken feedback and no indication why; `NaN` is an
+    /// utterance AVFoundation declines to speak at all.
+    func testAnOutOfRangeSpeechRateIsClampedRatherThanTrusted() throws {
+        func rate(from literal: String) throws -> Double {
+            let json = """
+                {
+                  "units": "miles",
+                  "palette": "standard",
+                  "paceHapticsEnabled": true,
+                  "crownAdvanceEnabled": false,
+                  "speechRateScale": \(literal)
+                }
+                """
+            return try JSONDecoder()
+                .decode(RunnerProfile.self, from: Data(json.utf8)).speechRateScale
+        }
+
+        XCTAssertEqual(try rate(from: "0"), RunnerProfile.speechRateScaleRange.lowerBound)
+        XCTAssertEqual(try rate(from: "-4"), RunnerProfile.speechRateScaleRange.lowerBound)
+        XCTAssertEqual(try rate(from: "99"), RunnerProfile.speechRateScaleRange.upperBound)
+        XCTAssertEqual(try rate(from: "0.85"), 0.85, "a value in range is left alone")
+    }
+
+    /// `Swift.max(.nan, 0.6)` is `.nan`, so the obvious `min`/`max` clamp would let a
+    /// non-finite value straight through.
+    func testANonFiniteSpeechRateFallsBackToTheDefault() {
+        XCTAssertEqual(
+            RunnerProfile.validSpeechRateScale(.nan), RunnerProfile.defaultSpeechRateScale)
+        XCTAssertEqual(
+            RunnerProfile.validSpeechRateScale(.infinity),
+            RunnerProfile.defaultSpeechRateScale)
     }
 
     func testAProfileWithEveryStandaloneFieldRoundTrips() throws {
@@ -46,7 +85,9 @@ final class StandaloneContractTests: XCTestCase {
             heightMetres: 1.77,
             spokenCuesEnabled: false,
             splitAnnouncementsEnabled: false,
-            timeAnnouncementIntervalSeconds: 300)
+            timeAnnouncementIntervalSeconds: 300,
+            speechRateScale: 0.8,
+            speechVoiceIdentifier: "com.apple.voice.enhanced.en-US.Evan")
 
         let decoded = try JSONDecoder().decode(
             RunnerProfile.self, from: try JSONEncoder().encode(profile))

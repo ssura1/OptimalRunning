@@ -69,14 +69,18 @@ struct ProfileView: View {
     private var developerSection: some View {
         Section {
             NavigationLink("Motion Capture") { MotionCaptureView() }
+            NavigationLink("Export Runs") { RunExportView() }
         } header: {
             Text("Developer")
         } footer: {
             Text(
                 """
-                Records raw motion to a file for algorithm development. The iOS Simulator \
-                has no accelerometer, so this needs a real device — see \
+                Motion Capture records raw motion to a file for algorithm development. The \
+                iOS Simulator has no accelerometer, so it needs a real device — see \
                 Tools/motion-recording-protocol.md.
+
+                Export Runs shares any recorded run as JSON, with its route reduced to \
+                offsets from its own starting point.
                 """)
         }
     }

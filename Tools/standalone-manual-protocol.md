@@ -82,11 +82,23 @@ knew what the workout wanted at every moment without looking. Note anything you 
 | Step | Expected |
 |---|---|
 | Play music, start a run, wait for a cue | Music ducks, cue is audible, music returns to full volume |
+| Wait for a **second** cue a few minutes later | Music ducks and returns again, independently |
+| End the run | Music is at full volume |
 | Set the ring/silent switch to **silent**, repeat | The cue is still audible |
 | Set the phone's volume to 50%, repeat | The cue is still intelligible over the music |
 
 The silent-switch case is the one that matters most: most runners run on silent, and
 `.ambient` would be the tidier-looking category and would silence the product for them.
+
+**The "music returns" rows are a regression check, not a formality.** The 2026-07-30 run
+failed exactly there: the music ducked for the first cue and stayed down for the rest of the
+run. `.duckOthers` ducks for as long as the session is *active*, not for as long as something
+is speaking, and the first implementation held one activation across the whole run. The
+sequence of session calls is now asserted in `SpeechCuePlayerTests` — but no test can hear
+whether the volume actually comes back, which is why these rows exist.
+
+Two cues, not one: a single cue would pass even if the release only ever happened at the end
+of the run.
 
 ### 3.2 Intelligibility at speed — AC-FR-S-D-1-9
 
@@ -95,6 +107,7 @@ mentally to parse.
 
 | Cue | Heard as intended? |
 |---|---|
+| The **first** cue of the run | |
 | "Ease off. *N* seconds fast." | |
 | "Pick it up. *N* seconds slow." | |
 | "Recovery. 400 metres." | |
@@ -102,10 +115,32 @@ mentally to parse.
 | "GPS signal lost. Pace is estimated." | |
 | "Workout complete." | |
 
+**The first cue has its own row because it failed on 2026-07-30** and later cues did not. It
+pays two costs the others do not: the voice asset is loaded on first use, and the duck ramp
+has not finished when the first word lands. Both are now paid ahead of time — the voice is
+warmed at `start()` and every utterance has a 0.3 s lead-in — but "is the first cue as clear
+as the fourth" is only answerable by ear.
+
 **The split cue is the one under suspicion.** It contains two clock-style paces, and whether
 `AVSpeechSynthesizer` reads "7:58" as "seven fifty-eight" rather than "seven colon five eight"
 is a question about the system voice, not about this code. If it reads badly, the fix is in
 `StandaloneStrings.splitCue`.
+
+### 3.2a Voice and speed — S-052
+
+Under **Profile › Phone Runs › Voice**. "Play a Sample" speaks a real pace cue, so this can
+be judged indoors before committing a run to it.
+
+| Step | Expected |
+|---|---|
+| Open the section with only the stock voice installed | The footer says better voices are a free download, and names where |
+| Download an Enhanced or Premium English voice in Settings › Accessibility › Spoken Content › Voices, reopen | It appears in the picker, labelled with its quality, and is chosen by "Best available" |
+| Play a sample at each of Slower / Normal / Faster | Audibly different, all three followable |
+| Run with the chosen voice | It is still the chosen voice — the setting survives the run starting |
+
+The default is **Normal**, which is 0.9× the platform default; the version tested on
+2026-07-30 spoke at 1.1× and was reported as too fast. Third-party and Siri voices cannot be
+used by any app — Apple's own downloads are the whole of what is available.
 
 ### 3.3 Route change — DEG-S-9
 
@@ -244,8 +279,11 @@ Weather / conditions:    ____________________
 
 1.  Background survival (15 min locked)       PASS / FAIL   notes:
 2.  Screen-never-looked-at run                PASS / FAIL   notes:
+3.1 Music returns after cue 1 / cue 2 / end   PASS / FAIL
 3.1 Ducking + silent switch                   PASS / FAIL
+3.2 First cue intelligible                    PASS / FAIL
 3.2 Intelligibility  (list any unclear cue)   PASS / FAIL   notes:
+3.2a Voice chosen: ____________  speed: Slower / Normal / Faster
 3.3 Headphone disconnect                      PASS / FAIL
 3.4 Interrupting call                         PASS / FAIL
 4.1 Haptic distinctness (blind)               ___ / 4 correct
@@ -264,3 +302,28 @@ Anything that went differently from the plan:
 **A deviation noted is data; a deviation unnoted is noise.** Record the road crossing, the
 lost signal, the pace you could not hold — the analysis can handle a stated irregularity and
 cannot handle an unstated one.
+
+---
+
+## Sending the runs back
+
+**Profile › Developer › Export Runs.** Every recorded run is listed, newest first, phone and
+watch alike — including runs recorded by an earlier build, because the export is assembled
+from what the store already holds rather than from anything captured at the time. Nothing has
+to be switched on beforehand.
+
+Tap a run to prepare it, then share; or prepare the whole set and AirDrop them together. On a
+Mac they belong in `data/`, which is not tracked by git.
+
+Each file carries the summary, the full sample series, the splits, the degradation flags and —
+for phone runs — the calibration state, the step count, and which stretches of the run were
+estimated rather than measured. That last field is the first thing worth looking at when a
+distance comes out wrong.
+
+**Routes are stored as metres east and north of each run's own first fix.** The shape,
+length, turn radius and fix spacing all survive; the origin does not, and there is no option
+to include it. A screenshot of the run detail screen shows the map — an export does not, so
+the two are not interchangeable and the export is the safer thing to send.
+
+Worth pairing with a note of what the *reference* was: "2.80 mi by the measured course" turns
+a file into a measurement.

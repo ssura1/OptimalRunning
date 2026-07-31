@@ -127,6 +127,33 @@ public enum CueComposer {
     }
 }
 
+/// How the runner wants cues spoken.
+///
+/// Both fields are plain values, and `voiceIdentifier` is an opaque `String` this layer
+/// never interprets — the speech engine lives in the app target and `PhoneSupport` does
+/// not import AVFoundation. What this type is really for is making the *settings* half of
+/// speech testable without a synthesizer: whether a corrupt stored rate reaches an
+/// utterance is a question about this initialiser, not about audio hardware.
+public struct SpeechSettings: Sendable, Hashable {
+
+    /// Multiple of the platform's default speech rate. Always within
+    /// `RunnerProfile.speechRateScaleRange`.
+    public let rateScale: Double
+    /// The chosen system voice, or `nil` for "best available on this device".
+    public let voiceIdentifier: String?
+
+    public init(rateScale: Double, voiceIdentifier: String?) {
+        self.rateScale = RunnerProfile.validSpeechRateScale(rateScale)
+        self.voiceIdentifier = voiceIdentifier
+    }
+
+    public init(profile: RunnerProfile) {
+        self.init(
+            rateScale: profile.speechRateScale,
+            voiceIdentifier: profile.speechVoiceIdentifier)
+    }
+}
+
 /// Speaks a cue on real hardware. Implemented in the app target over
 /// `AVSpeechSynthesizer`; faked in tests.
 ///
@@ -135,6 +162,13 @@ public enum CueComposer {
 /// which cannot happen while an utterance is in flight.
 @MainActor
 public protocol CueSpeaking: AnyObject {
+    /// Applies the runner's voice settings and warms the engine before the run.
+    ///
+    /// Separate from `speak` because the first utterance of a run pays a cost the rest do
+    /// not — loading the voice asset — and paying it while the runner is waiting to hear
+    /// "ease off" is how the first cue of a run gets missed. Field-tested: the first cue on
+    /// 2026-07-30 was heard but not parsed.
+    func prepare(_ settings: SpeechSettings)
     func speak(_ cue: SpokenCue)
     func stop()
 }

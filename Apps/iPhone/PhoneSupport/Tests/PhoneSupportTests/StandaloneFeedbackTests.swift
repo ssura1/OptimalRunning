@@ -168,6 +168,67 @@ final class StandaloneFeedbackTests: XCTestCase {
         XCTAssertEqual(StandaloneHaptics.pattern(for: pickUp), .speedUp)
     }
 
+    // MARK: - Voice settings (S-066, FR-S-G-1)
+
+    /// A rate that reached an utterance unchecked would be a run with no audible cues and
+    /// nothing on screen to explain it. The clamp belongs at the boundary the value crosses,
+    /// which is this initialiser — the settings picker can only produce valid values, but a
+    /// profile synced from a watch or decoded from a stored envelope is not the picker.
+    func testSpeechSettingsRefuseAnUnusableRateFromAStoredProfile() {
+        var profile = RunnerProfile.standaloneDefault
+        profile.speechRateScale = 0
+
+        XCTAssertEqual(
+            SpeechSettings(profile: profile).rateScale,
+            RunnerProfile.speechRateScaleRange.lowerBound)
+        XCTAssertEqual(
+            SpeechSettings(rateScale: .nan, voiceIdentifier: nil).rateScale,
+            RunnerProfile.defaultSpeechRateScale)
+    }
+
+    /// The first cue of a run pays for loading the voice asset. Paying it at `start()`,
+    /// while the runner is still standing still, is the difference between hearing "ease
+    /// off, twelve seconds fast" and hearing that something was said — which is what the
+    /// 2026-07-30 field test reported.
+    func testTheVoiceIsWarmedBeforeARunCanProduceItsFirstCue() async throws {
+        let h = makeHarness()
+        try await h.controller.start()
+
+        XCTAssertEqual(
+            h.cues.prepared.count, 1,
+            "the speaker must be prepared exactly once by starting a run")
+        XCTAssertTrue(
+            h.cues.spoken.isEmpty,
+            "and before anything has been said, which is the whole point of doing it at "
+                + "start rather than lazily on the first alert")
+        XCTAssertEqual(
+            h.cues.prepared.first?.rateScale,
+            RunnerProfile.validSpeechRateScale(RunnerProfile.standaloneDefault.speechRateScale))
+    }
+
+    /// `prepare` renders a warm-up utterance, so doing it on every settings write would be
+    /// work performed mid-run for nothing.
+    func testChangingAnUnrelatedSettingDoesNotReWarmTheVoice() async throws {
+        let h = makeHarness()
+        try await h.controller.start()
+
+        var profile = h.controller.profile
+        profile.splitAnnouncementsEnabled.toggle()
+        h.controller.apply(profile: profile)
+        XCTAssertEqual(h.cues.prepared.count, 1, "split announcements are not a voice change")
+
+        profile.speechRateScale = 0.8
+        h.controller.apply(profile: profile)
+        XCTAssertEqual(h.cues.prepared.count, 2)
+        XCTAssertEqual(h.cues.prepared.last?.rateScale, 0.8)
+
+        profile.speechVoiceIdentifier = "com.apple.voice.premium.en-US.Zoe"
+        h.controller.apply(profile: profile)
+        XCTAssertEqual(h.cues.prepared.count, 3)
+        XCTAssertEqual(
+            h.cues.prepared.last?.voiceIdentifier, "com.apple.voice.premium.en-US.Zoe")
+    }
+
     // MARK: - Channel independence (AC-FR-S-D-1-7, AC-FR-S-D-2-4)
 
     func testDisablingSpokenCuesLeavesHapticsAsACompleteChannel() async throws {

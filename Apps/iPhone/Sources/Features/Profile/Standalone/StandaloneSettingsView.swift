@@ -22,6 +22,20 @@ struct StandaloneSettingsView: View {
     @State private var calibration: CalibrationSummary = .uncalibrated
     @State private var isImportingHeight = false
     @State private var showResetConfirmation = false
+    @State private var voices: [SpeechVoiceOption] = []
+    /// Held in `@State` so the sample plays through one synthesizer for the life of the
+    /// screen rather than a new one per body evaluation.
+    @State private var preview = SpeechCuePlayer()
+
+    /// The three speeds offered, as multiples of the platform default.
+    ///
+    /// Named steps rather than a slider: the difference between 0.88 and 0.91 is not
+    /// something a runner can choose meaningfully, and a slider invites them to try.
+    private static let rateOptions: [(label: String, scale: Double)] = [
+        ("Slower", 0.8),
+        ("Normal", RunnerProfile.defaultSpeechRateScale),
+        ("Faster", 1.0),
+    ]
 
     /// Injected so the preview and the tests are not writing to the real one.
     let calibrationStore: any CalibrationStoring
@@ -34,12 +48,16 @@ struct StandaloneSettingsView: View {
         List {
             heightSection
             audioSection
+            voiceSection
             hapticsSection
             calibrationSection
         }
         .navigationTitle("Phone Runs")
         .navigationBarTitleDisplayMode(.inline)
         .task { load() }
+        // Leaving the screen mid-sample must not leave the runner's music ducked waiting
+        // for a sentence nobody is listening to any more (S-065).
+        .onDisappear { preview.stop() }
         .confirmationDialog(
             "Reset stride calibration?",
             isPresented: $showResetConfirmation,
@@ -135,6 +153,58 @@ struct StandaloneSettingsView: View {
         }
     }
 
+    /// Which voice, and how fast (S-066).
+    ///
+    /// Both settings exist because of one field test. The shipped voice was the compact
+    /// system default — the robotic one — spoken 10% faster than the platform default, and
+    /// the report was that it sounded robotic and was hard to follow while running.
+    ///
+    /// The footer is doing real work. A runner asking "can I use a better voice" deserves
+    /// the true answer, which has two halves: no, you cannot install a third-party or Siri
+    /// voice into an app, and yes, Apple's Enhanced and Premium voices are a free download
+    /// that this picker will pick up. Only shown when there is in fact an upgrade to make.
+    private var voiceSection: some View {
+        Section {
+            if voices.count > 1 {
+                Picker("Voice", selection: voiceBinding) {
+                    Text("Best available").tag(String?.none)
+                    ForEach(voices) { option in
+                        voiceLabel(option).tag(String?.some(option.id))
+                    }
+                }
+            }
+            Picker("Speed", selection: rateBinding) {
+                ForEach(Self.rateOptions, id: \.scale) { option in
+                    Text(option.label).tag(option.scale)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Button("Play a Sample") { playSample() }
+        } header: {
+            Text("Voice")
+        } footer: {
+            Text(
+                SpeechVoiceCatalog.hasUpgradeAvailable(voices)
+                    ? "Only the basic voice is installed, which is the robotic-sounding one. "
+                        + "Better voices are a free download in Settings › Accessibility › "
+                        + "Spoken Content › Voices — download an Enhanced or Premium English "
+                        + "voice and it will appear here. Voices from other apps and Siri's "
+                        + "own voice cannot be used."
+                    : "Cues use the best voice installed on this phone. More are available in "
+                        + "Settings › Accessibility › Spoken Content › Voices.")
+        }
+    }
+
+    @ViewBuilder
+    private func voiceLabel(_ option: SpeechVoiceOption) -> some View {
+        if let quality = option.qualityLabel {
+            Text("\(option.name) · \(quality)")
+        } else {
+            Text(option.name)
+        }
+    }
+
     private var hapticsSection: some View {
         Section {
             // The same setting the watch uses, deliberately — a runner who turned pace
@@ -209,10 +279,40 @@ struct StandaloneSettingsView: View {
         }
     }
 
+    private var voiceBinding: Binding<String?> {
+        Binding(
+            get: { profile.speechVoiceIdentifier },
+            set: { profile.speechVoiceIdentifier = $0; save(); applyToPreview() })
+    }
+
+    private var rateBinding: Binding<Double> {
+        Binding(
+            get: { RunnerProfile.validSpeechRateScale(profile.speechRateScale) },
+            set: { profile.speechRateScale = $0; save(); applyToPreview() })
+    }
+
     private func load() {
         profile = (try? ProfileRepository(context: modelContext).profile()) ?? RunnerProfile()
         calibration = CalibrationBridge.summary(
             of: calibrationStore.loadCalibration(for: .handHeld))
+        voices = SpeechVoiceCatalog.installed()
+        applyToPreview()
+    }
+
+    private func applyToPreview() {
+        preview.prepare(SpeechSettings(profile: profile))
+    }
+
+    /// A real cue rather than "This is a sample of the selected voice".
+    ///
+    /// The runner is choosing a voice for one job, and the only useful question is whether
+    /// *this sentence* is followable at running speed. A generic sample answers a question
+    /// nobody is asking.
+    private func playSample() {
+        preview.speak(
+            SpokenCue(
+                kind: .pace(.easeOff, secondsOff: 12),
+                phrase: StandaloneStrings.paceCue(direction: .easeOff, secondsOff: 12)))
     }
 
     private func save() {

@@ -1238,17 +1238,44 @@ devices learns one vocabulary.
 
 ### 9.3 Audio session
 
-`.playback` category with `.duckOthers` and `.mixWithOthers`. This is the combination that makes a
-cue audible over music, resumes the music afterwards, and — importantly — is **not silenced by the
-ring/silent switch**
+`.playback` category with `.duckOthers` and `.mixWithOthers`, in mode `.voicePrompt`. This is the
+combination that makes a cue audible over music, resumes the music afterwards, and — importantly —
+is **not silenced by the ring/silent switch**
 ([AC-FR-S-D-1-4](./requirements.md#fr-s-d-1--audio-is-the-primary-feedback-channel)). A runner whose
 phone is on silent, which is most runners, must still hear the cue that is the product's primary
 channel.
 
-The session is active for the run's duration and deactivated at its end
+`.voicePrompt` rather than `.spokenAudio`: the two are near-opposites of intent. `.spokenAudio`
+declares *this* app to be the continuous spoken content and asks others to pause for it, which is
+what an audiobook player wants; `.voicePrompt` is the mode for navigation-style speech over someone
+else's audio, which is what a pace cue is.
+
+~~The session is active for the run's duration and deactivated at its end~~ — **superseded, see
+[S-065](./implementation.md#s-065).** That was the shipped design and it was wrong, for a reason
+worth stating plainly here rather than only in the implementation log: **`.duckOthers` ducks for as
+long as the session is active, not for as long as something is speaking.** Holding one activation
+across a run therefore holds the runner's music at reduced volume across the whole run. It did, for
+twenty-five minutes, on 2026-07-30.
+
+The session is now held for **a cue**, not for a run: activated per cue and released with
+`.notifyOthersOnDeactivation`, which is the only signal that returns another app to full volume.
+Cues arriving within a quiet period of each other share one activation, so a step transition
+followed by a split does not dip the music twice. Release is bounded by a watchdog, because the
+release is driven by the synthesizer reporting an utterance finished and a report that never
+arrives would reproduce the original bug by a second route.
+
+Teardown at the end of a run still releases unconditionally
 ([AC-FR-S-A-2-3](./requirements.md#fr-s-a-2--the-run-stays-alive-in-the-background)), and route
 changes — headphones disconnecting — continue the run on the device speaker rather than silently
 ceasing to alert ([DEG-S-9](./requirements.md#8-degraded-modes-standalone)).
+
+**Which voice speaks is the runner's choice** ([S-066](./implementation.md#s-066)). The default is
+the highest-quality voice installed for the device's language rather than whatever
+`AVSpeechSynthesisVoice(language:)` returns, because that returns the compact voice and the compact
+voice is the one a runner describes as robotic. The chosen identifier lives on `RunnerProfile` as an
+opaque `String` — `Core` holds it and never interprets it, the same arrangement as
+`CalibrationStoring`'s opaque `Data`, and for the same reason: the meaning of that string belongs to
+AVFoundation, which `Core` must not import.
 
 ### 9.4 The screen, when it is looked at
 

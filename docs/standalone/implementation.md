@@ -1893,6 +1893,126 @@ not.
 
 ---
 
+<a id="wave-s6-first-field-session"></a>
+## Wave S6 — What the first field session found
+
+The first run of the built product on real hardware, 2026-07-30: two phone runs, 0.22 mi and
+2.88 mi, hand-held, outdoors, with music playing.
+
+**Most of it worked.** Haptics were felt and were distinct. The live screen was legible. Distance
+came out **2.88 mi against a 2.8 mi reference — +2.9%**, and the run appeared in the library with
+the phone badge, the provenance bar, and the motion notices, exactly as the tier matrix says it
+should. None of that had been seen outside a test before.
+
+**The audio did not.** Three findings, one of them severe, all of them in a layer no CI run can
+reach — which is the whole argument for [S-054](#s-054) existing.
+
+One observation is recorded here and deliberately not acted on, per the track brief: the 2.88 mi run
+carried the `stepLengthClamped` flag and reported "some step lengths were outside the plausible
+range and were limited". That is [S-064](#s-064)'s over-read seen from the product end on a
+*different runner's* gait than the traces were fitted to. It is evidence for that task, not a
+defect in this wave.
+
+### S-065 — The music ducked and never came back
+
+**Satisfies** FR-S-D-1, AC-FR-S-D-1-3 · **Wave** S6 · **Done**
+
+> "The music would temporarily dim but WOULD NOT get back louder again after the audio message
+> ended."
+
+**`.duckOthers` ducks for as long as the session is active, not for as long as something is
+speaking.** [S-041](#s-041) activated the session at the first cue and released it at `stop()`,
+with a comment reasoning that reactivating per cue would make the music stutter every minute. The
+reasoning was sound and the conclusion was backwards: the alternative it actually chose was not
+"no stutter", it was a runner's music at reduced volume for twenty-five minutes.
+
+The fix is to hold the session for a *cue* rather than for a *run*: activate per cue, and release
+with `.notifyOthersOnDeactivation` once the utterance reports back. Nothing else restores another
+app's volume. The stutter the original comment worried about is real, and is bounded by a 0.25 s
+quiet period that coalesces cues arriving together — a step transition and a split land within a
+second of each other and now share one duck.
+
+Three things fell out of writing the test, and each is a separate way back into the same failure:
+
+1. **The route-change handler clears the "configured" flag** so the next cue reconfigures for the
+   new route (DEG-S-9). A release guarded on that flag would silently do nothing, and headphones
+   coming out mid-cue would leave the music down for the rest of the run. `deactivate()` is
+   therefore *not* guarded on it, with a comment saying why, because the guard is the obvious
+   thing to add.
+2. **A cue that never reports back would hold the session forever.** The release is driven by
+   `didFinish`/`didCancel`; a synthesizer that declines to speak — because the session would not
+   activate, because the route vanished — delivers neither. Found because the first version of the
+   test waited on a real utterance and timed out on a simulator, which has no audio route. A 30 s
+   watchdog now bounds it. No cue is remotely that long, so a healthy run never reaches it.
+3. **An interruption must not release the session.** The system already took it for the call, and
+   `stopSpeaking` delivers `didCancel` on the way out — which would otherwise walk straight into a
+   release under someone else's phone call.
+
+**Verified in both directions.** `AudioSessionControlling` extracts the two `AVAudioSession` calls
+so the *sequence* is observable;
+[`SpeechCuePlayerTests`](../../Apps/iPhone/Tests/SpeechCuePlayerTests.swift) asserts the release, its
+options, its timing relative to the utterance, and each of the three routes above. What no test can
+assert is that the volume audibly returns — there is no API that reports another app's loudness, and
+a simulator has no other app. §3.1 of the manual protocol carries that, and now asks for **two**
+cues, because one would pass even if the release only ever happened at the end of the run.
+
+### S-066 — A robotic voice, spoken too fast
+
+**Satisfies** FR-S-G-1, AC-FR-S-D-1-9 · **Wave** S6 · **Done**
+
+> "The length of the audio message is right the voice just sounds really robotic … if there is any
+> way to import a different voice to make it sound more human and less robotic (and also a little
+> slower) that would be great."
+
+**There is no way to import a voice.** `AVSpeechSynthesizer` loads no third-party assets and Siri's
+voices are not vended to apps. What exists is Apple's own Enhanced and Premium voices — a free
+download in Settings › Accessibility › Spoken Content › Voices — which are **not installed by
+default**. With nothing else present, `AVSpeechSynthesisVoice(language:)` returns the compact voice,
+and the compact voice is the robotic one. The app was not choosing badly; it was not choosing at all.
+
+So `SpeechVoiceCatalog` picks the best installed voice by quality, the settings screen offers the
+list with quality labels, and the footer states the true answer including the part that is a "no".
+Novelty voices are excluded (a joke voice reading "ease off, twelve seconds fast" is not a pace cue)
+and so is Personal Voice, which needs an authorization this app does not request — offering one that
+would silently fail is worse than not offering it.
+
+Rate moves from a hardcoded `1.1 ×` to a profile field defaulting to **0.9 ×**, with three named
+steps. `RunnerProfile` gains `speechRateScale` and `speechVoiceIdentifier`; the identifier is an
+opaque `String` that `Core` never interprets, for the same reason `CalibrationStoring` trades in
+opaque `Data`. A rate arriving from a synced watch or a stored envelope is clamped where it crosses
+the boundary — spelled out rather than composed from `min`/`max`, because `Swift.max(.nan, 0.6)` is
+`.nan` and a `NaN` rate is an utterance AVFoundation declines to speak at all.
+
+### S-067 — Runs that can leave the phone
+
+**Satisfies** NFR-S-21, CON-S-5 · **Wave** S6 · **Done**
+
+Screenshots were the only way to get a run off the device, and a screenshot of "2.88 mi" cannot be
+analysed. **Profile › Developer › Export Runs** lists every recorded run — both tiers, including
+runs recorded by earlier builds, because the export is assembled from what the store already holds
+rather than from anything captured at the time of the run.
+
+Each file carries the summary, the full sample series, the splits, the degradation flags, and for
+phone runs the calibration state, the step count and the estimated spans. That last field is the
+first question asked of a distance that looks wrong.
+
+**Routes are reduced to metres east and north of each run's own first fix**, using the same transform
+as `Tools/scrub-trace.swift`. This is structural, not a setting: `ExportedFix` has no field that
+could hold a latitude, so an export that leaked one would not compile. [S-059](#s-059) is why —
+a convenience switch here would be that mistake with a nicer interface.
+
+Both halves are tested, because either alone is worthless. An export that carries no position is
+trivial to write (emit nothing) and an export that preserves everything is the mistake already made.
+So: the origin must be gone — asserted against the serialised **bytes**, since the model is where a
+field could later be added that happens to carry a coordinate — and the track's length must survive,
+within 1% of its haversine length.
+
+The privacy assertion was checked by planting a leak, and **the first version of it passed anyway at
+one of four precisions**: `String(format: "%.5f", 42.361145)` is `"42.36115"`, which does not occur
+in `"42.361145"`, so a rounding check skips whichever precisions happen to round up. It truncates now.
+
+---
+
 <a id="recording-protocol-what-to-capture-and-why"></a>
 ## Recording protocol — what to capture, and why
 

@@ -14,3 +14,19 @@
 
 Each gate is verified to fail on a deliberate violation, not merely to pass on a clean
 tree — a gate that has never gone red is not known to work.
+
+| Protocol | For |
+|---|---|
+| `manual-test-protocol.md` | The watch tiers, by hand |
+| `standalone-manual-protocol.md` | The phone tier, by hand — everything CI cannot reach (S-054) |
+| `motion-recording-protocol.md` | Recording a raw motion trace for algorithm work |
+| `pace-ladder-protocol.md` | The speed-varying recording the step-length model is fitted against |
+
+| Script | Does |
+|---|---|
+| `scrub-trace.swift` | Replaces absolute GNSS fixes in a recorded trace with offsets from its own first fix, before it is ever committed (S-059) |
+
+The same transform runs on-device in `RunExport` ([S-067](../docs/standalone/implementation.md#s-067)),
+which is how a recorded run leaves a test phone — **Profile › Developer › Export Runs**. Exports and
+traces from the same run are compared against each other, so the two implementations must agree on
+the constant they use.
