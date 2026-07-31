@@ -90,6 +90,13 @@ struct RunExportView: View {
             }
         } header: {
             Text("Runs")
+        } footer: {
+            // Two taps, and the icon says which one you are on. `ShareLink` needs its file
+            // to exist before the row is built, so a row cannot both prepare and share on
+            // one tap without hand-rolling the share sheet — not worth it for a tool only
+            // ever used a few times per test session.
+            Text("Tap a run to prepare it, then tap again to share. AirDrop to a Mac is "
+                + "quickest; the files are also in the Files app under On My iPhone.")
         }
     }
 
