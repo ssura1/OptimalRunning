@@ -261,23 +261,32 @@ jobs:
             echo "::error::Info.plist has no WKApplication=true — a real watch will refuse this bundle with InvalidWatchKitApp, even though the Simulator installs it fine."
             exit 1
           fi
-          # And neither WatchKit 2.0 companion key, which is the *second* way a real watch
-          # refuses this bundle. Carrying either one sends it down
-          # _validateCompanionAppStateInWatchKitApp, which then demands a companion bundle
-          # identifier — MIInstaller error 97, InvalidCompanionAppBundleIdentifier. A
-          # watchOS 9+ single-target app has no companion by construction, and ADR-002
-          # gives this tier its own bundle identifier precisely so it never gains one.
+          # Companion state, which is the *second*, independent way a real watch refuses
+          # this bundle. _validateCompanionAppStateInWatchKitApp runs over every WatchKit
+          # app and requires it to declare either a companion iPhone app, via
+          # WKCompanionAppBundleIdentifier, or the deliberate absence of one, via
+          # WKWatchOnly. Declaring neither raises MIInstaller error 97,
+          # InvalidCompanionAppBundleIdentifier. Passing the WKApplication check above buys
+          # nothing here: layout and companion state are separate questions.
           #
-          # Asserted because the mistake was made: WKApplication was added while
-          # WKRunsIndependentlyOfCompanionApp was left in place on the assumption that a
-          # stale key was harmless, and the next install failed on exactly this.
+          # ADR-002 gives this tier its own bundle identifier and no iPhone app, so
+          # watch-only is the branch — the same one Xcode's own watchOS App template takes
+          # when you pick "Watch-only App" over either companion variant.
+          if ! plutil -extract WKWatchOnly raw "$APP/Info.plist" 2>/dev/null | grep -qx true; then
+            echo "::error::Info.plist has no WKWatchOnly=true — a real watch will refuse this bundle with InvalidCompanionAppBundleIdentifier, even though the Simulator installs it fine."
+            exit 1
+          fi
+          # WKCompanionAppBundleIdentifier is the other branch and cannot be combined with
+          # it. WKRunsIndependentlyOfCompanionApp is a WatchKit 2.0 extension key asserting
+          # a companion exists but is not required, which contradicts watch-only and appears
+          # nowhere in Xcode's watchOS templates.
           for legacy in WKCompanionAppBundleIdentifier WKRunsIndependentlyOfCompanionApp; do
             if plutil -extract "$legacy" raw "$APP/Info.plist" >/dev/null 2>&1; then
-              echo "::error::Info.plist carries $legacy. That is a WatchKit 2.0 companion-model key; alongside WKApplication a real watch refuses the bundle with InvalidCompanionAppBundleIdentifier. This tier has no companion app (ADR-002)."
+              echo "::error::Info.plist carries $legacy, which claims a companion iPhone app. This tier is watch-only (ADR-002) and declares WKWatchOnly; the two are mutually exclusive."
               exit 1
             fi
           done
-          echo "ok: WKApplication set, no companion-model keys"
+          echo "ok: WKApplication + WKWatchOnly set, no companion-model keys"
 
           # The deployment target again, this time as the linker actually recorded it
           # rather than as the project claims it. The earlier check reads build

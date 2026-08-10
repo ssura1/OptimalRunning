@@ -1816,6 +1816,33 @@ present; the gate is verified to go red with one architecture removed.
 > gate existed for the tier that could not use a simulator at all, and not for the tier that could.
 > So the same assertion now runs here, on the produced bundle, and is verified red both with the key
 > removed and with it set to `false`.
+>
+> **Extended again after the second real install, which also failed** — `MIInstaller` error 97,
+> `InvalidCompanionAppBundleIdentifier`, "Missing WKCompanionAppBundleIdentifier key in WatchKit 2.0
+> app's Info.plist", raised from `_validateCompanionAppStateInWatchKitApp`. The bundle was missing
+> `WKWatchOnly`.
+>
+> `WKApplication` and `WKWatchOnly` answer two different questions and the installer asks both:
+> which bundle *layout* this is, and whether it has a companion iPhone app. Clearing error 92 bought
+> nothing against 97. A WatchKit app must declare either a companion via
+> `WKCompanionAppBundleIdentifier` or the deliberate absence of one via `WKWatchOnly`; this bundle
+> declared neither, so the installer held it to the companion contract and found no identifier.
+>
+> **The first diagnosis was wrong and is recorded here rather than quietly replaced.** Error 97 was
+> attributed to a stale `WKRunsIndependentlyOfCompanionApp` key, which was removed on the theory that
+> it dragged the bundle onto the companion path. The next install failed identically, which disproved
+> that: the key was never the cause. Removing it was still correct — it is a WatchKit 2.0 *extension*
+> key claiming a companion exists but is not required, which contradicts watch-only — but it was
+> hygiene, not the fix. The real evidence came from Xcode's own watchOS App template, which offers
+> exactly three variants: two set `INFOPLIST_KEY_WKCompanionAppBundleIdentifier`, and the "Watch-only
+> App" variant sets `INFOPLIST_KEY_WKWatchOnly=YES`. ADR-002 puts this tier on the third branch.
+>
+> The gate now asserts `WKWatchOnly=true` alongside `WKApplication=true`, and is verified red on five
+> mutations of the real built bundle independently: each key removed, `WKWatchOnly` set to `false`,
+> and each of the two companion keys added.
+>
+> Both defects were latent since Wave 2 and neither is reachable from a simulator, which is why these
+> assertions live on the device-build step rather than in a test.
 
 <a id="t-100"></a>
 ### T-100 — Confirm the Smart Stack workout suggestion, and change nothing to get it

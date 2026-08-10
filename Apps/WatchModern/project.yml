@@ -108,23 +108,35 @@ targets:
         # bundle-layout assertion added alongside this closes that gap, mirroring what
         # legacy.yml has always asserted for its own key.
         WKApplication: true
-        # `WKRunsIndependentlyOfCompanionApp` is deliberately ABSENT, and its absence is
-        # load-bearing rather than an omission.
+        # REQUIRED for a watch app with no iPhone app, and likewise invisible until a
+        # real watch refuses it — with a *different* error from the one above.
         #
-        # It was present here, and adding `WKApplication` beside it was assumed harmless.
-        # It is not. That key and `WKCompanionAppBundleIdentifier` are both WatchKit 2.0
-        # *companion-model* keys, and carrying either sends the bundle down
-        # `_validateCompanionAppStateInWatchKitApp`, which then demands the companion
-        # bundle identifier the other key would have supplied. The result on a real watch
-        # is `MIInstaller` error 97, InvalidCompanionAppBundleIdentifier — a second
-        # install refusal immediately after fixing the first.
+        # `WKApplication` and `WKWatchOnly` answer two different questions, and the
+        # installer asks both. `WKApplication` answers "which bundle layout is this?"
+        # (single-target, versus WatchKit 2.0's app+extension pair). `WKWatchOnly`
+        # answers "does this app have a companion iPhone app?". Satisfying the first
+        # says nothing about the second: `_validateCompanionAppStateInWatchKitApp` runs
+        # over every WatchKit app and requires it to declare either a companion, via
+        # `WKCompanionAppBundleIdentifier`, or the deliberate absence of one, via this
+        # key. Declaring neither is what raises `MIInstaller` error 97,
+        # InvalidCompanionAppBundleIdentifier — the bundle never claimed to be watch-only,
+        # so the installer holds it to the companion contract and finds no identifier.
         #
-        # A watchOS 9+ single-target app declared by `WKApplication` has no companion by
-        # construction, which is exactly what ADR-002 specifies for this tier: its own
-        # bundle identifier, sharing nothing with `Apps/iPhone` but `Core`. Naming a
-        # companion would contradict that; declaring independence from a companion that
-        # cannot exist is meaningless. So neither key belongs here, and the gate in
-        # `apps.yml` asserts both are gone rather than trusting this comment.
+        # Not deduced from the error text, which names only the key it wanted: Xcode's own
+        # watchOS App template offers exactly three variants, and the watch-only one sets
+        # `INFOPLIST_KEY_WKWatchOnly=YES` where the other two set
+        # `INFOPLIST_KEY_WKCompanionAppBundleIdentifier`. Watch-only is the ADR-002 shape
+        # for this tier, so this is the branch we are on.
+        WKWatchOnly: true
+        # `WKRunsIndependentlyOfCompanionApp` is deliberately ABSENT — but as hygiene, not
+        # as the fix for the above. It was present here, was suspected of causing error 97,
+        # and was removed; the next install failed identically, which disproved that.
+        #
+        # It is a WatchKit 2.0 *extension* key meaning "there is a companion, but this app
+        # runs without it" — a distinct claim from `WKWatchOnly`'s "there is no companion",
+        # and one that contradicts ADR-002's shape for this tier. It appears nowhere in
+        # Xcode's watchOS templates. So it does not belong here, and the gate in `apps.yml`
+        # asserts it is gone; what it does not do is keep a watch from refusing the bundle.
         # AC-FR-B-1-6 / design.md §7 "Background delivery": haptics and the live
         # workout session must survive the app being backgrounded. "audio" is not
         # about playing sound — it is the documented, Apple-sanctioned background
