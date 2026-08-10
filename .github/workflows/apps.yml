@@ -97,6 +97,10 @@ jobs:
             scheme: OptimalRunner
             simctlPlatform: iOS
             deviceNameFilter: 'iPhone'
+            # The app's own deployment target. A runtime below it cannot install the
+            # build, and picking one is a confusing failure late rather than a clear
+            # one early.
+            minOSMajor: '17'
             watchOSFloor: ''
           - name: Watch Modern (watchOS 26+)
             runner: macos-26
@@ -104,6 +108,7 @@ jobs:
             scheme: OptimalRunnerWatch
             simctlPlatform: watchOS
             deviceNameFilter: 'Watch'
+            minOSMajor: '26'
             watchOSFloor: '26'
     steps:
       - uses: actions/checkout@v4
@@ -140,36 +145,71 @@ jobs:
           fi
           echo "ok: SDK $SDK builds a declared floor of $DEPLOY"
 
+      # Resolves to a **UDID**, not a name, and that is the whole point of this step.
+      #
+      # A device *name* is not unique. An image carrying several runtimes has the same
+      # model in each — `macos-26` ships watchOS 26.2, 26.4 and 26.5 — and each one also
+      # appears once per architecture, so `name=Apple Watch Series 11 (46mm)` matched
+      # three devices and xcodebuild refused to guess: "the requested device could not be
+      # found because multiple devices matched the request". A UDID matches exactly one.
+      #
+      # This could not have been caught locally: a development Mac normally has a single
+      # runtime installed, so name resolution is unambiguous there by construction and
+      # ambiguous on a runner by construction. Resolving by UDID removes the difference
+      # rather than relying on the two environments happening to agree.
+      #
+      # The runtime is also floored at the app's own deployment target and the newest
+      # qualifying one is chosen, so the selection is deterministic instead of depending
+      # on dict ordering, and a runtime too old to install the build is rejected up front
+      # with a clear message rather than failing obscurely at install time.
       - name: Resolve an available simulator
         id: sim
         run: |
           set -euo pipefail
-          # First available device + runtime matching the platform, from simctl's
-          # own JSON — no assumption about which model or OS version is present.
           RESULT=$(xcrun simctl list devices available -j \
             | python3 -c '
-          import json, sys
-          data = json.load(sys.stdin)
+          import json, re, sys
           platform = "${{ matrix.simctlPlatform }}"
           name_filter = "${{ matrix.deviceNameFilter }}"
+          min_major = int("${{ matrix.minOSMajor }}" or 0)
+
+          data = json.load(sys.stdin)
+          candidates = []
           for runtime, devices in data["devices"].items():
               if platform not in runtime:
                   continue
+              # ...SimRuntime.watchOS-26-5 -> (26, 5)
+              match = re.search(r"%s-(\d+)(?:-(\d+))?$" % re.escape(platform), runtime)
+              if not match:
+                  continue
+              version = (int(match.group(1)), int(match.group(2) or 0))
+              if version[0] < min_major:
+                  continue
               for device in devices:
                   if name_filter in device["name"] and device.get("isAvailable", True):
-                      print(device["name"])
-                      sys.exit(0)
-          sys.exit(1)
+                      candidates.append((version, device["name"], device["udid"]))
+
+          if not candidates:
+              sys.stderr.write(
+                  "no %s simulator matching %r at OS %d or newer\n"
+                  % (platform, name_filter, min_major))
+              sys.exit(1)
+
+          candidates.sort(key=lambda c: (c[0], c[1]), reverse=True)
+          version, name, udid = candidates[0]
+          print("%s|%s|%d.%d" % (udid, name, version[0], version[1]))
           ')
-          echo "device=$RESULT" >> "$GITHUB_OUTPUT"
-          echo "Resolved simulator: $RESULT"
+          UDID="${RESULT%%|*}"
+          REST="${RESULT#*|}"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          echo "Resolved simulator: ${REST%%|*} (${{ matrix.simctlPlatform }} ${REST##*|}) $UDID"
 
       - name: Build and test
         run: |
           xcodebuild test \
             -project "${{ matrix.project }}" \
             -scheme "${{ matrix.scheme }}" \
-            -destination "platform=${{ matrix.simctlPlatform }} Simulator,name=${{ steps.sim.outputs.device }}"
+            -destination "platform=${{ matrix.simctlPlatform }} Simulator,id=${{ steps.sim.outputs.udid }}"
 
       # T-099. The step above builds for the *simulator*, which on an Apple Silicon
       # runner is a single arm64 slice and therefore says nothing about what will
