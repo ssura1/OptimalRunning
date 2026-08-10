@@ -67,6 +67,12 @@ final class LiveSensorFeed: NSObject, RunSensorFeed {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.activityType = .fitness
+        // Coupled to the bundle's `UIBackgroundModes`, which must declare `location`:
+        // CoreLocation calls setting this without it "a fatal error" and kills the
+        // process. Because this sits in `init()` and `OptimalRunnerLegacyApp` builds the
+        // feed in its own initialiser, the missing declaration crashed this tier at
+        // *launch* — not at run start, as on Modern. Held by
+        // `Tools/check-location-background-mode.sh`.
         locationManager.allowsBackgroundLocationUpdates = true
     }
 

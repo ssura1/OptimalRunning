@@ -111,11 +111,14 @@ targets:
         ENABLE_PREVIEWS: true
         GENERATE_INFOPLIST_FILE: true
         INFOPLIST_KEY_NSExtensionPointIdentifier: com.apple.watchkit
-        # AC-FR-B-1-6 / design.md §7: haptics and the live workout session must survive backgrounding.
-        # "audio" is not about playing sound — it is the documented background mode that keeps a
-        # workout's haptic session alive; without it haptics stop the moment the screen sleeps. On this
-        # tier that is more visible than on Modern, because the screen sleeps *fully*.
-        INFOPLIST_KEY_UIBackgroundModes: workout-processing audio
+        # NOTE: `UIBackgroundModes` is deliberately NOT here, in the `info:` block below
+        # instead. `INFOPLIST_KEY_UIBackgroundModes` looks like it belongs beside these and
+        # does nothing at all: Xcode defines `INFOPLIST_KEY_*` for a fixed allowlist of keys
+        # (`grep INFOPLIST_KEY_ CoreBuildSystem.xcspec`) and `UIBackgroundModes` is not one
+        # of them, so the setting is accepted, generates no warning, and never reaches the
+        # built plist. It sat here from Wave 4 until a device build was inspected key by
+        # key — the usage descriptions beside it *are* on the allowlist and did land, which
+        # is what made the block look like it was working.
         # AC-FR-D-1-1 — every usage description explains *why*.
         INFOPLIST_KEY_NSHealthShareUsageDescription: >-
           OptimalRunner reads your heart rate during a run so it can show it on the run screen and
@@ -130,6 +133,33 @@ targets:
           OptimalRunner uses the motion coprocessor and barometer to estimate your pace and adjust
           your target for hills, and to keep measuring distance when GPS is unavailable.
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: false
+    # An explicit plist purely for the keys `INFOPLIST_KEY_*` cannot express. Kept alongside
+    # `GENERATE_INFOPLIST_FILE` rather than replacing it, so the usage descriptions above
+    # continue to be merged in and this stays a small, verifiable change to a frozen tier —
+    # confirmed by inspecting the built extension's plist for both sets of keys.
+    info:
+      path: Sources/App/Extension-Info.plist
+      properties:
+        # AC-FR-B-1-6 / design.md §7: haptics and the live workout session must survive
+        # backgrounding. "audio" is not about playing sound — it is the documented mode that
+        # keeps a workout's haptic session alive; without it haptics stop the moment the
+        # screen sleeps. On this tier that is more visible than on Modern, because the screen
+        # sleeps *fully*.
+        #
+        # `location` is not optional either: `LiveSensorFeed.init` sets
+        # `allowsBackgroundLocationUpdates = true`, and CoreLocation's header calls setting
+        # that without this mode declared "a fatal error" — the process is killed, not
+        # degraded. This tier is hit harder than Modern, where the assignment is in
+        # `startLocation()`: here it is in `init()`, and `OptimalRunnerLegacyApp` builds the
+        # feed in its own initialiser, so the crash lands at launch rather than at run start.
+        #
+        # ADR-015 freezes this tier's features, not its defects — "fixing a defect in what it
+        # already does" is explicitly allowed. Held by
+        # `Tools/check-location-background-mode.sh`.
+        UIBackgroundModes:
+          - workout-processing
+          - audio
+          - location
 
   # On-device performance validation (T-072). Unhosted, for the same confirmed Xcode limitation the
   # Modern tier documents: a watchOS test bundle cannot resolve the app extension it accompanies, with

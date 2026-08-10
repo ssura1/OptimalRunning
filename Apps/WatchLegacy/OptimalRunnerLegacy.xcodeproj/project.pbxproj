@@ -61,6 +61,7 @@
 		10140D6D2AEBDD992F307A6C /* PerformanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceTests.swift; sourceTree = "<group>"; };
 		25E85FE2AFC410C2D825787D /* OptimalRunnerLegacyExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OptimalRunnerLegacyExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		2E78B63B69B314792F82DD33 /* WatchHapticPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHapticPlayer.swift; sourceTree = "<group>"; };
+		3A9537366B24BB1FAA43AE0E /* Extension-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Extension-Info.plist"; sourceTree = "<group>"; };
 		48982CB728A7DAF318A4A8A7 /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = ../../Core; sourceTree = SOURCE_ROOT; };
 		67BBE0EBC3E39DB35498208C /* OptimalRunnerLegacy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OptimalRunnerLegacy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8145B08957E9215936493F52 /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
@@ -226,6 +227,7 @@
 			isa = PBXGroup;
 			children = (
 				9B755D762C5FD0E3F3224BA3 /* AppCoordinatorActions.swift */,
+				3A9537366B24BB1FAA43AE0E /* Extension-Info.plist */,
 				B0BF46D27DAEADA717328F27 /* OptimalRunnerLegacyApp.swift */,
 				8145B08957E9215936493F52 /* StartView.swift */,
 			);
@@ -381,13 +383,13 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Sources/App/Extension-Info.plist";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSExtensionPointIdentifier = com.apple.watchkit;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "OptimalRunner reads your heart rate during a run so it can show it on the run screen and record it with your workout.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "OptimalRunner saves each run as a workout in Health, including distance, heart rate, and interval segments, so it appears alongside your other activity data.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "OptimalRunner uses your location while you are running to measure your pace and draw your route. Location is only used during an active run.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "OptimalRunner uses the motion coprocessor and barometer to estimate your pace and adjust your target for hills, and to keep measuring distance when GPS is unavailable.";
-				INFOPLIST_KEY_UIBackgroundModes = "workout-processing audio";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -595,13 +597,13 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Sources/App/Extension-Info.plist";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSExtensionPointIdentifier = com.apple.watchkit;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "OptimalRunner reads your heart rate during a run so it can show it on the run screen and record it with your workout.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "OptimalRunner saves each run as a workout in Health, including distance, heart rate, and interval segments, so it appears alongside your other activity data.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "OptimalRunner uses your location while you are running to measure your pace and draw your route. Location is only used during an active run.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "OptimalRunner uses the motion coprocessor and barometer to estimate your pace and adjust your target for hills, and to keep measuring distance when GPS is unavailable.";
-				INFOPLIST_KEY_UIBackgroundModes = "workout-processing audio";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
