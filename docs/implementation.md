@@ -48,7 +48,7 @@ graph LR
     W5 --> W6[Wave 6<br/>Library P2<br/>T-081…T-086]
     W2 --> W7[Wave 7<br/>Hardening<br/>T-087…T-094]
     W4 --> W7
-    W2 --> W8[Wave 8<br/>watchOS 26 uplift<br/>T-095…T-097]
+    W2 --> W8[Wave 8<br/>watchOS 26 uplift<br/>T-095…T-101]
 ```
 
 ### Milestone mapping
@@ -62,7 +62,7 @@ graph LR
 | M5 — Planning | 5 | T-073…T-080 | Training plans, today's workout |
 | M6 — Library | 6 | T-081…T-086 | Routes, laps, custom workouts |
 | Release | 7 | T-087…T-094 | Hardening, performance, manual protocol |
-| M7 — watchOS 26 uplift | 8 | T-095…T-097 | Modern watch on a watchOS 26 floor; Double Tap; Legacy frozen ([ADR-014](./design.md#adr-014), [ADR-015](./design.md#adr-015)) |
+| M7 — watchOS 26 uplift | 8 | T-095…T-101 | Modern watch on a watchOS 26 floor; Double Tap; Legacy frozen ([ADR-014](./design.md#adr-014), [ADR-015](./design.md#adr-015)) |
 
 ---
 
@@ -1726,6 +1726,147 @@ intention to modernise.
 
 **Done when:** each candidate API is either scoped as a task with a named requirement it serves, or
 listed as considered-and-declined with the reason.
+
+> **As scoped, 2026-08-09.** Every availability claim below was checked against the **watchOS 26.5
+> SDK this repository actually builds against**, not against release notes — twice that changed the
+> answer, once in each direction.
+>
+> **The headline finding is a decline, and it is the most important line in this wave.** The single
+> most relevant API Apple has shipped for a product like this one — **HealthKit workout zones**,
+> with `zoneGroupsByType` and `HKLiveWorkoutBuilderDelegate.didUpdateWorkoutZone` — is **watchOS 27,
+> not 26**. `grep` finds no `WorkoutZone` symbol anywhere in the watchOS 26.5 SDK's HealthKit
+> headers. That is close to this app's entire premise expressed as a first-party API, and it is one
+> floor above where [T-095](#t-095) just landed. It is recorded here so the *next* floor decision
+> starts from a concrete reason rather than from "keep current".
+>
+> **What is genuinely worth taking at watchOS 26**, in priority order — and the honest shape of this
+> list is that the two that matter most are *defensive*, not new features:
+
+<a id="t-098"></a>
+### T-098 — Audit the tier against the watchOS 26 design system
+
+| | |
+|---|---|
+| **Wave** | 8 |
+| **Depends on** | T-095 |
+| **Satisfies** | AC-FR-A-6-1, AC-FR-A-6-3, AC-FR-A-6-5, AC-FR-B-2-1, and design.md §11.3 |
+| **Touches** | `Apps/WatchModern/Sources/**`, `Apps/WatchModern/README.md` |
+
+watchOS 26 restyles toolbars and controls system-wide, and applies automatically to anything built
+against watchOS 10 or later. Audit every surface this tier draws against it.
+
+**This is first because it is the only item that can make the product worse without anyone changing
+a line.** The whole design premise is that the screen's dominant colour answers "am I running this
+correctly?" in under 250 ms, with contrast ratios that §11.3 verifies numerically rather than by
+eye. A system restyle that puts a translucent material behind or in front of that fill is a
+regression in the one thing the product does, and it would arrive through a toolchain update rather
+than a commit.
+
+**Done when:** the metrics page still fills edge to edge with no material, inset or letterbox at
+every zone colour; the warning overlay and transition screen remain legible over each palette; the
+Controls page and settings list are checked against the new styling; anything that changed is either
+accepted with a reason or pinned with an explicit style. The existing contrast assertions in
+`MetricsScreenTests` must still pass unchanged — they are computed from `ORColor` and cannot see a
+system restyle, which is exactly why this audit is by hand.
+
+<a id="t-099"></a>
+### T-099 — Gate that both watch architectures ship
+
+| | |
+|---|---|
+| **Wave** | 8 |
+| **Depends on** | T-095 |
+| **Satisfies** | [ADR-014](./design.md#adr-014) |
+| **Touches** | `.github/workflows/apps.yml` |
+
+Assert that the built watch binary contains **both `arm64_32` and `arm64`** slices.
+
+**Why this is worth a gate rather than a check.** The new floor spans two architectures for the
+first time: Series 6, 7, 8 and SE (2nd generation) are `arm64_32`, while Series 9 and later, SE 3
+and Ultra 2 and later are `arm64`. A wrong `ARCHS` therefore produces an app that installs
+perfectly on the developer's own SE 3 and cannot install on a Series 7 — invisible until someone
+with the other watch tries it. That is the same class of failure `legacy.yml` already gates with
+`lipo -archs` for armv7k, and the same reasoning applies with more hardware behind it.
+
+Currently correct — `ARCHS = arm64 arm64_32` resolves from the standard setting — which is the best
+time to pin it, while the gate can be verified green rather than written against a broken build.
+
+**Done when:** CI runs `lipo -archs` on the built app binary and fails unless both slices are
+present; the gate is verified to go red with one architecture removed.
+
+> **Built.** The simulator lane could not carry this — an Apple Silicon runner's simulator build is
+> a single `arm64` slice and says nothing about what installs on a watch — so the gate does its own
+> `generic/platform=watchOS` build with `CODE_SIGNING_ALLOWED=NO` (a device *build* needs no signing,
+> and requiring a team would make the gate un-runnable on a fork). It asserts both slices and, while
+> it has the binary open, re-reads `minos` from the Mach-O rather than from build settings — the
+> earlier check reads what the project claims, this one reads what the linker recorded.
+>
+> Verified red by thinning the real built binary to `arm64` alone with `lipo -thin`, which is
+> exactly the "installs on my SE 3, fails on a Series 7" regression it exists to catch.
+
+<a id="t-100"></a>
+### T-100 — Confirm the Smart Stack workout suggestion, and change nothing to get it
+
+| | |
+|---|---|
+| **Wave** | 8 |
+| **Depends on** | T-095 |
+| **Satisfies** | G-1 (the run starts fast), no new requirement |
+| **Touches** | `Tools/manual-test-protocol.md` |
+
+watchOS 26 offers to surface a HealthKit-recording workout app in the Smart Stack based on the
+runner's routine. The stated conditions are a correct `HKWorkoutActivityType`, accurate start and
+end times, and location added through `HKWorkoutRouteBuilder` across the workout.
+
+**This tier already does all three** — T-033 sets the activity type and owns session lifecycle and
+active-time accounting, and T-051's route write uses `HKWorkoutRouteBuilder`. So this is a
+verification item, not an implementation one, and it is in the plan precisely so nobody spends a
+task building what is already earned.
+
+**Done when:** after several runs at a consistent time of day, the app is observed being suggested
+in the Smart Stack — or is not, and the reason is investigated against the three conditions above.
+This cannot be forced or automated; it is added to the manual protocol as a longitudinal
+observation rather than a step.
+
+<a id="t-101"></a>
+### T-101 — A Control to start a run (optional, and priced honestly)
+
+| | |
+|---|---|
+| **Wave** | 8 |
+| **Depends on** | T-095, T-098 |
+| **Satisfies** | G-1, FR-A-1 |
+| **Touches** | new `Apps/WatchModern/Controls/` widget extension target, `Apps/WatchModern/project.yml` |
+
+`ControlWidget` is `watchOS 26.0+` — verified in the SDK, and therefore usable with no availability
+conditional. A control in Control Center, the Smart Stack, or the Ultra's Action button could start
+an easy run without opening the app.
+
+**Ranked last, and genuinely optional.** The benefit is real but small: it removes one app launch
+from a flow that is already "raise wrist, tap Start". The cost is not small — a new extension
+target, an App Intent, and a second bundle to keep inside the tier-isolation and no-network gates.
+The Action button is the strongest case for it and exists only on Ultra, which is not the hardware
+this is being developed against.
+
+**Recommendation: defer until something else needs a widget extension**, at which point the
+marginal cost collapses. Building the target for this alone is the "use the newest API" failure
+mode this wave is supposed to avoid.
+
+**Done when:** either it is built and starts a run from Control Center without opening the app, or
+it is closed as declined with this reasoning intact.
+
+### Considered and declined
+
+Recorded because a decline that is not written down gets re-litigated every six months.
+
+| Candidate | Why not |
+|---|---|
+| **HealthKit workout zones** | **Not in watchOS 26** — it is watchOS 27. No `WorkoutZone` symbol exists in the 26.5 SDK. The most relevant API to this product, and the strongest concrete argument for the *next* floor bump |
+| **Widget push updates (APNs)** | Structurally impossible here and always will be. There is no backend and no networking, enforced by `Tools/check-no-network.sh` (NFR-14, NFR-15). A feature whose transport is a push server is not available to a device-local app |
+| **MapKit on watchOS** | Available, and declined on product grounds already settled: the watch tells you one thing and the phone tells you everything. A route overlay on the watch is the phone's job (design.md §1.1, §13) |
+| **RelevanceKit relevant widgets** | This tier ships no widget at all. Building one purely to be contextually surfaced is speculative — and the Smart Stack route that matters for a workout app is [T-100](#t-100), which needs no widget and no code |
+| **Workout Buddy** | Not a developer API. An Apple Intelligence feature requiring a paired iPhone 15 Pro or later; nothing to adopt |
+| **Wrist flick** | Not a developer API either — a system gesture with a Settings toggle. It is not nothing to this tier, though: it is available on SE 3 and returns to the watch face, so "does a wrist flick mid-run leave the metrics page" belongs on the **manual protocol** rather than in the plan |
 
 ---
 

@@ -170,3 +170,51 @@ jobs:
             -project "${{ matrix.project }}" \
             -scheme "${{ matrix.scheme }}" \
             -destination "platform=${{ matrix.simctlPlatform }} Simulator,name=${{ steps.sim.outputs.device }}"
+
+      # T-099. The step above builds for the *simulator*, which on an Apple Silicon
+      # runner is a single arm64 slice and therefore says nothing about what will
+      # install on a watch. This builds for a device and asserts the slices.
+      #
+      # Since ADR-014 the supported range spans two architectures for the first time:
+      # Series 6, 7, 8 and SE (2nd generation) are arm64_32, while Series 9 and later,
+      # SE 3 and Ultra 2 and later are arm64. A wrong ARCHS produces an app that
+      # installs perfectly on the developer's own SE 3 and cannot install on a Series 7
+      # — invisible until someone with the other watch tries it, which is precisely the
+      # class of failure legacy.yml already gates with `lipo -archs` for armv7k.
+      #
+      # No signing: a device *build* needs none, and requiring a team here would make
+      # this gate un-runnable on a fork.
+      - name: Both watch architectures ship (T-099)
+        if: matrix.watchOSFloor != ''
+        run: |
+          set -euo pipefail
+          xcodebuild build \
+            -project "${{ matrix.project }}" \
+            -scheme "${{ matrix.scheme }}" \
+            -destination 'generic/platform=watchOS' \
+            -derivedDataPath "$RUNNER_TEMP/dd-watch" \
+            CODE_SIGNING_ALLOWED=NO
+          APP=$(find "$RUNNER_TEMP/dd-watch/Build/Products" -maxdepth 2 -name 'OptimalRunner.app' -type d | head -1)
+          if [ -z "$APP" ]; then
+            echo "::error::could not locate the built OptimalRunner.app"
+            exit 1
+          fi
+          ARCHS=$(lipo -archs "$APP/OptimalRunner")
+          echo "archs: $ARCHS"
+          for want in arm64_32 arm64; do
+            case " $ARCHS " in
+              *" $want "*) ;;
+              *) echo "::error::built '$ARCHS' — missing $want. arm64_32 covers Series 6/7/8 and SE 2; arm64 covers Series 9+, SE 3 and Ultra 2+. Both are inside the ADR-014 floor, so both must ship."; exit 1 ;;
+            esac
+          done
+          # The deployment target again, this time as the linker actually recorded it
+          # rather than as the project claims it. The earlier check reads build
+          # settings; this reads the binary.
+          MINOS=$(otool -l "$APP/OptimalRunner" | awk '$1 == "minos" {print $2; exit}')
+          echo "minos: $MINOS"
+          MINOS_MAJOR=$(printf '%s' "$MINOS" | cut -d. -f1)
+          if [ -z "$MINOS_MAJOR" ] || [ "$MINOS_MAJOR" -lt "${{ matrix.watchOSFloor }}" ]; then
+            echo "::error::binary minos is $MINOS, below the ADR-014 floor of ${{ matrix.watchOSFloor }}.0"
+            exit 1
+          fi
+          echo "ok: $ARCHS / minos $MINOS"
