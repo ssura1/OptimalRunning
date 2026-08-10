@@ -268,6 +268,103 @@ actual paths. Both app targets additionally keep a thin platform test suite (`Ap
 re-runs a slice of the package's checks compiled for the *shipping* platform; Wave 2 established
 why, when an API that compiled on the macOS test host turned out not to exist on watchOS.
 
+<a id="adr-014"></a>
+### ADR-014 — `Apps/WatchModern`'s floor is watchOS 26, and three models fall between the tiers
+
+**Decision, 2026-08-09.** `Apps/WatchModern` moves from a watchOS 10.0 deployment target to
+**watchOS 26.0**.
+
+**The hardware cost, stated plainly.** watchOS 26 runs on Series 6 and later, SE (2nd generation)
+and later, and every Ultra. Against the watchOS 10 floor this target has carried since T-005, the
+models lost are:
+
+| Model | Runs watchOS 10 | Runs watchOS 26 | Covered by Legacy |
+|---|---|---|---|
+| Series 3 | no | no | **yes** — that is the tier's whole purpose |
+| **Series 4** | yes | **no** | **no** |
+| **Series 5** | yes | **no** | **no** |
+| **Apple Watch SE (1st generation)** | yes | **no** | **no** |
+| Series 6 and later, SE 2, Ultra | yes | yes | n/a |
+
+**So there is a real coverage gap, and it is these three models.** `Apps/WatchLegacy` does not
+absorb them: it is pinned to watchOS 8 for Series 3 and, under
+[ADR-015](#adr-015), is frozen. A Series 5 owner is served by neither tier after this change. That
+is a genuine product loss and it is recorded here rather than discovered later — the SE (1st
+generation) in particular was the budget model from 2020 to 2022, so this is not a rounding error
+in the installed base.
+
+**Why the alternative floors do not help.** The obvious smaller step is watchOS 11, which is what
+[T-044](./implementation.md#t-044)'s deviation note proposed. It costs *exactly the same hardware*:
+watchOS 11 and watchOS 26 share the Series 6 floor. So the marginal hardware cost of 26 over 11 is
+**zero**, and every version between them is strictly dominated — the same three models are lost
+either way, and 26 brings eleven releases more API. The real decision is "leave watchOS 10 or not";
+once it is made, taking the current version outright is free.
+
+**Why now.** T-044 has been open since Wave 2 on a genuine three-way conflict: it asks for Double
+Tap, `handGestureShortcut(.primaryAction)` is watchOS 11+, and [CON-3](./requirements.md#con-3)
+forbids the `#available` that would bridge them. Raising the floor dissolves the conflict rather
+than working around it, and the closing statement of that task is that **no availability
+conditional was needed** — `Tools/check-no-availability.sh` still passes unchanged, which is the
+structural evidence that the conflict is gone rather than hidden.
+
+**Consequence for CI, which is not automatic.** The Modern job in `apps.yml` selects no Xcode, so
+it uses the runner image's default. On `macos-15` that default is **Xcode 16.4 (16F6)**, whose
+watchOS SDK is 11.x — a watchOS 26 deployment target does not build there at all. The job therefore
+moves to `macos-26`, whose default is Xcode 26.6 (17F113), the same toolchain `legacy.yml` pins and
+the same one this was developed against, and whose watchOS simulator runtimes are 26.2 / 26.4 /
+26.5 — all at or above the new floor, and including an Apple Watch SE 3 device.
+
+**And it is asserted rather than assumed**, because assuming is exactly what went wrong the last
+time a toolchain was taken for granted here. The assertion is deliberately *weaker* than
+`legacy.yml`'s: that job pins Xcode to an exact build number because armv7k linkage is a fragile
+property of one specific SDK, whereas this tier needs only "the watchOS SDK is 26 or newer". So the
+gate checks the SDK's **major version**, which fails loudly if a runner image regresses below the
+floor and stays quiet through routine image refreshes. A pin tight enough to break on every image
+update is a pin that gets deleted.
+
+<a id="adr-015"></a>
+### ADR-015 — `Apps/WatchLegacy` is frozen: maintained, not developed
+
+**Decision, 2026-08-09.** `Apps/WatchLegacy` enters maintenance mode. It receives **no new feature
+work**. It keeps building, and it keeps running in CI.
+
+**What "frozen" permits and forbids.**
+
+| Change | Allowed |
+|---|---|
+| Keeping it compiling against a shared `Core` change | **yes — this is the point** |
+| Fixing a defect in what it already does | yes |
+| A CI or toolchain repair | yes |
+| Implementing a feature Modern gains | **no** |
+| Porting a new screen, gesture or metric across | **no** |
+
+**Why maintained rather than deleted.** Deletion is already the planned response to
+[R-1](./requirements.md#11-risks) and it is one directory and one CI job
+([ADR-002](#adr-002)), but R-1 has not arrived: Xcode 26 still builds a watchOS 8 deployment
+target, and the tier still runs. Until then the `legacy-support` job earns its place for a reason
+that has nothing to do with Series 3 — it replays the shared fixtures against the shared goldens on
+a *different toolchain* from every other job, so a `Core` change that breaks tier equivalence is
+caught there first. Freezing the feature set does not weaken that; it is the part worth keeping.
+
+**Why frozen rather than active.** [ADR-014](#adr-014) puts eighteen major versions between the two
+tiers. Every feature added to Modern from here is a feature whose Legacy equivalent must be written
+against watchOS 8 idioms — `ObservableObject`, `NavigationView`, completion-handler HealthKit — for
+hardware Apple stopped selling in 2020 and stops building for in about eight months. That work has
+a known expiry date, and spending it is choosing not to spend it on the tier that survives.
+
+**Consequence — the tier a commit belongs to must be unambiguous.** With one tier moving and one
+standing still, "which tier does this push touch?" stops being answerable from the diff alone at a
+glance. So a commit that touches `Apps/WatchLegacy` carries a **`[legacy]` prefix** in its subject:
+
+```
+fix(watch): [legacy] keep the segment encoder compiling after the Core rename
+```
+
+The prefix is a convention, not a gate. It is worth having anyway: it makes the frozen tier's
+commit history greppable, and a `[legacy]` commit that also touches `Apps/WatchModern` is visibly
+wrong in a way an unlabelled one is not. This is recorded in the tier matrix in
+[§8.1](#81-tier-divergence-matrix), in `Apps/WatchLegacy/README.md`, and in `CONTRIBUTING.md`.
+
 ---
 
 ## 3. Repository layout
@@ -795,14 +892,16 @@ Declared in `Core/Sources/ORModels/Sensors/RunSensorFeed.swift`, alongside `RunA
 
 This table is normative (AC-FR-K-1-3) and must be kept accurate in review.
 
-| Concern | `Apps/WatchModern` (watchOS 10) | `Apps/WatchLegacy` (watchOS 8) |
+| Concern | `Apps/WatchModern` (watchOS 26) | `Apps/WatchLegacy` (watchOS 8) |
 |---|---|---|
+| **Development status** | **Active.** The tier that receives new work | **Frozen as of 2026-08-09** ([ADR-015](#adr-015)). No new feature development; builds and runs in CI; a commit that touches it carries a `[legacy]` subject prefix |
+| Hardware | Series 6 and later, SE 2 and later, all Ultra | **Series 3 only** |
 | Observation | `@Observable` macro | `ObservableObject` + `@Published` |
 | Navigation | `NavigationStack` | `NavigationView` |
 | Interval segmentation in HealthKit | `HKWorkoutSession.beginNewActivity` | `HKWorkoutEvent(type: .segment)` |
 | Speed metric | `HKQuantityTypeIdentifier.runningSpeed` where available, else derived | derived from location + pedometer |
 | Always-on | `isLuminanceReduced`-aware dimmed variants | not applicable — no AOD hardware |
-| Manual advance | tap, Double Tap (Series 9+), crown detent | tap, crown detent |
+| Manual advance | tap, **Double Tap** via `handGestureShortcut(.primaryAction)` (Series 9+ hardware), crown detent | tap, crown detent |
 | Concurrency | `async`/`await` throughout | `async`/`await` (available on watchOS 8) with completion-handler bridges for older HealthKit APIs |
 | Charts in-app | none (watch shows no charts) | none |
 | Architecture | `arm64_32` | **`armv7k`** — 32-bit. Pinned via `ARCHS` because the watchOS 26.5 SDK omits armv7k from `SupportedTargets.watchos.Archs` while still shipping linkable stub slices. |

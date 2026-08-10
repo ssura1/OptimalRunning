@@ -29,6 +29,21 @@ Convert platform types to `Core` value types in the app layer.
 own source tree. An availability check there means either dead code or the conditional
 soup the product deliberately avoids.
 
+**`Apps/WatchLegacy` is frozen — and a commit that touches it says so.** The Series 3
+tier is in maintenance mode as of 2026-08-09 ([ADR-015](docs/design.md#adr-015)): it
+keeps building and keeps running in CI, and it receives no new feature work. Because one
+watch tier is moving and the other is standing still, a commit touching
+`Apps/WatchLegacy` carries a **`[legacy]` prefix** in its subject so the tier is
+unambiguous:
+
+```
+fix(watch): [legacy] keep the segment encoder compiling after the Core rename
+```
+
+This one is a convention rather than a script. It is worth keeping anyway: it makes the
+frozen tier's history greppable, and a `[legacy]` commit that also touches
+`Apps/WatchModern` is visibly wrong in a way an unlabelled one is not.
+
 **No networking, anywhere.** No `URLSession`, no analytics SDK, no telemetry. "We don't
 send your data anywhere" is only credible if something checks it.
 

@@ -48,6 +48,7 @@ graph LR
     W5 --> W6[Wave 6<br/>Library P2<br/>T-081…T-086]
     W2 --> W7[Wave 7<br/>Hardening<br/>T-087…T-094]
     W4 --> W7
+    W2 --> W8[Wave 8<br/>watchOS 26 uplift<br/>T-095…T-097]
 ```
 
 ### Milestone mapping
@@ -61,6 +62,7 @@ graph LR
 | M5 — Planning | 5 | T-073…T-080 | Training plans, today's workout |
 | M6 — Library | 6 | T-081…T-086 | Routes, laps, custom workouts |
 | Release | 7 | T-087…T-094 | Hardening, performance, manual protocol |
+| M7 — watchOS 26 uplift | 8 | T-095…T-097 | Modern watch on a watchOS 26 floor; Double Tap; Legacy frozen ([ADR-014](./design.md#adr-014), [ADR-015](./design.md#adr-015)) |
 
 ---
 
@@ -723,17 +725,23 @@ Step header, rep counter, distance-remaining, final-100 m countdown, the 3 s tra
 
 **Done when:** a simulated 4×1000 m shows correct rep numbers and transitions; tap advances only open-goal steps; Double Tap works on a Series 9 simulator; undo appears for 5 s and restores state; the countdown appears in the final 100 m.
 
-> **Deviation — Double Tap is not implemented, and cannot be under this MVP's constraints.** Three requirements of this plan are jointly unsatisfiable:
+> **Deviation — Double Tap was not implementable under Wave 2's constraints. RESOLVED 2026-08-09 by [T-096](#t-096); kept here because the conflict is the reason the task sat open for six waves.** Three requirements of this plan were jointly unsatisfiable:
 >
 > 1. T-044 asks for Double Tap as a manual-advance gesture.
-> 2. T-005 pins `Apps/WatchModern` to a **watchOS 10.0** deployment target.
+> 2. T-005 pinned `Apps/WatchModern` to a **watchOS 10.0** deployment target.
 > 3. [CON-3](./requirements.md#con-3) forbids availability conditionals in a watch target, mechanically enforced by `Tools/check-no-availability.sh`.
 >
-> The explicit opt-in — `handGestureShortcut(.primaryAction)` — is **watchOS 11.0+**. Under watchOS 10 the system routes Double Tap to a view's prominent primary *button*, and the metrics page's advance affordance is a full-screen tap target rather than a button, so there is nothing for it to bind to. Calling the API anyway fails the build; guarding it with `#available` fails the gate.
+> The explicit opt-in — `handGestureShortcut(.primaryAction)` — is **watchOS 11.0+**. Under watchOS 10 the system routes Double Tap to a view's prominent primary *button*, and the metrics page's advance affordance is a full-screen tap target rather than a button, so there was nothing for it to bind to. Calling the API anyway failed the build; guarding it with `#available` failed the gate.
 >
-> **Shipped state:** tap-to-advance and the opt-in crown detent (AC-FR-C-3-3) both work; Double Tap does not. Nothing silently half-works, and `SensorCapabilities.supportsDoubleTap` is reported `true` because there is no public API to query the sensor — see the note in `LiveSensorFeed`.
+> **How it was resolved.** [ADR-014](./design.md#adr-014) raised the floor to watchOS 26, which dissolves requirement 2 rather than working around it. `handGestureShortcut` is then unconditionally available and **no `#available` was added** — `check-no-availability.sh` still passes untouched, which is the structural evidence that the conflict is gone rather than hidden.
 >
-> **The three ways out, for whoever picks this up:** raise the deployment target to watchOS 11 (drops Series 4–8 hardware, contradicting T-005); restructure manual advance as a prominent primary `Button` so watchOS 10 routes the gesture to it natively (fits CON-3, costs the full-screen tap target that AC-FR-C-3 wants); or accept the omission and strike Double Tap from T-044 and AC-FR-C-3. This is a product decision, not an implementation one, so it is recorded rather than resolved.
+> Option 2 of the three below turned out to be mispriced, and [T-096](#t-096) took it *as well as* the floor bump: manual advance is now a `Button`, and it did **not** cost the full-screen tap target. What that option would have cost is a *prominent, aimable* button; making the button's label the entire page, under a `ButtonStyle` that renders the label untouched, keeps the whole screen tappable and adds no chrome. The control exists for the system to bind to and the runner cannot tell it is there.
+>
+> **Correction to the record.** The first option below was written as "drops Series 4–8 hardware". That is wrong: watchOS 11 runs on Series 6, 7 and 8. What it drops is **Series 4, Series 5 and SE (1st generation)** — which is also exactly what watchOS 26 drops, since the two share the Series 6 floor. The mistake mattered, because it made watchOS 11 look like a far more expensive step than it was and thereby made the whole conflict look less tractable than it was.
+>
+> **The three ways out, as they were recorded at the time:** raise the deployment target to watchOS 11 (~~drops Series 4–8 hardware~~ — see the correction above — contradicting T-005); restructure manual advance as a prominent primary `Button` so watchOS 10 routes the gesture to it natively (fits CON-3, costs the full-screen tap target that AC-FR-C-3 wants); or accept the omission and strike Double Tap from T-044 and AC-FR-C-3. This was a product decision, not an implementation one, so it was recorded rather than resolved.
+>
+> **Shipped state before the fix:** tap-to-advance and the opt-in crown detent (AC-FR-C-3-3) worked; Double Tap did not. `SensorCapabilities.supportsDoubleTap` is reported `true` because there is no public API to query the sensor — see the note in `LiveSensorFeed`. That remains true and is unrelated: it reports whether the *hardware* has the sensor, which the app still cannot ask about.
 
 <a id="t-045"></a>
 ### T-045 — VO2 max mode UI (Modern)
@@ -1606,6 +1614,118 @@ Contributor guide, architecture overview, issue and PR templates, and ADRs extra
 The release process, including App Store submission for both bundle IDs, the Xcode-version pin rationale, and the documented trigger and response for the Legacy sunset.
 
 **Done when:** the checklist is complete and has been executed once end to end; the Legacy sunset trigger (`legacy.yml` failing because runners no longer carry Xcode 26) has a written response plan.
+
+---
+
+## Wave 8 — The watchOS 26 uplift
+
+**This wave continues `Apps/WatchModern`, which this document already owns.** It is not a new
+track and gets no new identifier prefix: the standalone work earned its own `S-` numbering because
+it added a genuinely new capability — a phone that records a run with no watch — whereas this
+raises the floor of an app Wave 2 already built and spends the API budget that unlocks. So the task
+numbers continue from Wave 7's T-094.
+
+The wave is bounded by two decisions, both recorded as ADRs before any code was written:
+[ADR-014](./design.md#adr-014) (the floor moves to watchOS 26, and three models fall between the
+tiers) and [ADR-015](./design.md#adr-015) (`Apps/WatchLegacy` is frozen).
+
+<a id="t-095"></a>
+### T-095 — Raise the `Apps/WatchModern` floor to watchOS 26
+
+| | |
+|---|---|
+| **Wave** | 8 |
+| **Depends on** | — |
+| **Satisfies** | [ADR-014](./design.md#adr-014), and unblocks [T-044](#t-044) |
+| **Touches** | `Apps/WatchModern/project.yml`, `Apps/WatchModern/WatchSupport/Package.swift`, `.github/workflows/apps.yml`, `docs/design.md` §2 and §8.1, `Apps/WatchModern/README.md`, `README.md` |
+
+Move the deployment target from watchOS 10.0 to 26.0 in all four places it is declared, raise
+`WatchSupport`'s platform floor to match, and make CI able to build the result.
+
+**Done when:** the built binary reports `minos 26.0`; `swift test --package-path
+Apps/WatchModern/WatchSupport` and the watchOS simulator suite both pass; the tier matrix and both
+READMEs state the new floor and name the three models that now fall between the tiers.
+
+> **As built — the CI half was not automatic, and is the reason this is its own task.**
+>
+> The Modern jobs in `apps.yml` selected no Xcode, so they used the runner image default. On
+> `macos-15` that default is **Xcode 16.4 (16F6)**, whose watchOS SDK is 11.x. A watchOS 26
+> deployment target does not build there, and `WatchSupport`'s manifest does not even *parse*
+> there: `SupportedPlatform.WatchOSVersion.v26` is `@available(_PackageDescription 6.2)`, so the
+> package had to move to `swift-tools-version: 6.2`, which Xcode 16.4's Swift 6.1 cannot read. Two
+> independent failures, both before a single test runs, both invisible until CI is actually tried.
+>
+> Both watch jobs therefore move to `macos-26`, whose default is Xcode 26.6 (17F113) — the same
+> toolchain `legacy.yml` pins and the same one this was developed against. The iPhone job stays on
+> `macos-15`; its floor did not move, and there is no reason to make it wait for a scarcer image.
+>
+> **And it is gated rather than promised**, because the last time a toolchain was assumed here it
+> cost a CI outage. The gate asserts the watchOS SDK's *major version* and the project's declared
+> `WATCHOS_DEPLOYMENT_TARGET`, so it catches both a runner image regressing below the floor and
+> someone quietly lowering the target to make something compile. It is deliberately looser than
+> `legacy.yml`'s exact-build pin: armv7k linkage is a fragile property of one specific SDK, whereas
+> this tier needs only "new enough", and a pin that breaks on every routine image refresh is a pin
+> that gets deleted. Verified in both directions — green at 26.0, red when the floor is reverted to
+> 10.0.
+
+<a id="t-096"></a>
+### T-096 — Double Tap, and closing T-044 for real
+
+| | |
+|---|---|
+| **Wave** | 8 |
+| **Depends on** | T-095 |
+| **Satisfies** | [T-044](#t-044)'s outstanding clause, AC-FR-C-3 |
+| **Touches** | `Apps/WatchModern/Sources/Run/Views/Metrics/MetricsView.swift`, `Apps/WatchModern/Sources/Run/Views/RunPagerView.swift` |
+
+Implement Double Tap as a manual-advance gesture, and close the deviation that has stood on T-044
+since Wave 2.
+
+**Done when:** `handGestureShortcut(.primaryAction)` is bound to the advance control; **no
+`#available` conditional exists anywhere in the tier** and `Tools/check-no-availability.sh` passes
+unchanged; the full-screen tap target is unchanged; a double tap on a closed-goal step is inert
+rather than routed elsewhere.
+
+> **As built.** Manual advance became a `Button` whose label is the entire metrics page, under a
+> `ButtonStyle` that returns the label untouched. Double Tap binds only to a control, so a control
+> had to exist — but the page's dominant colour *is* the product, and `.plain` is not neutral
+> enough (it still applies a pressed appearance). Rendering the label unchanged gives the system
+> something to bind to and the runner nothing to notice.
+>
+> The overlays — countdown, undo affordance, VO2 max stack — are siblings of that button in
+> `RunPagerView`'s `ZStack` rather than children of it, which keeps undo an independently tappable
+> control instead of a button nested inside a button.
+>
+> **`isEnabled: tapAdvances` was considered and rejected**, which is the one judgement call here
+> worth recording. A closed-goal step's tap is deliberately inert rather than disabled, and the
+> gesture follows the same rule for a sharper reason than symmetry: with the shortcut disabled, the
+> system is free to route Double Tap to whatever control is next in line, and on a closed step
+> that is the undo affordance. A double tap silently undoing the previous rep is far worse than one
+> that does nothing.
+>
+> A second, redundant `.onTapGesture` on the pager — calling the same already-gated method — was
+> removed. It was harmless, and two handlers for one gesture is one more than can be reasoned about.
+>
+> **The confirmation T-095 was asked for:** zero availability conditionals were needed. The gate
+> that would have caught one is untouched and still green.
+
+<a id="t-097"></a>
+### T-097 — Scope the rest of the watchOS 26 uplift
+
+| | |
+|---|---|
+| **Wave** | 8 |
+| **Depends on** | T-095 |
+| **Satisfies** | — (planning task) |
+| **Touches** | `docs/implementation.md` |
+
+Establish what watchOS 26 offers a running app beyond Double Tap, against current sources rather
+than memory, and record the outcome as concrete tasks with stated reasons — or record that there is
+nothing else worth adopting, which is a legitimate result and a cheaper one to act on than a vague
+intention to modernise.
+
+**Done when:** each candidate API is either scoped as a task with a named requirement it serves, or
+listed as considered-and-declined with the reason.
 
 ---
 

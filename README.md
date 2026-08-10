@@ -63,8 +63,8 @@ One package of pure logic, surrounded by thin application shells.
 Core/                  pure Swift — every decision the product makes. Builds on Linux.
 Apps/iPhone/           iOS 17+ — statistics hub, and the standalone running tier
 Apps/iPhone/PhoneMotion/  pure Swift — motion estimation for phone-only runs. Builds on Linux.
-Apps/WatchModern/      watchOS 10+ — Series 4 and later
-Apps/WatchLegacy/      watchOS 8 — Series 3 only
+Apps/WatchModern/      watchOS 26+ — Series 6 and later, SE 2 and later, all Ultra
+Apps/WatchLegacy/      watchOS 8 — Series 3 only. Frozen: maintained, not developed
 Fixtures/              recorded traces + committed golden outputs
 Tools/                 CI gates and the replay CLI
 docs/                  requirements, design, implementation plan
@@ -80,6 +80,12 @@ fixture.
 The two watch tiers are **separate targets with no shared source**, because supporting
 Series 3 from one target would mean gating every modern API behind `if #available` —
 and CI fails the build if one appears.
+
+Since 2026-08-09 the Modern tier sits on a watchOS 26 floor and the Legacy tier is frozen
+— maintained and still built by CI, but receiving no new features
+([ADR-014](docs/design.md#adr-014), [ADR-015](docs/design.md#adr-015)). Three models fall
+between the tiers as a result and are served by neither: **Series 4, Series 5 and Apple
+Watch SE (1st generation)**.
 
 The phone can also record a run on its own, with no watch, estimating distance from the
 motion of the phone in your hand. That estimator lives in `PhoneMotion/` and **exactly one

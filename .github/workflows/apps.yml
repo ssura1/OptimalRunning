@@ -30,9 +30,33 @@ jobs:
   # becomes the bottleneck.
   watch-support:
     name: WatchSupport (tier logic)
-    runs-on: macos-15
+    # macos-26, not macos-15, and this is a hard requirement rather than a preference.
+    # ADR-014 puts this package's floor at watchOS 26, which can only be spelled by a
+    # manifest at swift-tools-version 6.2 — and the `macos-15` image's *default* Xcode is
+    # 16.4 (Swift 6.1), which cannot parse the manifest at all. The failure is at package
+    # resolution, before a single test runs.
+    #
+    # `macos-26`'s default is Xcode 26.6, the same toolchain legacy.yml pins and the same
+    # one this was developed against. No `setup-xcode` step is needed because the image
+    # default already satisfies the floor; the step below asserts that rather than
+    # assuming it, because "the default is new enough" is exactly the kind of thing that
+    # silently stops being true on an image refresh.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
+
+      - name: Assert the toolchain can express the watchOS 26 floor (ADR-014)
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          SDK=$(xcodebuild -showsdks | awk '/-sdk watchos[0-9]/ {print $NF; exit}')
+          echo "watchOS SDK: $SDK"
+          MAJOR=$(printf '%s' "$SDK" | sed -E 's/^watchos([0-9]+).*/\1/')
+          if [ -z "$MAJOR" ] || [ "$MAJOR" -lt 26 ]; then
+            echo "::error::watchOS SDK is $SDK; ADR-014 needs 26 or newer. The runner image's default Xcode has regressed below this tier's floor."
+            exit 1
+          fi
+          echo "ok: watchOS SDK major $MAJOR >= 26"
 
       # Reads the shared Fixtures/ directory at the repository root, the same files
       # Core's own goldens use — that shared reading is what makes tier equivalence
@@ -57,23 +81,64 @@ jobs:
 
   build:
     name: ${{ matrix.name }}
-    runs-on: macos-15
+    # Per-entry, because the two tiers no longer want the same toolchain. The iPhone
+    # target is iOS 17+ and builds fine on the cheaper, more available image; the watch
+    # target is watchOS 26+ (ADR-014) and does not build on `macos-15` at all, whose
+    # default Xcode 16.4 carries a watchOS 11 SDK. Splitting the runner is the honest
+    # encoding of that: one tier's floor moved and the other's did not.
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - name: iPhone (iOS 17+)
+            runner: macos-15
             project: Apps/iPhone/OptimalRunner.xcodeproj
             scheme: OptimalRunner
             simctlPlatform: iOS
             deviceNameFilter: 'iPhone'
-          - name: Watch Modern (watchOS 10+)
+            watchOSFloor: ''
+          - name: Watch Modern (watchOS 26+)
+            runner: macos-26
             project: Apps/WatchModern/OptimalRunnerWatch.xcodeproj
             scheme: OptimalRunnerWatch
             simctlPlatform: watchOS
             deviceNameFilter: 'Watch'
+            watchOSFloor: '26'
     steps:
       - uses: actions/checkout@v4
+
+      # A gate, not a promise, and deliberately looser than legacy.yml's exact-build pin.
+      # That job pins Xcode to 26.6 (17F113) because armv7k linkage is a fragile property
+      # of one specific SDK. This tier needs only "the SDK is new enough to compile my
+      # deployment target", so it asserts the SDK's major version and the project's
+      # declared floor. A pin tight enough to break on every routine image refresh is a
+      # pin that gets deleted, and a deleted pin catches nothing.
+      - name: Assert the SDK and the declared floor agree (ADR-014)
+        if: matrix.watchOSFloor != ''
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          SDK=$(xcodebuild -showsdks | awk '/-sdk watchos[0-9]/ {print $NF; exit}')
+          MAJOR=$(printf '%s' "$SDK" | sed -E 's/^watchos([0-9]+).*/\1/')
+          echo "watchOS SDK: $SDK (major $MAJOR)"
+          if [ -z "$MAJOR" ] || [ "$MAJOR" -lt "${{ matrix.watchOSFloor }}" ]; then
+            echo "::error::watchOS SDK $SDK cannot build a watchOS ${{ matrix.watchOSFloor }} deployment target."
+            exit 1
+          fi
+          # The other half: the project must still *declare* the floor. Without this the
+          # SDK check passes happily while someone has quietly dropped the target back to
+          # watchOS 10 to make something compile.
+          DEPLOY=$(xcodebuild -showBuildSettings \
+            -project "${{ matrix.project }}" -scheme "${{ matrix.scheme }}" 2>/dev/null \
+            | awk -F' = ' '/ WATCHOS_DEPLOYMENT_TARGET / {print $2; exit}')
+          echo "declared WATCHOS_DEPLOYMENT_TARGET: $DEPLOY"
+          DEPLOY_MAJOR=$(printf '%s' "$DEPLOY" | cut -d. -f1)
+          if [ -z "$DEPLOY_MAJOR" ] || [ "$DEPLOY_MAJOR" -lt "${{ matrix.watchOSFloor }}" ]; then
+            echo "::error::WATCHOS_DEPLOYMENT_TARGET is $DEPLOY, below the ADR-014 floor of ${{ matrix.watchOSFloor }}.0. Raising it back is a deliberate act; lowering it silently is what this gate exists to stop."
+            exit 1
+          fi
+          echo "ok: SDK $SDK builds a declared floor of $DEPLOY"
 
       - name: Resolve an available simulator
         id: sim

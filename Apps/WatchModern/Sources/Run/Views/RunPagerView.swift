@@ -103,15 +103,16 @@ struct RunPagerView: View {
                     }
                 }
             }
-            // T-044 asks for Double Tap here, and it is deliberately absent. The explicit
-            // opt-in — `handGestureShortcut(.primaryAction)` — is watchOS 11.0+, this tier
-            // is pinned to watchOS 10.0 (T-005), and CON-3 forbids the `#available` check
-            // that would bridge the two. Under watchOS 10 the system routes Double Tap to
-            // a view's prominent primary *button*, and the metrics page's advance
-            // affordance is a full-screen tap target rather than a button, so there is
-            // nothing for it to bind to. Tap and the opt-in crown detent both work; see
-            // the spec-conflict note in README.md for the three ways out.
-            .onTapGesture { model.requestManualAdvance() }
+            // Tap and Double Tap both live on `MetricsView`'s advance button, which is
+            // the only control on this page and therefore the only thing Double Tap can
+            // bind to (T-095). There was a second `.onTapGesture` here as well, calling
+            // the same already-gated method — harmless, and removed because two handlers
+            // for one gesture is one more than can be reasoned about.
+            //
+            // The overlays above are siblings of that button rather than children of it,
+            // which is what keeps the undo affordance an independently tappable control
+            // instead of a button nested inside a button.
+            //
             // Opt-in crown detent, per the runner's setting (AC-FR-C-3-3).
             .focusable(model.profile.crownAdvanceEnabled)
             .digitalCrownRotation(

@@ -1,5 +1,37 @@
 # Apps/WatchLegacy — the Series 3 tier
 
+> ## ❄️ Frozen as of 2026-08-09 — maintained, not developed
+>
+> This tier is in **maintenance mode** ([ADR-015](../../docs/design.md#adr-015)). It receives **no
+> new feature work**. It keeps building, and it keeps running in CI.
+>
+> | Change | Allowed |
+> |---|---|
+> | Keeping it compiling against a shared `Core` change | **yes — this is the point** |
+> | Fixing a defect in what it already does | yes |
+> | A CI or toolchain repair | yes |
+> | Implementing a feature `Apps/WatchModern` gains | **no** |
+> | Porting a new screen, gesture or metric across | **no** |
+>
+> **Why it is still here rather than deleted.** Deletion is already the planned response to
+> [R-1](../../docs/requirements.md#11-risks) and costs one directory and one CI job — but R-1 has
+> not arrived. Xcode 26 still builds a watchOS 8 deployment target. Meanwhile the `legacy-support`
+> CI job earns its place for a reason unrelated to Series 3: it replays the shared fixtures against
+> the shared goldens on a *different toolchain* from every other job, so a `Core` change that
+> breaks tier equivalence is caught there first.
+>
+> **Why it stopped receiving features.** `Apps/WatchModern` moved to a watchOS 26 floor
+> ([ADR-014](../../docs/design.md#adr-014)), putting eighteen major versions between the tiers.
+> Every feature ported here would have to be rewritten against watchOS 8 idioms for hardware that
+> stops building in about eight months.
+>
+> **Commit convention.** A commit touching this directory carries a **`[legacy]` prefix** in its
+> subject, so which tier a push belongs to is unambiguous:
+>
+> ```
+> fix(watch): [legacy] keep the segment encoder compiling after the Core rename
+> ```
+
 watchOS 8.0, armv7k. Its own Xcode project and bundle identifier, sharing nothing with
 `Apps/WatchModern` but `Core` ([AC-FR-K-1-4](../../docs/requirements.md), enforced by
 `Tools/check-tier-isolation.sh`).

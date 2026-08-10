@@ -1,4 +1,16 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
+//
+// 6.2, not 6.0, and only because `SupportedPlatform.WatchOSVersion.v26` is annotated
+// `@available(_PackageDescription 6.2)` — the watchOS 26 floor ADR-014 requires cannot
+// be spelled by an older manifest. Deliberately the *minimum* version that can express
+// it rather than the newest available: the tools version is a floor on every toolchain
+// that has to build this package, and raising it further buys nothing here.
+//
+// It is not free. It rules out Swift 6.0/6.1 toolchains for this package, which is why
+// `apps.yml`'s WatchSupport job runs on a runner whose default Xcode is 26.x — the
+// `macos-15` default is Xcode 16.4 (Swift 6.1) and cannot parse this manifest at all.
+// Core is untouched and keeps its lower tools version, so the Linux lane in `core.yml`
+// is unaffected.
 //
 // WatchSupport — framework-free logic specific to the Modern watch tier.
 //
@@ -22,16 +34,23 @@ import PackageDescription
 // declared floor SwiftPM assumes macOS 10.13 and the macro fails to compile — and
 // the compiler's suggested fix, an `@available` attribute, is exactly what CON-3
 // and Tools/check-no-availability.sh exist to keep out of this tree. Raising the
-// floor states the truth instead: this package serves one deployment target,
-// watchOS 10, and the macOS floor exists only so `swift test` can host it.
+// floor states the truth instead: this package serves one deployment target, and
+// the macOS floor exists only so `swift test` can host it.
 //
-// macOS 14 is a *test-host* requirement, not a product one. Core stays
-// platform-unconstrained and Linux-testable; only this tier-specific package needs
-// a modern host.
+// The watchOS floor tracks the app target's, which is **watchOS 26** as of
+// ADR-014 — not the watchOS 10 the `Observable` macro would settle for. The two
+// must agree: a package floor below the app's would let this package compile
+// against an API set the app does not have, and the mismatch would surface as a
+// link error at app-build time rather than here, where it belongs.
+//
+// macOS 14 is a *test-host* requirement, not a product one, and is deliberately
+// left where it is — it bounds which macOS can run `swift test`, and there is no
+// reason for a watchOS decision to raise it. Core stays platform-unconstrained and
+// Linux-testable; only this tier-specific package needs a modern host.
 let package = Package(
     name: "WatchSupport",
     platforms: [
-        .watchOS(.v10),
+        .watchOS(.v26),
         .macOS(.v14),
     ],
     products: [

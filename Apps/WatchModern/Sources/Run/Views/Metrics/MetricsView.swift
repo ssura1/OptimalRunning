@@ -20,22 +20,46 @@ struct MetricsView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        ZStack {
-            // AC-FR-A-6-1: edge to edge, no inset, no letterbox. `ignoresSafeArea` on the
-            // fill rather than on the whole stack, so the text stays inside the safe area
-            // on a curved display while the colour does not.
-            Color(screen.background)
-                .ignoresSafeArea()
-                .animation(ORMotion.zoneFill(configuration), value: screen.background)
+        // A `Button`, and it still looks and behaves like a bare page (T-095, T-044).
+        //
+        // The whole page must stay the tap target — a runner taps without looking, and a
+        // button that needed aiming would be worse than no button. But Double Tap only
+        // binds to a *control*: `handGestureShortcut(.primaryAction)` designates one, and
+        // there has to be one to designate. Wrapping the page in a button whose style
+        // returns the label untouched satisfies both — the control exists for the system
+        // to route the gesture to, and the runner cannot tell it is there.
+        //
+        // This is the resolution T-044's deviation note listed as option 2 and priced as
+        // "costs the full-screen tap target". It does not: what that option would have
+        // cost is a *prominent, aimable* button, and the cost is avoided by making the
+        // label the whole page rather than a control drawn inside it.
+        Button {
+            if tapAdvances { onTap() }
+        } label: {
+            ZStack {
+                // AC-FR-A-6-1: edge to edge, no inset, no letterbox. `ignoresSafeArea` on
+                // the fill rather than on the whole stack, so the text stays inside the
+                // safe area on a curved display while the colour does not.
+                Color(screen.background)
+                    .ignoresSafeArea()
+                    .animation(ORMotion.zoneFill(configuration), value: screen.background)
 
-            metricStack
-                .foregroundStyle(Color(screen.textColour))
-                .padding(.horizontal, 4)
+                metricStack
+                    .foregroundStyle(Color(screen.textColour))
+                    .padding(.horizontal, 4)
+            }
+            .contentShape(Rectangle())
         }
-        // The whole page is the tap target, not a button: a runner taps the screen
-        // without looking, and a button would need aiming.
-        .contentShape(Rectangle())
-        .onTapGesture { if tapAdvances { onTap() } }
+        .buttonStyle(FullScreenAdvanceButtonStyle())
+        // AC-FR-C-3-4 — Double Tap advances the step, same as a tap.
+        //
+        // Deliberately **not** `isEnabled: tapAdvances`. A closed step's tap is inert
+        // rather than disabled (see `RunSessionModel.requestManualAdvance`), and the
+        // gesture follows the same rule for a specific reason: with this shortcut
+        // disabled the system is free to route Double Tap to whatever control is next
+        // in line, and on a closed step that is the undo affordance. A double tap
+        // silently undoing the previous rep is far worse than one that does nothing.
+        .handGestureShortcut(.primaryAction)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
     }
@@ -161,5 +185,18 @@ struct MetricsView: View {
         parts.append("Heart rate \(screen.heartRateText)")
         parts.append("Distance \(screen.distanceText) \(screen.distanceSuffix)")
         return parts.joined(separator: ", ")
+    }
+}
+
+/// Renders a button as exactly its label — no pressed state, no chrome, no inset.
+///
+/// The metrics page answers "am I running this correctly?" with its dominant colour in
+/// under 250 ms of attention, and any style that dimmed or scaled that colour on touch
+/// would be changing the one signal the product exists to deliver. `.plain` is close but
+/// not neutral: it still applies a pressed appearance. This applies none, which is the
+/// whole requirement — the button is a binding target for Double Tap, not an affordance.
+private struct FullScreenAdvanceButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
     }
 }
