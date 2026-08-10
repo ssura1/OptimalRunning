@@ -108,10 +108,23 @@ targets:
         # bundle-layout assertion added alongside this closes that gap, mirroring what
         # legacy.yml has always asserted for its own key.
         WKApplication: true
-        # Kept, though it belongs to the older layout: it is what declares the app
-        # usable without its companion, and removing it is a separate decision from
-        # fixing the install. Harmless alongside WKApplication.
-        WKRunsIndependentlyOfCompanionApp: true
+        # `WKRunsIndependentlyOfCompanionApp` is deliberately ABSENT, and its absence is
+        # load-bearing rather than an omission.
+        #
+        # It was present here, and adding `WKApplication` beside it was assumed harmless.
+        # It is not. That key and `WKCompanionAppBundleIdentifier` are both WatchKit 2.0
+        # *companion-model* keys, and carrying either sends the bundle down
+        # `_validateCompanionAppStateInWatchKitApp`, which then demands the companion
+        # bundle identifier the other key would have supplied. The result on a real watch
+        # is `MIInstaller` error 97, InvalidCompanionAppBundleIdentifier — a second
+        # install refusal immediately after fixing the first.
+        #
+        # A watchOS 9+ single-target app declared by `WKApplication` has no companion by
+        # construction, which is exactly what ADR-002 specifies for this tier: its own
+        # bundle identifier, sharing nothing with `Apps/iPhone` but `Core`. Naming a
+        # companion would contradict that; declaring independence from a companion that
+        # cannot exist is meaningless. So neither key belongs here, and the gate in
+        # `apps.yml` asserts both are gone rather than trusting this comment.
         # AC-FR-B-1-6 / design.md §7 "Background delivery": haptics and the live
         # workout session must survive the app being backgrounded. "audio" is not
         # about playing sound — it is the documented, Apple-sanctioned background
