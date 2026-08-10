@@ -32,6 +32,7 @@
 	<array>
 		<string>workout-processing</string>
 		<string>audio</string>
+		<string>location</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>

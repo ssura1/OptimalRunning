@@ -84,10 +84,16 @@ targets:
         ENABLE_PREVIEWS: true
         SKIP_INSTALL: false
         WATCHOS_DEPLOYMENT_TARGET: "26.0"
-    # Not GENERATE_INFOPLIST_FILE: true here — that flag means "synthesize the
-    # plist from build settings, no physical file," which conflicts with the
-    # explicit `info.path` below. The test target still needs it; it has no
-    # `info.path` of its own.
+    # Not GENERATE_INFOPLIST_FILE: true here — there is nothing for it to contribute. This
+    # target sets no `INFOPLIST_KEY_*` build settings, so every key it would merge is
+    # already written below. The test target still needs it; it has no `info.path` of its
+    # own.
+    #
+    # It was previously recorded here that the flag *conflicts* with an explicit
+    # `info.path`. That is not true, and the correction matters because the belief blocks a
+    # real fix: `Apps/WatchLegacy` now runs both together, an explicit plist for the keys
+    # `INFOPLIST_KEY_*` cannot express alongside the generated ones, and its built extension
+    # carries both sets. Verified by inspecting that bundle, not by reasoning about the flag.
     info:
       path: Sources/App/Info.plist
       properties:
@@ -145,6 +151,24 @@ targets:
         UIBackgroundModes:
           - workout-processing
           - audio
+          # REQUIRED, and omitting it does not degrade the app — it kills it.
+          #
+          # `LiveSensorFeed.startLocation` sets `allowsBackgroundLocationUpdates = true`,
+          # and CoreLocation's own header states the rule without hedging: "Setting this
+          # property to YES when UIBackgroundModes does not include "location" is a fatal
+          # error." Not an exception to catch, not a value that fails to take effect — the
+          # process is killed. On the first real device run that read as the app vanishing
+          # to the watch face moments after the location prompt appeared.
+          #
+          # The prompt is a red herring, which is what made it look like an authorization
+          # bug: `requestWhenInUseAuthorization` returns immediately and the *system*
+          # renders the sheet, so the sheet outlives the process that asked for it and the
+          # crash is only visible once the tap dismisses it onto an empty screen.
+          #
+          # `Apps/iPhone` has declared this since the standalone tier was built (CON-S-4)
+          # and neither watch tier did. `Tools/check-location-background-mode.sh` now ties
+          # the two together so the code and the declaration cannot drift apart again.
+          - location
         # AC-FR-D-1-1 — every usage description explains *why*, matching the
         # authorization-rationale requirement, not a generic template string.
         NSHealthShareUsageDescription: >-

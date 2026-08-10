@@ -8,6 +8,7 @@
 | `check-no-network.sh` | No networking or telemetry anywhere (NFR-14, NFR-15) |
 | `check-phonemotion-isolation.sh` | Only the sensor-feed adapter depends on `PhoneMotion`, and no estimator tunable is named twice (ADR-S-01, NFR-S-19) |
 | `check-sensor-handler-isolation.sh` | Sensor callbacks are explicitly `@Sendable`, never trailing closures that inherit `@MainActor` (S-057, CON-S-1) |
+| `check-location-background-mode.sh` | A tier setting `allowsBackgroundLocationUpdates` declares the `location` background mode — CoreLocation kills the process otherwise (AC-FR-B-1-6, CON-S-4) |
 | `check-tier-isolation.sh` | No tier reaches into another tier's sources |
 | `check-traceability.swift` | Every P0 requirement has a covering task, and no task cites a requirement that does not exist |
 | `coverage-gate.sh` | `Core` and `PhoneMotion` line coverage stay at or above 85% (NFR-18, NFR-S-21) |

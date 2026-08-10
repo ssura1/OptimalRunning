@@ -1895,6 +1895,77 @@ mode this wave is supposed to avoid.
 **Done when:** either it is built and starts a run from Control Center without opening the app, or
 it is closed as declined with this reasoning intact.
 
+<a id="t-102"></a>
+### T-102 — Declare the `location` background mode, which both watch tiers were missing
+
+| | |
+|---|---|
+| **Wave** | 8 |
+| **Depends on** | T-095 |
+| **Satisfies** | AC-FR-B-1-6, and simply not crashing |
+| **Touches** | `Apps/WatchModern/project.yml`, `Apps/WatchLegacy/project.yml`, both `LiveSensorFeed.swift`, `Tools/check-location-background-mode.sh`, `.github/workflows/gates.yml` |
+
+**Found by running the app, once, on a real watch.** It crashed seconds after the location
+permission sheet appeared. `LiveSensorFeed` sets `allowsBackgroundLocationUpdates = true`, and
+CoreLocation's header states the rule without hedging: *"Setting this property to YES when
+UIBackgroundModes does not include "location" is a fatal error."* Both watch tiers declared only
+`workout-processing` and `audio`.
+
+**It presented as an authorization bug, which is why the plist was the last place anyone would
+look.** `requestWhenInUseAuthorization` returns immediately and the *system* draws the sheet, so
+the sheet outlives the process that asked for it: the runner sees the prompt, taps Allow, and lands
+on the watch face. The recording of the first startup shows exactly that — prompt at 0:19, buttons
+at 0:37, watch face by 0:43.
+
+**Legacy is hit harder than Modern.** Modern sets it in `startLocation()`, so it dies when an
+outdoor run starts; Legacy sets it in `init()`, and `OptimalRunnerLegacyApp` builds the feed in its
+own initialiser, so it dies at launch for every user regardless of activity. Fixed under ADR-015's
+"fixing a defect in what it already does", which is explicitly permitted.
+
+**And fixing Legacy turned up a second, larger defect: it had never declared *any* background
+mode.** The declaration was written as `INFOPLIST_KEY_UIBackgroundModes`, which is not a build
+setting Xcode defines — `INFOPLIST_KEY_*` covers a fixed allowlist (visible in
+`CoreBuildSystem.xcspec`), and `UIBackgroundModes` is not on it. Xcode accepts the setting, warns
+about nothing, and writes nothing. So from Wave 4 until a built extension was inspected key by key,
+this tier's `workout-processing` and `audio` were as absent as `location`, and **AC-FR-B-1-6 was
+never actually satisfied here** — Legacy's haptics would stop when the screen slept, which on a tier
+whose screen sleeps *fully* is the failure the requirement exists to prevent. The block looked
+correct because the usage-description keys sitting beside it *are* on the allowlist and did land.
+
+Fixed by giving the extension an explicit `info:` plist for the keys `INFOPLIST_KEY_*` cannot
+express, kept alongside `GENERATE_INFOPLIST_FILE` so the usage descriptions still merge. That
+combination was recorded in `Apps/WatchModern/project.yml` as impossible — "conflicts with the
+explicit `info.path`" — and it is not; the built extension carries both sets of keys. That comment
+is corrected in place.
+
+**This is why the gate reads the plist and never the project file.** A gate over `project.yml` would
+have read `INFOPLIST_KEY_UIBackgroundModes: ... location`, gone green, and certified a tier with no
+background modes at all. It checks the artifact, and separately rejects the no-op setting by name
+wherever it appears.
+
+**The knowledge already existed in this repository and never crossed tiers.** `Apps/iPhone` has
+declared `location` since the standalone tier was built (CON-S-4), documents the coupling in
+`StandaloneAuthorization`, and even guards the assignment in `MotionCaptureRecorder` so a
+misconfigured plist logs instead of crashing. That is the argument for a gate rather than a comment:
+neither watch `LiveSensorFeed` is reachable from any test — they are the device-only half of the
+split that keeps `SensorPipeline` testable — so nothing but a check over the source can hold it.
+`Tools/check-location-background-mode.sh` fails the build if a tier sets the flag without declaring
+the mode, and is verified red on each tier independently and green when a tier only ever sets the
+flag to `false`.
+
+**Open, and deliberately not changed here:** `workout-processing` is declared under
+`UIBackgroundModes`, but Apple documents it as a **`WKBackgroundModes`** value — `UIBackgroundModes`
+does not list it, and `WKBackgroundModes` does not accept `location`, so the two modes this tier
+needs may belong under two different keys. Not acted on, because the evidence is documentation-only:
+no watchOS system app in the 26.5 runtime declares `WKBackgroundModes` at all, and moving a
+working-or-not workout mode on a hunch risks the live session. `WKRunsIndependentlyOfCompanionApp`
+is the cautionary precedent — a plausible-sounding plist change made without proof, which was wrong.
+**The background-haptic step of `Tools/watch-hardware-protocol.md` (§A.5) answers this empirically**:
+if haptics fire with the screen asleep, `workout-processing` is being honoured where it is.
+
+**Done when:** an outdoor run starts on real hardware without the app dying. Install and the
+declaration in the built bundle are verified; the run is not, and cannot be from this machine.
+
 ### Considered and declined
 
 Recorded because a decline that is not written down gets re-litigated every six months.

@@ -31,6 +31,14 @@ jobs:
       - name: Sensor callbacks are explicitly @Sendable (S-057, CON-S-1)
         run: Tools/check-sensor-handler-isolation.sh
 
+      # The same shape of defect as the one above, found the same way — on hardware, after
+      # the code had been "working" in CI for months. CoreLocation kills the process when
+      # `allowsBackgroundLocationUpdates` is set without the matching background mode
+      # declared, and both watch tiers shipped exactly that. Neither watch `LiveSensorFeed`
+      # is reachable from a test, so only a gate over the source can hold this.
+      - name: Setting background location updates declares the mode (AC-FR-B-1-6, CON-S-4)
+        run: Tools/check-location-background-mode.sh
+
       # ADR-S-01's claim is that the standalone UI depends on Core's output and never on
       # how that output was obtained. S-063 (a measured exponent), S-064 (a calibration
       # over-read) and ADR-S-06 amendment 2 (a gyroscope term) are all queued changes to

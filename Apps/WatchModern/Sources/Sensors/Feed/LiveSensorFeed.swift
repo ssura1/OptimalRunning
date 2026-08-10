@@ -194,7 +194,16 @@ final class LiveSensorFeed: NSObject, RunSensorFeed {
         locationManager.activityType = .fitness
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         locationManager.distanceFilter = kCLDistanceFilterNone
-        // Required for a fix to keep arriving with the screen off during a workout.
+        // Required for a fix to keep arriving with the screen off during a workout, and
+        // coupled to the bundle: CoreLocation kills the process outright if
+        // `UIBackgroundModes` does not declare `location` ("a fatal error", per its own
+        // header). It did not, and this line is where the app died on its first real
+        // device run — a few milliseconds after the permission sheet appeared, which is
+        // why it read as an authorization bug rather than a plist one.
+        //
+        // `Tools/check-location-background-mode.sh` holds the two together. Nothing else
+        // can: this file is the device-only half of the split described above, so no test
+        // reaches it, and the Simulator was never asked to run it.
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.startUpdatingLocation()
     }
