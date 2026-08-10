@@ -1803,6 +1803,19 @@ present; the gate is verified to go red with one architecture removed.
 >
 > Verified red by thinning the real built binary to `arm64` alone with `lipo -thin`, which is
 > exactly the "installs on my SE 3, fails on a Series 7" regression it exists to catch.
+>
+> **Extended after the first real install, which failed.** The bundle carried no
+> `WKApplication` key, so the watch refused it outright — `MIInstaller` error 92,
+> `InvalidWatchKitApp`, "missing either the WKWatchKitApp or WKApplication key set to true".
+> [design.md §8.1](./design.md#81-tier-divergence-matrix) had listed `WKApplication` as this tier's
+> bundle layout since Wave 2 and `project.yml` never set it.
+>
+> **Nothing could have caught it**: the Simulator does not run the installer's WatchKit
+> verification, so every simulator lane installed the bundle happily, and this job built a device
+> binary but never *installed* it. `legacy.yml` has asserted its own layout key since Wave 4 — the
+> gate existed for the tier that could not use a simulator at all, and not for the tier that could.
+> So the same assertion now runs here, on the produced bundle, and is verified red both with the key
+> removed and with it set to `false`.
 
 <a id="t-100"></a>
 ### T-100 — Confirm the Smart Stack workout suggestion, and change nothing to get it

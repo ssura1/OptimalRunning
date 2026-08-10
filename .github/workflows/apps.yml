@@ -247,6 +247,22 @@ jobs:
               *) echo "::error::built '$ARCHS' — missing $want. arm64_32 covers Series 6/7/8 and SE 2; arm64 covers Series 9+, SE 3 and Ultra 2+. Both are inside the ADR-014 floor, so both must ship."; exit 1 ;;
             esac
           done
+          # Bundle layout. A watchOS 9+ single-target watch app is identified by
+          # WKApplication; without it `MIInstaller` refuses the bundle on a real watch
+          # with "missing either the WKWatchKitApp or WKApplication key" (error 92,
+          # InvalidWatchKitApp) — while the Simulator installs it perfectly happily,
+          # because it does not run the installer's WatchKit verification.
+          #
+          # So this is invisible to every other lane by construction, which is exactly
+          # why it belongs here. It was missing from Wave 2 until the first install onto
+          # real hardware. legacy.yml has asserted its own key (WKWatchKitApp) since that
+          # tier was built; this is the same assertion for the other layout.
+          if ! plutil -extract WKApplication raw "$APP/Info.plist" 2>/dev/null | grep -qx true; then
+            echo "::error::Info.plist has no WKApplication=true — a real watch will refuse this bundle with InvalidWatchKitApp, even though the Simulator installs it fine."
+            exit 1
+          fi
+          echo "ok: WKApplication is set"
+
           # The deployment target again, this time as the linker actually recorded it
           # rather than as the project claims it. The earlier check reads build
           # settings; this reads the binary.

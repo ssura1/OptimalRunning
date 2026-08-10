@@ -93,6 +93,24 @@ targets:
       properties:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        # REQUIRED, and its absence is invisible until a real watch refuses the app.
+        #
+        # A watchOS 9+ single-target watch app is identified by `WKApplication: true`;
+        # the older two-target layout uses `WKWatchKitApp` instead (which is what
+        # Apps/WatchLegacy sets, and why design.md §8.1 lists bundle layout as a tier
+        # divergence). Without one of the two, `MIInstaller` refuses the bundle with
+        # "WatchKit app being installed is missing either the WKWatchKitApp or
+        # WKApplication key set to true in its Info.plist" — error 92, InvalidWatchKitApp.
+        #
+        # This was missing from Wave 2 until the first install onto real hardware, and
+        # nothing caught it: the Simulator does not perform the installer's WatchKit
+        # verification, and T-099's device build never *installed* what it built. The
+        # bundle-layout assertion added alongside this closes that gap, mirroring what
+        # legacy.yml has always asserted for its own key.
+        WKApplication: true
+        # Kept, though it belongs to the older layout: it is what declares the app
+        # usable without its companion, and removing it is a separate decision from
+        # fixing the install. Harmless alongside WKApplication.
         WKRunsIndependentlyOfCompanionApp: true
         # AC-FR-B-1-6 / design.md §7 "Background delivery": haptics and the live
         # workout session must survive the app being backgrounded. "audio" is not

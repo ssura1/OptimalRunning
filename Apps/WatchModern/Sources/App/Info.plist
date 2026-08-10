@@ -37,6 +37,8 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
+	<key>WKApplication</key>
+	<true/>
 	<key>WKRunsIndependentlyOfCompanionApp</key>
 	<true/>
 </dict>
