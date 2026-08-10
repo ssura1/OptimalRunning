@@ -69,6 +69,19 @@ Everything below is **not covered by any automated test** and must be checked by
 a simulator or a device before this tier can be called done. This list is deliberately
 explicit rather than folded into a claim of coverage.
 
+> **The "requires physical hardware" table below is now executable.**
+> [`Tools/watch-hardware-protocol.md`](../../Tools/watch-hardware-protocol.md) sequences every one
+> of those items — plus the watchOS 26 design-system audit ([T-098](../../docs/implementation.md#t-098))
+> and Double Tap — into a single ~4.3 mi outing on an SE 3. It is a sequence rather than a checklist
+> because several items are mutually exclusive minute to minute: always-on rendering and background
+> haptic delivery both require *not* looking at the screen, while zone colour and the cross-fade
+> require looking closely at it.
+>
+> It takes **two recordings in one outing**, which is forced by the product rather than chosen: the
+> watch's Interval preset passes no `workTarget`, so an interval run is never judged and shows no
+> colour; and Double Tap advances only an open-goal step, which in a continuous run is the last one,
+> so testing it there ends the run.
+
 ### Requires physical hardware
 
 | What | Why automation cannot reach it | Requirement |

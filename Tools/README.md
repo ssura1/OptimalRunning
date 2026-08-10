@@ -18,6 +18,7 @@ tree — a gate that has never gone red is not known to work.
 | Protocol | For |
 |---|---|
 | `manual-test-protocol.md` | The watch tiers, by hand |
+| `watch-hardware-protocol.md` | The Modern tier's hardware-only list, sequenced into one ~4.3 mi outing |
 | `standalone-manual-protocol.md` | The phone tier, by hand — everything CI cannot reach (S-054) |
 | `motion-recording-protocol.md` | Recording a raw motion trace for algorithm work |
 | `pace-ladder-protocol.md` | The speed-varying recording the step-length model is fitted against |

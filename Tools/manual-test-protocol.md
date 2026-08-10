@@ -334,12 +334,28 @@ is a handled state, not a failure.
 
 ## 7. Modern tier
 
-Carried forward from Wave 2 and Wave 3. See `Apps/WatchModern/README.md` and
-`Apps/iPhone/README.md` for the full lists. In summary, still hardware-only:
+**The hardware items now have their own document:
+[`Tools/watch-hardware-protocol.md`](./watch-hardware-protocol.md).** Wave 2 left eight items marked
+"requires physical hardware" with no hardware in existence to run them on; that protocol sequences
+all of them, plus the watchOS 26 work, into a single ~4.3 mi outing. It is a sequence rather than a
+checklist because several of the items are mutually exclusive minute to minute — three require *not*
+looking at the screen while four require looking closely at it.
 
-- Double Tap advance on Series 9+ (AC-FR-C-3) — not implementable at the watchOS 10 floor; see the
-  T-045 deviation note in `implementation.md`.
-- Always-on dimmed rendering and its 500 ms wrist-raise behaviour.
-- Background haptic delivery, as §3.1 but on modern hardware.
+Two things worth knowing before reading it, both discovered while writing it and both properties of
+the product rather than of the protocol:
+
+- **It takes two recordings, not one.** The watch's Interval preset passes no `workTarget`, so an
+  interval session is never judged — no zone colour and no pace haptics. Those need a continuous
+  run. Conversely Double Tap advances only an open-goal step, which in a continuous run is the
+  *last* step, so testing it there ends the run.
+- **Double Tap is implemented** as of [T-096](../docs/implementation.md#t-096) and the watchOS 26
+  floor. The note that used to sit here pointed at a deviation under T-044 — and cited it as T-045,
+  which was wrong. Both are now resolved and corrected in place.
+
+Still hardware-only and **not** covered by that outing:
+
 - The iPhone app's 300 ms statistics render and 60 fps list scrolling.
 - VoiceOver quality on all three tiers.
+- Anything on Series 6/7/8 or SE 2 — now the lower half of the supported range
+  ([ADR-014](../docs/design.md#adr-014)) and untested on real hardware. CI gates that the `arm64_32`
+  slice ships ([T-099](../docs/implementation.md#t-099)); nothing verifies it runs.
