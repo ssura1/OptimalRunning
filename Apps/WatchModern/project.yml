@@ -62,6 +62,24 @@ targets:
         PRODUCT_NAME: OptimalRunner
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
+        # Device builds need a signing team; Simulator builds do not, and CI only ever
+        # builds for the Simulator. Same treatment as Apps/iPhone/project.yml, and for
+        # the same reasons — the team is read from the environment rather than written
+        # down, because this repository is public and a Team ID is a personal identifier
+        # no other clone can use anyway:
+        #
+        #     DEVELOPMENT_TEAM=XXXXXXXXXX xcodegen generate
+        #
+        # Unset, this expands to the literal "${DEVELOPMENT_TEAM}", which Xcode resolves
+        # to empty — a Simulator build still succeeds, which is what keeps `apps.yml`
+        # green on a runner with no signing identity, and what lets T-099's device build
+        # pass `CODE_SIGNING_ALLOWED=NO` without a team at all.
+        #
+        # This was missing until the first real device install was attempted, at which
+        # point the tier had no way to reach a watch. The iPhone target had carried it
+        # since Wave 3; nothing generalised it, because nothing had needed to.
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
         SWIFT_VERSION: "6.0"
         ENABLE_PREVIEWS: true
         SKIP_INSTALL: false
