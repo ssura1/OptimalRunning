@@ -107,6 +107,19 @@ public struct StepDetector: Sendable {
         // being *relative*, it follows the signal down and finds "peaks" in noise.
         if stationary {
             above = false
+            // Advance the phase anchor, do not merely suppress. Returning without
+            // touching `lastEventTime` leaves it pinned at the last step before the
+            // stop, so the first sample on which the gate reopens sees a gap of the
+            // entire stop and `fallbackEvents` synthesises every step that was not
+            // taken during it — at once, back-dated into the stop.
+            //
+            // The gate reads as "no steps while stationary" and was doing the opposite:
+            // it deferred them. A phone left on a table for 20.5 minutes produced 1518
+            // phase-locked events on `capture-2026-08-09-1924`, against a true zero,
+            // because a table knock reopens the gate for a sample while the cadence
+            // estimate is still nominally confident and no real impact exists to
+            // re-anchor the phase.
+            lastEventTime = timestamp
             return []
         }
 

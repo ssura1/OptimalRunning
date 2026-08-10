@@ -1311,11 +1311,38 @@ which is the generality question the whole task turns on. It is one observation 
 measurement — nobody counted steps and the distance reference was unsurveyed — but it is the first
 evidence that the clamps firing is not a property of one person's stride.
 
-Two things would now make this measurable, and neither is new: the 60-second counted-step segment
-([NFR-S-8](./requirements.md#121-validation-status), still missing from every trace) and a second
-pace ladder from a different runner. A run recorded by the shipped app can now be exported whole
+**Addendum (2026-08-09) — the counted segment arrived, and it does not move this task.** The
+first human step count now exists (161 over a 60 s effort), along with the same-session
+capture-and-export pairing asked for at the end of this section. The question for S-064 was whether
+an *exact* reference would overturn the spectral integral's exoneration of the step count. It does
+not:
+
+* The pace-ladder replay is **bit-identical** across the stationary-back-fill fix — 2204 steps,
+  unchanged — so the +0.2% agreement this task rests on stands exactly as recorded.
+* On the new trace the counted 161, the spectral integral 162.3 and an independent impact detector
+  162–163 all agree within 1%. The arbiter is corroborated by a human for the first time, which
+  strengthens the *method* this task used rather than changing its answer.
+
+**So the step count remains innocent, now on better evidence, and the over-read is still the
+calibrated scale and the per-cadence-band gain.** That is where this task was and where it stays.
+
+**One thing genuinely new, and it is a different defect, not this one.** The shipped detector read
+**182** over that 60 s before the fix and **158** after: a stop preceding a run was being back-filled
+into the run's opening seconds. Any trace containing a stop therefore carried inflated step counts,
+which is a distinct error source from the metres-per-step over-read and pushes in the opposite
+direction. It does not explain the 1.139 m/step figure — correcting it *raises* metres per step, not
+lowers it — but it does mean any future step-count comparison drawn from a trace with stops in it
+should be re-derived rather than quoted from before this date.
+
+The fix also exposed a small pre-existing under-count the back-fill had been masking: the gate's 2 s
+RMS window suppresses up to ~2 s of real footfalls at the start of each running bout, which is most
+of the residual −2.6% against the spectral integral on that segment. Two errors were partly
+cancelling. Worth knowing before anyone reads the post-fix number as a bias.
+
+One thing would still make the original question measurable, and it is not new: a second pace ladder
+from a different runner. A run recorded by the shipped app can now be exported whole
 ([S-067](#s-067)), so a field run and a capture from the same session can be compared against each
-other rather than described.
+other rather than described — as of 2026-08-09 that pairing exists and is the method above.
 
 ---
 
