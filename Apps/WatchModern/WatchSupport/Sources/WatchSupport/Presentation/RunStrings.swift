@@ -31,12 +31,43 @@ public enum RunStrings {
         }
     }
 
+    /// The full words. Still what VoiceOver reads and what the post-run record uses —
+    /// `stepKindCompact` is a *rendering*, not a rename.
     public static func stepKind(_ kind: StepKind) -> String {
         switch kind {
         case .warmup: return "WARM UP"
         case .work: return "WORK"
         case .recovery: return "RECOVERY"
         case .cooldown: return "COOL DOWN"
+        }
+    }
+
+    /// What the metrics page draws (T-104).
+    ///
+    /// `WORK` and `RECOVERY` shrink to single letters because they alternate every few
+    /// minutes and are read at a glance, mid-stride, on a 40 mm screen — and because
+    /// `RECOVERY` is eight characters of a header that also has to carry a rep count and a
+    /// distance countdown.
+    ///
+    /// **Warm-up and cool-down deliberately keep their words.** Abbreviating warm-up would
+    /// put a bare `W` on screen meaning something other than the `W` that means work — an
+    /// ambiguity invented entirely by the abbreviation, on the one step where a runner is
+    /// least likely to be looking carefully. They are also not part of the alternation, so
+    /// they gain nothing from being short.
+    public static func stepKindCompact(_ kind: StepKind) -> String {
+        switch kind {
+        case .work: return "W"
+        case .recovery: return "R"
+        case .warmup, .cooldown: return stepKind(kind)
+        }
+    }
+
+    /// The chip kind for a step, or `nil` for the steps that render as plain words.
+    public static func accentKind(for kind: StepKind) -> StepAccentKind? {
+        switch kind {
+        case .work: return .work
+        case .recovery: return .recovery
+        case .warmup, .cooldown: return nil
         }
     }
 

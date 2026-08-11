@@ -1966,6 +1966,84 @@ if haptics fire with the screen asleep, `workout-processing` is being honoured w
 **Done when:** an outdoor run starts on real hardware without the app dying. Install and the
 declaration in the built bundle are verified; the run is not, and cannot be from this machine.
 
+<a id="t-103"></a>
+### T-103 — Distance you can actually read, bought with layout rather than points
+
+| | |
+|---|---|
+| **Wave** | 9 |
+| **Satisfies** | AC-FR-A-6-5, and amends AC-FR-A-6-2 |
+| **Touches** | `MetricsView`, `WatchSupport/Presentation/MetricsTypography.swift`, `ZoneStyle`, `Tests/MetricsLayoutBudgetTests.swift` |
+
+Reported from the first real run: distance was unreadable mid-stride. It was 15 pt, dimmed,
+and the last line on the page.
+
+**Enlarging it in place was not available, and that was measured rather than argued.** A
+40 mm SE 3 screen is 197 pt tall. The tallest arrangement the stack can produce already came
+to **209.7 pt** — the page was relying on `minimumScaleFactor` and *every* metric was already
+being scaled to fit. Enlarging distance where it stood measures **216.5 pt**: the reported
+problem would have been traded for a worse one, shrinking the two metrics AC-FR-A-6-2 puts
+first in order to enlarge the last.
+
+Folding average pace and distance onto one baseline-aligned row buys back a whole row
+(~13 pt) and spends part of it on distance at `title3`. Worst case now **196.6 pt**, and an
+ordinary structured run **160 pt** against 173 before — so the page is both shorter and the
+number bigger. Distance is deliberately not promoted to `primaryMetric`: measured, that
+overflows, and three co-equal 28 pt numbers would flatten the hierarchy the page depends on.
+
+**The budget is a test, not a comment.** `MetricsLayoutBudgetTests` runs on the watchOS
+simulator, resolves each token to a real `UIFont` and sums the stack. It is verified red four
+ways: distance returned to caption size, distance promoted to `title2` (4 failures including
+the overflow), and the naive enlarge-in-place layout (216.5 vs 197). The type tokens had to
+move to `WatchSupport` for this to be possible at all — the test bundle cannot import the app
+target, so a token beside the view is invisible to the test that must hold it.
+
+**Left as a finding:** the worst case now clears by under a point. This page has no room for
+another row at any size, and the next addition needs a layout decision rather than a font.
+
+<a id="t-104"></a>
+### T-104 — `W` and `R`, and why they are chips rather than coloured letters
+
+| | |
+|---|---|
+| **Wave** | 9 |
+| **Satisfies** | FR-J-1, AC-FR-J-1-3 |
+| **Touches** | `ORColor/Palettes/StepAccent.swift`, `ORConformance/DataChecks.swift`, `RunStrings`, `IntervalPresentation`, `MetricsScreen`, `MetricsView` |
+
+`WORK` and `RECOVERY` become `W` and `R`, coloured differently — they alternate every few
+minutes, are read at a glance, and `RECOVERY` is eight characters of a header that also
+carries a rep count and a countdown.
+
+**The obvious implementation is impossible, and the measurement is why the design changed.**
+Coloured letters sit on the zone fill, so AC-FR-J-1-3 holds them to 4.5:1 against it. The
+binding case is `slightlySlow` at `#238180`, where the best contrast *any* colour achieves is
+**4.64:1, using pure white** — black manages 4.52:1. There is no room for a saturated hue
+there at all, so "two distinguishable coloured letters on that background" is not a thing that
+exists.
+
+A chip moves the problem somewhere solvable: the fill is a non-text element, held to 3:1 by
+WCAG 1.4.11, and the letter's contrast is then against the fill — a value this code controls
+rather than one the zone dictates. Amber `#FFD166`/`#8A4600` for work, cyan
+`#8FE3FF`/`#104A6E` for recovery, light and dark variants selected by whichever clears more
+contrast against the background behind it. Measured worst cases across both palettes, all six
+zones and both luminance states: fill-vs-background **3.14:1**, letter-on-fill **7.10:1**,
+work vs recovery **ΔE 79.2**.
+
+**The redundancy claim was checked, not assumed.** FR-J-1 is satisfied by the letterforms —
+`W` and `R` are different *shapes*, asserted directly on the rendered values in
+`StepMarkerTests` rather than inferred from the design. That matters here specifically: warm
+against cool survives red-green dichromacy, which is why the CVD palette is built on it, but
+it does **not** survive tritanopia, where blue-yellow is exactly the axis that collapses. The
+colour is the fast channel; the letterform is the reliable one, and it is unaffected by any
+deficiency.
+
+**Warm-up and cool-down keep their words.** Abbreviating warm-up would put a bare `W` on
+screen meaning something other than the `W` that means work — an ambiguity invented purely by
+the abbreviation. They are not part of the alternation and gain nothing from being short.
+
+VoiceOver still hears `WORK · REP 3/4 · 340 m to go`: "W, REP 3 of 4" is a worse thing to hear
+than it is to see, so `stepHeaderText` is unchanged and only the drawing splits.
+
 ### Considered and declined
 
 Recorded because a decline that is not written down gets re-litigated every six months.

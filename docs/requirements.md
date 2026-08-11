@@ -289,7 +289,7 @@ The expected pace is a function of progress, not a constant. It is defined by a 
 | AC | Criterion |
 |---|---|
 | AC-FR-A-6-1 | THE SYSTEM SHALL fill the entire screen background with the current zone colour, edge to edge, with no letterboxing or inset. |
-| AC-FR-A-6-2 | THE SYSTEM SHALL display, top to bottom: elapsed time, heart rate, rolling pace, average pace, distance. |
+| AC-FR-A-6-2 | THE SYSTEM SHALL display, in reading order: elapsed time, heart rate, rolling pace, average pace, distance. **Amended by [T-103](./implementation.md#t-103)** — was "top to bottom", which the Modern tier no longer satisfies literally: average pace and distance share one row, in that order. The change was forced by measurement, not preference. On a 40 mm screen (197 pt) the stack's tallest arrangement already came to 209.7 pt before distance was enlarged at all, and enlarging it in place measured 216.5 pt — every metric would have been scaled down to make one bigger, which is the outcome AC-FR-A-6-5 exists to prevent. Folding the two onto one row brings the worst case to 196.6 pt. The sequence itself is unchanged. |
 | AC-FR-A-6-3 | THE SYSTEM SHALL animate colour transitions over 400 ms *(tunable)* to avoid a jarring flash. |
 | AC-FR-A-6-4 | WHEN a heart-rate sample is unavailable for > 10 s, THE SYSTEM SHALL display `--` for heart rate rather than a stale value. |
 | AC-FR-A-6-5 | THE SYSTEM SHALL render all five metrics legibly at the smallest supported case size (38 mm on Legacy, 40 mm on Modern) without truncation or overlap at the default Dynamic Type size. |

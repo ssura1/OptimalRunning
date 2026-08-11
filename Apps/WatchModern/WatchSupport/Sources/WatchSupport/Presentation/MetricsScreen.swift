@@ -48,7 +48,23 @@ public struct MetricsScreen: Sendable, Hashable {
 
     /// `WORK · REP 3/4 · 340 m to go`. Replaces the zone caption line during a
     /// structured workout (design.md §12.2).
+    ///
+    /// Still the full words, and still what VoiceOver reads. The three fields below are how
+    /// the same header is *drawn* (T-104); this one is how it is spoken.
     public let stepHeaderText: String?
+
+    /// The step kind as drawn: `W`, `R`, or the full word for warm-up and cool-down.
+    public let stepKindLabel: String?
+
+    /// The chip behind `stepKindLabel`, already resolved against this screen's background.
+    ///
+    /// `nil` for warm-up and cool-down, which are not part of the alternation and render as
+    /// plain text — see `RunStrings.stepKindCompact` for why they keep their words.
+    public let stepAccent: StepAccentSwatch?
+
+    /// `REP 3/4 · 340 m to go` — the header with its kind removed, since the kind is now
+    /// drawn separately.
+    public let stepDetailText: String?
     /// The final-100 m countdown is up (AC-FR-C-4-5).
     public let isCountingDown: Bool
 
@@ -123,6 +139,14 @@ public struct MetricsScreen: Sendable, Hashable {
             paceSuffix: RunStrings.paceSuffix(unit),
             distanceSuffix: RunStrings.unitSuffix(unit),
             stepHeaderText: IntervalPresentation.stepHeader(for: output.step, unit: unit),
+            stepKindLabel: output.step.step.map { RunStrings.stepKindCompact($0.kind) },
+            // Resolved here rather than in the view, for the same reason every other colour
+            // is: the swatch has to be chosen against *this* screen's background, and the
+            // view is not allowed to know how that choice is made.
+            stepAccent: output.step.step
+                .flatMap { RunStrings.accentKind(for: $0.kind) }
+                .map { StepAccent.accent(for: $0, on: swatch.background) },
+            stepDetailText: IntervalPresentation.stepDetail(for: output.step, unit: unit),
             isCountingDown: output.step.isCountingDown,
             secondaryOpacity: luminance == .dimmed ? presentation.alwaysOnSecondaryOpacity : 1.0,
             isDimmed: luminance == .dimmed,

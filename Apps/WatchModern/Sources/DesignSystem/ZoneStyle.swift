@@ -24,17 +24,46 @@ extension Color {
 /// Watch typography, sized for reading at a glance mid-stride.
 ///
 /// Fixed text styles rather than point sizes, so Dynamic Type scales them — AC-FR-A-6-5
-/// requires the five-metric stack to survive the largest size at 40 mm without
-/// truncation, which only works if the sizes are relative to begin with.
+/// requires the five-metric stack to survive at 40 mm without truncation, which only works
+/// if the sizes are relative to begin with.
+///
+/// **The sizes themselves live in `WatchSupport.MetricsTypography`, not here.** This target
+/// is unreachable from the test bundle, so a token defined here could never be measured by
+/// the layout budget that has to hold AC-FR-A-6-5. Both sides read the same tokens; this
+/// file only turns them into SwiftUI.
 enum ORFont {
-    /// Elapsed time and rolling pace: the two a runner reads without stopping, and the
-    /// two that stay full-weight while dimmed.
-    static let primaryMetric = Font.system(.title2, design: .rounded, weight: .semibold)
-    static let zoneCaption = Font.system(.caption, design: .rounded, weight: .bold)
-    static let secondaryMetric = Font.system(.caption, design: .rounded, weight: .medium)
-    static let stepHeader = Font.system(.caption2, design: .rounded, weight: .bold)
-    static let countdown = Font.system(.largeTitle, design: .rounded, weight: .heavy)
-    static let glyph = Font.system(.title3, weight: .bold)
+    static let primaryMetric = Font(MetricsTypography.primaryMetric)
+    static let distanceMetric = Font(MetricsTypography.distanceMetric)
+    static let zoneCaption = Font(MetricsTypography.zoneCaption)
+    static let secondaryMetric = Font(MetricsTypography.secondaryMetric)
+    static let stepHeader = Font(MetricsTypography.stepHeader)
+    static let countdown = Font(MetricsTypography.countdown)
+    static let glyph = Font(MetricsTypography.glyph)
+}
+
+extension Font {
+    /// The single mapping from a framework-free token to a real font. Exhaustive switches,
+    /// so a token added in `WatchSupport` fails to compile here rather than silently
+    /// falling back to a default size.
+    init(_ token: TypeToken) {
+        let style: Font.TextStyle = switch token.style {
+        case .largeTitle: .largeTitle
+        case .title2: .title2
+        case .title3: .title3
+        case .body: .body
+        case .caption: .caption
+        case .caption2: .caption2
+        }
+        let weight: Font.Weight = switch token.weight {
+        case .medium: .medium
+        case .semibold: .semibold
+        case .bold: .bold
+        case .heavy: .heavy
+        }
+        self = token.rounded
+            ? .system(style, design: .rounded, weight: weight)
+            : .system(style, weight: weight)
+    }
 }
 
 /// Animation, and what `Reduce Motion` changes about it (T-039, AC-FR-A-6-3).

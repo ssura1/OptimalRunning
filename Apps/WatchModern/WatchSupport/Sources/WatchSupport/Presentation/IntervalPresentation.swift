@@ -35,6 +35,26 @@ public enum IntervalPresentation {
         return segments.joined(separator: " · ")
     }
 
+    /// The header *without* its kind: `REP 3/4 · 340 m to go`, or `nil` when there is
+    /// nothing left to say (T-104).
+    ///
+    /// The kind is drawn separately now — as a coloured chip for work and recovery — so it
+    /// has to come out of the string. `stepHeader` above still builds the whole line and is
+    /// still what VoiceOver reads, because "W, REP 3 of 4" is a worse thing to hear than
+    /// "WORK, REP 3 of 4" even though it is a better thing to see.
+    public static func stepDetail(for state: StepState, unit: UnitPreference) -> String? {
+        guard let step = state.step else { return nil }
+
+        var segments: [String] = []
+        if step.isRepeated {
+            segments.append("REP \(step.repIndex)/\(step.repCount)")
+        }
+        if let remaining = remainingText(for: state, unit: unit) {
+            segments.append(remaining)
+        }
+        return segments.isEmpty ? nil : segments.joined(separator: " · ")
+    }
+
     /// `340 m to go` for a distance goal, `1:20 left` for a time goal, `nil` for an
     /// open goal.
     ///

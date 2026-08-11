@@ -11,6 +11,7 @@
 		1C704BFC9A101B2B58F5DCA7 /* HealthKitWorkoutBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7984EA8C6039A6F351338DF8 /* HealthKitWorkoutBackend.swift */; };
 		1E43823824A08FED43D21ECB /* ORModels in Frameworks */ = {isa = PBXBuildFile; productRef = 933088B0D7319B29CB179D4C /* ORModels */; };
 		32891786765634A2849BF6F1 /* IntervalOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE116A8A26EA33E4DC2E0CCB /* IntervalOverlays.swift */; };
+		5D4EBA32249B87F9E1AAE016 /* MetricsLayoutBudgetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B6B421D351E5B0494F7DFC9 /* MetricsLayoutBudgetTests.swift */; };
 		5EFE32D9B64ACFDF44DBB379 /* ORModels in Frameworks */ = {isa = PBXBuildFile; productRef = FB51CBEB750C812ED760BB40 /* ORModels */; };
 		66618DA2B7B43F7E8E9763A6 /* WatchHapticPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21334C770F0DC25D5E029350 /* WatchHapticPlayer.swift */; };
 		69598134B5A72265C42D9807 /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B370EA59F1C47A355EE44C /* AppCoordinator.swift */; };
@@ -38,6 +39,7 @@
 		01550337263EC4BC6B20E2E0 /* RunPagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunPagerView.swift; sourceTree = "<group>"; };
 		21334C770F0DC25D5E029350 /* WatchHapticPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHapticPlayer.swift; sourceTree = "<group>"; };
 		283A2B8DDAC212B854FE24D9 /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = ../../Core; sourceTree = SOURCE_ROOT; };
+		2B6B421D351E5B0494F7DFC9 /* MetricsLayoutBudgetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricsLayoutBudgetTests.swift; sourceTree = "<group>"; };
 		2ED6D2E8B3C1B764908D237C /* ZoneStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneStyle.swift; sourceTree = "<group>"; };
 		30BFE3DE7385B3E5055B39C9 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		3259271ABBB02C605058376C /* WatchSupport */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WatchSupport; path = WatchSupport; sourceTree = SOURCE_ROOT; };
@@ -221,6 +223,7 @@
 		CB118C7DFB26E543E57B4832 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				2B6B421D351E5B0494F7DFC9 /* MetricsLayoutBudgetTests.swift */,
 				D25954A6566063F148F63C5C /* ScaffoldingTests.swift */,
 			);
 			path = Tests;
@@ -356,6 +359,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5D4EBA32249B87F9E1AAE016 /* MetricsLayoutBudgetTests.swift in Sources */,
 				B961D536BD39DD5FC4A4586C /* ScaffoldingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

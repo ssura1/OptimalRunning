@@ -565,6 +565,65 @@ public enum DataChecks {
                 }
             }
 
+            // The work/recovery chip (T-104), on every background it can land on.
+            //
+            // Two different bars, deliberately: the fill is a non-text element and WCAG
+            // 1.4.11 holds it to 3:1, while the letter drawn on it is text and takes the
+            // usual 4.5:1. Splitting them is the whole reason the marker is a chip —
+            // coloured letters directly on the zone fill cannot be done at all, because
+            // `slightlySlow` at #238180 tops out at 4.64:1 against pure white.
+            for choice in PaletteChoice.allCases {
+                let palette = ZonePalette.palette(for: choice)
+                for zone in PaceZone.allCases {
+                    for luminance in LuminanceState.allCases {
+                        let background = palette.swatch(for: zone, luminance: luminance).background
+                        let label = "\(choice.rawValue)/\(zone)/\(luminance.rawValue)"
+
+                        for kind in StepAccentKind.allCases {
+                            let accent = StepAccent.accent(for: kind, on: background)
+                            c.expect(
+                                "\(kind.rawValue) chip reads on \(label) (3:1)",
+                                accent.fillContrastRatio(against: background) >= 3.0,
+                                "\(accent.fill.hexString) is "
+                                    + String(format: "%.2f", accent.fillContrastRatio(against: background))
+                                    + ":1 on \(background.hexString)")
+                            c.expect(
+                                "\(kind.rawValue) letter reads on its chip (4.5:1) at \(label)",
+                                accent.letterContrastRatio >= 4.5,
+                                String(format: "%.2f", accent.letterContrastRatio) + ":1")
+                        }
+
+                        // And the two are unmistakably different colours wherever they
+                        // land — the point of the change.
+                        let work = StepAccent.accent(for: .work, on: background).fill
+                        let recovery = StepAccent.accent(for: .recovery, on: background).fill
+                        c.expect(
+                            "work and recovery chips differ at \(label) (ΔE ≥ 25)",
+                            ColorScience.deltaE(work, recovery) >= 25,
+                            "ΔE " + String(format: "%.1f", ColorScience.deltaE(work, recovery)))
+                    }
+                }
+            }
+
+            // Amber against cyan is the warm/cool axis, which is what survives red-green
+            // dichromacy — the same reasoning that shapes the CVD palette. It is NOT
+            // claimed to survive tritanopia, where blue-yellow is precisely the axis that
+            // collapses. That is accepted rather than designed around, because the letter
+            // W or R is the redundant channel FR-J-1 actually requires and it is unaffected
+            // by any dichromacy. The colour is the fast channel; the letterform is the
+            // reliable one.
+            for deficiency in [ColorVisionDeficiency.protanopia, .deuteranopia] {
+                let background = ZonePalette.standard.swatch(for: .neutral).background
+                let work = ColorVisionSimulation.simulate(
+                    StepAccent.accent(for: .work, on: background).fill, as: deficiency)
+                let recovery = ColorVisionSimulation.simulate(
+                    StepAccent.accent(for: .recovery, on: background).fill, as: deficiency)
+                c.expect(
+                    "work and recovery chips survive \(deficiency.rawValue)",
+                    ColorScience.deltaE(work, recovery) >= 20,
+                    "ΔE " + String(format: "%.1f", ColorScience.deltaE(work, recovery)))
+            }
+
             // The brand red is documented as failing, which is why it is not used.
             if let brand = SRGBColor(hex: "#E63946") {
                 c.expect("the brand red would fail the contrast bar",
