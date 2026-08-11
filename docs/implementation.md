@@ -2095,6 +2095,61 @@ whether capturing the crown for advance interferes with paging, need the wrist. 
 does not apply during reps. That is a real open decision recorded against T-101's neighbours,
 and it is not resolved as a side effect of touching this code.
 
+<a id="t-106"></a>
+### T-106 — Connect the sync pipeline, which was never connected
+
+| | |
+|---|---|
+| **Wave** | 9 |
+| **Satisfies** | FR-E-1, AC-FR-E-1-1, AC-FR-E-1-2, FR-D-6 |
+| **Touches** | `SampleStore`, `RunSessionModel`, `SyncCoordinator`, new `Sources/Transport/WatchConnectivityTransport.swift`, `AppCoordinator`, `Tools/check-sync-wiring.sh`, `Tests/RunDurabilityTests.swift` |
+
+A run finished on the watch never reached the phone, and the samples were deleted on the way.
+
+**The diagnosis that looked complete was not.** `finalizeRun()` deleting the only file it
+had written is real and is fixed here — but keeping that file and writing a route would only
+have made a run *recoverable by pulling the container*, which is not the same as appearing in
+the run list. The actual finding is larger:
+
+- `RunEnvelopeBuilder` was referenced **nowhere outside its own file and its own tests**.
+- `SyncCoordinator` was **never constructed** anywhere in the app.
+- There was **no `FileTransporting` conformer on the watch at all** — no `WCSession` code.
+- The phone's receiving half was complete, wired, and waiting for files nobody sent.
+
+Every component was written, tested and correct. The assembly did not exist. 180 passing
+tests sat either side of a pipeline with no middle.
+
+**Ordering is the fix, not retention.** `end()` now: stops the feed and engine → `finalizeRun`
+**renames** the samples to `.completed` (out of the orphan population, still on disk) → builds
+the envelope → hands it to a `FinishedRunSink`, which writes it to disk before attempting any
+transfer → and only on success releases the samples. If the hand-off throws, nothing is
+deleted and the run stays recoverable. "Accepted" means durable, not delivered — a run
+finished with the phone at home is safe the moment `enqueue` returns.
+
+`RunSessionModel` also retains `[EngineOutput]` for the run, because that is what
+`RunEnvelopeBuilder` takes and what `FixtureReplay` emits — `RunSample` carries no
+`activeElapsed`, no step transitions and no degradations, so an envelope rebuilt from the
+store alone would be missing the per-rep table and the zone timeline's clock. It accumulates
+the route too, since samples carry distance but no coordinates.
+
+**Two things hold this, and neither is a promise.**
+
+`RunDurabilityTests` asserts the property directly: after `end()`, a run is in the sink **or**
+still on disk, never in neither — across a succeeding hand-off, a failing one, and no sink at
+all. Verified against the original ordering: **7 of its 8 tests fail**, including the central
+one.
+
+`Tools/check-sync-wiring.sh` asserts the assembly, which is the part no unit test can reach:
+the builder is called from shipping code, a coordinator is constructed, a run is given a
+`sink:`, and a real transport conformer exists. Each of the four is a thing that was silently
+false, and each is verified red independently.
+
+**Not closed here:** the acceptance bar is a real run appearing on the phone with distance,
+route, heart rate and splits, and that needs two devices —
+[`Tools/watch-sync-protocol.md`](../Tools/watch-sync-protocol.md). The Simulator cannot
+reproduce reachability transitions between paired devices, which is why `FileTransporting` is
+injectable in the first place.
+
 ### Considered and declined
 
 Recorded because a decline that is not written down gets re-litigated every six months.

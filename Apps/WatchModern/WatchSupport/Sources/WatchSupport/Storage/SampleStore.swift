@@ -158,13 +158,68 @@ public final class SampleStore: @unchecked Sendable {
         }
     }
 
-    /// Marks the run as cleanly ended: flushes once more, then removes the
-    /// in-progress marker so a future launch does not treat this run as orphaned.
-    public func finalizeRun() {
+    /// Marks the run as cleanly ended: flushes once more, then **retains** the samples
+    /// under a `.completed` extension so a future launch does not treat the run as an
+    /// orphan while the data itself survives (T-106).
+    ///
+    /// **This used to delete the file, and deleting it was silent data loss on the happy
+    /// path.** `flush` writes to exactly one place — `<runID>.inprogress` — so removing
+    /// that file was removing the only record the run ever produced. A run that ended
+    /// cleanly erased itself; a run that *crashed* was the only kind that survived, as an
+    /// orphan. Nothing noticed, because orphan recovery was the only reader and it is only
+    /// reached after a crash.
+    ///
+    /// Ending a run is therefore two steps now, not one. This is the first: stop the run
+    /// being an orphan. `releaseRun` is the second, and it is the only thing allowed to
+    /// destroy anything — see the ordering note there.
+    @discardableResult
+    public func finalizeRun() -> URL? {
         flush()
         lock.lock(); let id = runID; lock.unlock()
-        guard let id else { return }
-        try? fileManager.removeItem(at: inProgressURL(for: id))
+        guard let id else { return nil }
+
+        let source = inProgressURL(for: id)
+        let destination = completedURL(for: id)
+        guard fileManager.fileExists(atPath: source.path) else { return nil }
+
+        // `replaceItemAt` rather than `moveItem`, so a retry after a partial failure
+        // overwrites rather than throwing on an existing destination.
+        try? fileManager.removeItem(at: destination)
+        do {
+            try fileManager.moveItem(at: source, to: destination)
+        } catch {
+            // Could not rename: leave the in-progress file exactly where it is. The run
+            // reappears as an orphan on next launch, which is recoverable. Deleting it to
+            // tidy up would be the bug this method was rewritten to fix.
+            return nil
+        }
+        return destination
+    }
+
+    /// Deletes a completed run's samples. **Call this only once the run is durably held
+    /// somewhere else** (T-106).
+    ///
+    /// The samples are the run. Once `RunEnvelopeBuilder` has turned them into an envelope
+    /// and `PendingPayloadQueue` has written that envelope to disk, this copy is redundant
+    /// and should go — but not one step sooner. `RunSessionModel.end` enforces the order by
+    /// construction: the sink is called first and this is only reached if it returned
+    /// without throwing.
+    public func releaseRun(runID: UUID) {
+        try? fileManager.removeItem(at: completedURL(for: runID))
+    }
+
+    /// Whether a completed run's samples are still on disk — the "not yet released" state.
+    /// Exists so the ordering invariant can be asserted rather than described.
+    public func hasCompletedRun(runID: UUID) -> Bool {
+        fileManager.fileExists(atPath: completedURL(for: runID).path)
+    }
+
+    /// Reads back a completed run's samples, for a retry after a failed hand-off.
+    public func loadCompleted(runID: UUID) -> [RunSample]? {
+        guard let data = try? Data(contentsOf: completedURL(for: runID)),
+              let record = try? JSONDecoder().decode(StoredRun.self, from: data)
+        else { return nil }
+        return record.samples
     }
 
     public var bufferedSampleCount: Int {
@@ -191,6 +246,13 @@ public final class SampleStore: @unchecked Sendable {
 
     private func inProgressURL(for runID: UUID) -> URL {
         directory.appendingPathComponent("\(runID.uuidString).inprogress")
+    }
+
+    /// A different extension, deliberately: `detectOrphan` scans for `.inprogress` only, so
+    /// renaming is what takes a finished run out of the orphan population without taking it
+    /// off the disk.
+    private func completedURL(for runID: UUID) -> URL {
+        directory.appendingPathComponent("\(runID.uuidString).completed")
     }
 
     private struct StoredRun: Codable {

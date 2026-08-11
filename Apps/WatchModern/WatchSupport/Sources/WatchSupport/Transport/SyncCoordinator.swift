@@ -98,6 +98,14 @@ public final class SyncCoordinator {
         refresh()
     }
 
+    /// Retries whatever is already on disk. Called at launch, so a run enqueued before a
+    /// crash or a battery death is handed over on the next start rather than waiting for a
+    /// reachability change that may not come.
+    public func resume() {
+        flush()
+        refresh()
+    }
+
     // MARK: - Downlink
 
     /// Applies a context from the phone: acknowledgements, and whatever else it carries.
@@ -127,5 +135,18 @@ public final class SyncCoordinator {
 
     private func refresh() {
         pendingCount = queue.pending.count
+    }
+}
+
+// MARK: - Finished runs
+
+/// The watch's finished-run destination (T-106).
+///
+/// `enqueue` writes to disk first and only then attempts a transfer, which is exactly the
+/// contract `FinishedRunSink` needs: returning without throwing means *durable*, not
+/// *delivered*. A run finished with the phone at home is safe the moment this returns.
+extension SyncCoordinator: FinishedRunSink {
+    public func accept(_ envelope: RunEnvelope) throws {
+        try enqueue(envelope)
     }
 }

@@ -13,6 +13,23 @@ public enum RunStartRefusal: Error, Equatable, Sendable {
     case alreadyRunning
 }
 
+/// Where a finished run goes to become durable (T-106).
+///
+/// `SyncCoordinator` is the real conformer: `enqueue` writes the encoded envelope to disk
+/// *before* attempting any transfer, so "accepted without throwing" means "on disk", not
+/// "delivered to the phone". That distinction is the whole point of the protocol — the
+/// ordering guarantee `RunSessionModel.end` enforces is about durability, not delivery, and
+/// a run must survive the phone being in another room.
+///
+/// A protocol rather than a direct dependency because `WatchSupport` must not know about
+/// `WCSession`, and because a test needs to be able to make acceptance *fail* on demand —
+/// which is the case the ordering exists for.
+@MainActor
+public protocol FinishedRunSink: AnyObject {
+    /// Takes durable ownership of a finished run, or throws having taken nothing.
+    func accept(_ envelope: RunEnvelope) throws
+}
+
 /// The state a run screen renders from.
 public enum RunPhase: String, Sendable, Hashable {
     case idle
@@ -88,6 +105,33 @@ public final class RunSessionModel {
     private var pendingManualAdvance = false
     private var lastTimestamp: TimeInterval = 0
     private var runID = UUID()
+    private var startedAt = Date()
+
+    /// Every tick's output, retained for the whole run (T-106).
+    ///
+    /// `RunEnvelopeBuilder` takes `[EngineOutput]` — deliberately, because that is exactly
+    /// what `FixtureReplay.run` emits, which is what lets a golden trace be pushed through
+    /// sync and storage and checked against known-good ground truth. The store keeps
+    /// `RunSample`s, which are a strict subset: they carry no `activeElapsed`, no step
+    /// transitions and no degradation flags, so an envelope rebuilt from them would be
+    /// missing the per-rep table and the zone timeline's clock.
+    ///
+    /// Cost is bounded and small: 1 Hz for an hour is 3600 values, a few hundred KB. The
+    /// alternative — a second incremental builder alongside the one `Core` already tests —
+    /// would be a parallel implementation of the thing most worth not getting wrong.
+    private var outputs: [EngineOutput] = []
+
+    /// The run's path, accumulated from the feed's fixes (T-106, T-107).
+    ///
+    /// Kept here rather than derived from samples because `RunSample` carries no
+    /// coordinates — only distance. Without this the envelope's `route` is always `nil` and
+    /// the phone draws no map, which is exactly what shipped.
+    private var route: [RoutePoint] = []
+
+    /// Where a finished run goes. Optional so a test — or a tier that has no phone — can
+    /// run without one; when it is absent, samples are retained rather than released.
+    private weak var sink: FinishedRunSink?
+    private let appVersion: String
 
     public init(
         plan: WorkoutPlan,
@@ -96,7 +140,9 @@ public final class RunSessionModel {
         feed: RunSensorFeed,
         store: SampleStore,
         session: WorkoutSessionController,
-        haptics: HapticPlaying
+        haptics: HapticPlaying,
+        sink: FinishedRunSink? = nil,
+        appVersion: String = "1.0"
     ) {
         self.plan = plan
         self.profile = profile
@@ -105,6 +151,8 @@ public final class RunSessionModel {
         self.store = store
         self.session = session
         self.haptics = haptics
+        self.sink = sink
+        self.appVersion = appVersion
         self.engine = RunEngine(configuration: configuration, plan: plan, profile: profile)
         self.presenter = AlertPresenter(config: configuration.presentation)
     }
@@ -126,6 +174,9 @@ public final class RunSessionModel {
         }
 
         runID = UUID()
+        startedAt = Date()
+        outputs.removeAll(keepingCapacity: true)
+        route.removeAll(keepingCapacity: true)
         store.startRun(runID: runID)
         try await session.start(locationType: activity == .indoorRun ? .indoor : .outdoor, now: 0)
 
@@ -152,6 +203,17 @@ public final class RunSessionModel {
         session.tick(now: merged.timestamp)
 
         store.append(out.sample, flushIntervalSeconds: configuration.capture.flushIntervalSeconds)
+        // Retained for the envelope (T-106). The store's copy is the crash-recovery path
+        // and carries only `RunSample`; this is what the phone is actually built from.
+        outputs.append(out)
+        if let location = merged.location {
+            route.append(RoutePoint(
+                timestamp: merged.timestamp,
+                latitude: location.latitude,
+                longitude: location.longitude,
+                altitudeMetres: location.altitudeMetres
+            ))
+        }
         samplesRecorded += 1
 
         if let alert = out.alert { deliver(alert, at: out.activeElapsed) }
@@ -190,6 +252,29 @@ public final class RunSessionModel {
     /// the store is finalized so the next launch does not see an orphan, and only then
     /// is the HealthKit session saved. A save that throws must still leave the feed
     /// stopped — hence `defer`-free explicit ordering with the throwing call last.
+    /// Ends the run, and — the part that matters — does not destroy anything until the run
+    /// is durably held somewhere else (T-106).
+    ///
+    /// **The order below is the fix, not an implementation detail.** It used to be:
+    /// `store.finalizeRun()`, which deleted the only file the run ever wrote, and nothing
+    /// else. No envelope was built, `SyncCoordinator` was never constructed anywhere in the
+    /// app, and `RunEnvelopeBuilder` was referenced nowhere outside its own tests — so a
+    /// run that ended cleanly erased itself and never reached the phone. The two changes
+    /// that look like the fix (keep the file, write the route) do not get you there on
+    /// their own; the pipeline was never connected at either end.
+    ///
+    /// Now:
+    /// 1. stop the feed and the engine, so nothing more arrives,
+    /// 2. `finalizeRun` **retains** the samples under `.completed` and takes them out of the
+    ///    orphan population,
+    /// 3. build the envelope and hand it to the sink, which writes it to disk before it
+    ///    tries to transfer anything,
+    /// 4. only on success, release the samples.
+    ///
+    /// If step 3 throws, step 4 does not happen and the samples stay on disk. The run is
+    /// not lost; it is recoverable. `RunDurabilityTests` asserts that as a property rather
+    /// than trusting this comment: after `end`, the run is in the sink **or** still on disk,
+    /// and never in neither.
     @discardableResult
     public func end() async throws -> RunSummary? {
         guard phase == .running || phase == .paused else { return nil }
@@ -203,8 +288,45 @@ public final class RunSessionModel {
         presentation = nil
         phase = .ended
 
+        // The HealthKit session is ended before the hand-off so its workout UUID can be
+        // carried in the envelope — that is the link the phone uses to find the saved
+        // workout, and it does not exist until the builder finishes.
         _ = try await session.end(now: lastTimestamp)
+
+        deliver(healthKitWorkoutUUID: session.savedWorkoutID)
         return summary
+    }
+
+    /// Builds the envelope and hands it over, releasing the samples only if that succeeded.
+    ///
+    /// Deliberately non-throwing: a failed hand-off must not stop the run ending, because a
+    /// runner standing in the cold cannot do anything about it and the data is already safe
+    /// on disk. The failure surfaces as retained samples, which the next launch offers as a
+    /// recoverable run.
+    private func deliver(healthKitWorkoutUUID: UUID?) {
+        guard let sink, !outputs.isEmpty else { return }
+
+        let envelope = RunEnvelopeBuilder.build(
+            runID: runID,
+            outputs: outputs,
+            startedAt: startedAt,
+            runType: plan.runType,
+            plan: plan,
+            profile: profile,
+            configuration: configuration,
+            route: route,
+            healthKitWorkoutUUID: healthKitWorkoutUUID,
+            deviceTier: .modern,
+            appVersion: appVersion
+        )
+
+        do {
+            try sink.accept(envelope)
+        } catch {
+            // Durable hand-off failed. Keep the samples — see the ordering note above.
+            return
+        }
+        store.releaseRun(runID: runID)
     }
 
     // MARK: - Interaction

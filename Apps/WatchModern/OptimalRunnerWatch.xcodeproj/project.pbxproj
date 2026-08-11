@@ -33,10 +33,12 @@
 		E48F79C9967D59F8B83C76F3 /* ORAlerts in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1A9990B17CDAD5CA32D350 /* ORAlerts */; };
 		F21D3090EEB0CBF2378B2E62 /* ORColor in Frameworks */ = {isa = PBXBuildFile; productRef = F661844D21F8A428860470F0 /* ORColor */; };
 		F54FA8410BDC8F6665FD256C /* OptimalRunnerWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C21A00BD6CC9191ACFA21943 /* OptimalRunnerWatchApp.swift */; };
+		F61DD91766832099D6A9C499 /* WatchConnectivityTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08A74B1DD9B3EE3282ADFF55 /* WatchConnectivityTransport.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		01550337263EC4BC6B20E2E0 /* RunPagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunPagerView.swift; sourceTree = "<group>"; };
+		08A74B1DD9B3EE3282ADFF55 /* WatchConnectivityTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityTransport.swift; sourceTree = "<group>"; };
 		21334C770F0DC25D5E029350 /* WatchHapticPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHapticPlayer.swift; sourceTree = "<group>"; };
 		283A2B8DDAC212B854FE24D9 /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = ../../Core; sourceTree = SOURCE_ROOT; };
 		2B6B421D351E5B0494F7DFC9 /* MetricsLayoutBudgetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricsLayoutBudgetTests.swift; sourceTree = "<group>"; };
@@ -212,6 +214,14 @@
 			path = Controls;
 			sourceTree = "<group>";
 		};
+		A62FB0DD08D5683FADC3FFFE /* Transport */ = {
+			isa = PBXGroup;
+			children = (
+				08A74B1DD9B3EE3282ADFF55 /* WatchConnectivityTransport.swift */,
+			);
+			path = Transport;
+			sourceTree = "<group>";
+		};
 		BC89F3526880A6C758DC4451 /* Workout */ = {
 			isa = PBXGroup;
 			children = (
@@ -237,6 +247,7 @@
 				2CB5EDC86523877D06B857BF /* Intervals */,
 				05C0860A25E0A004610B0E69 /* Run */,
 				4EA947F3B8A8CD2F922583A0 /* Sensors */,
+				A62FB0DD08D5683FADC3FFFE /* Transport */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -379,6 +390,7 @@
 				992C9E9981482FDD4204E6F7 /* SettingsView.swift in Sources */,
 				9E700D787AEE0D74B61C5BEB /* StartView.swift in Sources */,
 				76CA24DAF9D934E6EEE72C0D /* WarningView.swift in Sources */,
+				F61DD91766832099D6A9C499 /* WatchConnectivityTransport.swift in Sources */,
 				66618DA2B7B43F7E8E9763A6 /* WatchHapticPlayer.swift in Sources */,
 				DB4E20FD00B7EAABEE406E87 /* ZoneStyle.swift in Sources */,
 			);

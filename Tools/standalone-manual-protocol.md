@@ -243,7 +243,7 @@ Measured, recorded, **and not asserted anywhere in CI**. A simulator figure woul
 measurement of the development machine.
 
 ### 6.1 Battery over an hour — NFR-S-4
-
+  
 1. Charge to 100%. Note the exact percentage.
 2. Airplane mode **off**, Wi-Fi off, Bluetooth on if using headphones.
 3. Run a 60-minute standalone run, screen locked except to check.
@@ -270,7 +270,7 @@ is expected and is not what the requirement bounds.
 ## Results template
 
 Copy this per run and keep it with the release notes.
-
+ 
 ```
 Date:                    ____________________
 Device / iOS:            ____________________

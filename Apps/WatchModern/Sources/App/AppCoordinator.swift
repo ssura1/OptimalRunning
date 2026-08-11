@@ -24,6 +24,12 @@ final class AppCoordinator {
     let configuration: PaceEngineConfiguration
     private let store: SampleStore
 
+    /// The sync half (T-106). Owned here rather than per-run because a pending payload
+    /// outlives the run that produced it — that is the entire point of the queue.
+    let sync: SyncCoordinator
+    let downlink: DownlinkApplier
+    private let transport: WatchConnectivityTransport
+
     init(
         configuration: PaceEngineConfiguration = .default,
         backing: KeyValueStoring = UserDefaultsKeyValueStore(),
@@ -38,10 +44,31 @@ final class AppCoordinator {
         let directory = directory ?? Self.defaultDirectory()
         self.store = SampleStore(directory: directory)
 
+        // The outbox is a sibling of the sample directory, not inside it — `SampleStore`
+        // scans its own directory for orphans by extension, and a queue file living there
+        // would be one more thing that scan has to know not to pick up.
+        let queue = PendingPayloadQueue(
+            directory: directory.deletingLastPathComponent()
+                .appendingPathComponent("Outbox", isDirectory: true)
+        )
+        let downlink = DownlinkApplier(settings: settings)
+        self.downlink = downlink
+        let transport = WatchConnectivityTransport()
+        let sync = SyncCoordinator(queue: queue, transport: transport)
+        self.sync = sync
+        self.transport = transport
+
         // Checked once, at launch, before any run can start — FR-D-6. Deferring it until
         // the runner tries to start would mean discovering the orphan at the worst
         // possible moment, standing at the trailhead.
         self.orphan = store.detectOrphan()
+
+        // Both directions of the cycle closed after `self` is fully initialised, then the
+        // session is brought up. `activate` is what eventually calls `sync.resume()`, so a
+        // run queued before the last launch is handed over without the runner doing
+        // anything (T-106).
+        transport.connect(sync: sync, downlink: downlink)
+        transport.activate()
     }
 
     // MARK: - Run lifecycle
@@ -57,7 +84,10 @@ final class AppCoordinator {
             feed: LiveSensorFeed(configuration: configuration),
             store: store,
             session: WorkoutSessionController(backend: HealthKitWorkoutBackend()),
-            haptics: WatchHapticPlayer()
+            haptics: WatchHapticPlayer(),
+            // The finished run's destination. Without this the run is built and then
+            // dropped, which is precisely what shipped (T-106).
+            sink: sync
         )
 
         do {
