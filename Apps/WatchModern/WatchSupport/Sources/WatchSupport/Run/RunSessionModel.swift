@@ -292,6 +292,10 @@ public final class RunSessionModel {
         // carried in the envelope — that is the link the phone uses to find the saved
         // workout, and it does not exist until the builder finishes.
         _ = try await session.end(now: lastTimestamp)
+        // The map in Health (T-107). After the save, because a route attaches to a workout
+        // that already exists; before the hand-off, because the envelope carries the
+        // workout's UUID and the two should describe the same finished thing.
+        await session.saveRoute(route)
 
         deliver(healthKitWorkoutUUID: session.savedWorkoutID)
         return summary

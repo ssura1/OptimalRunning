@@ -75,16 +75,16 @@
 		1DCF3A6EBA9B913D8BFEF75A /* StandaloneWorkoutWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandaloneWorkoutWriter.swift; sourceTree = "<group>"; };
 		2140FC2B943CF4B4DBB2DCAF /* MotionPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionPipeline.swift; sourceTree = "<group>"; };
 		2224233D8D41E01059849C28 /* ZoneColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneColor.swift; sourceTree = "<group>"; };
-		2A44D1EFBAC3B8518411A0CC /* PhoneSupport */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PhoneSupport; path = PhoneSupport; sourceTree = SOURCE_ROOT; };
+		2A44D1EFBAC3B8518411A0CC /* PhoneSupport */ = {isa = PBXFileReference; lastKnownFileType = folder; path = PhoneSupport; sourceTree = SOURCE_ROOT; };
 		35495EE4076F1704B5B5E9C5 /* StandaloneRunCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandaloneRunCoordinator.swift; sourceTree = "<group>"; };
 		38ADB2357B15E5BE92349B5A /* RunDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunDetailView.swift; sourceTree = "<group>"; };
 		3A64E058ACC3A8003C8CEAED /* CaptureSinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSinkTests.swift; sourceTree = "<group>"; };
 		3ED15358730A527C5F8F6E2F /* RunListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunListView.swift; sourceTree = "<group>"; };
 		44B6B41CC9A9F044E9680CBD /* StatisticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsView.swift; sourceTree = "<group>"; };
 		4D4AA223782D29EC429C8D08 /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = ../../Core; sourceTree = SOURCE_ROOT; };
-		643236B874A638CB0C7D9D30 /* PhoneMotion */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PhoneMotion; path = PhoneMotion; sourceTree = SOURCE_ROOT; };
+		643236B874A638CB0C7D9D30 /* PhoneMotion */ = {isa = PBXFileReference; lastKnownFileType = folder; path = PhoneMotion; sourceTree = SOURCE_ROOT; };
 		644635E4437095ED60A74610 /* MotionCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionCaptureView.swift; sourceTree = "<group>"; };
-		672E85C0A5BAC2D9146ECAFB /* OptimalRunner.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OptimalRunner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		672E85C0A5BAC2D9146ECAFB /* OptimalRunner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OptimalRunner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6A2F997968042C65D71A3B49 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		6D0B04CF3E7CC6C89AB5E66A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7180B915D38D29D88A968615 /* LocationJitterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationJitterTests.swift; sourceTree = "<group>"; };
@@ -98,7 +98,7 @@
 		A9CD25009BC8FCBF4D3D06A7 /* MotionAvailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionAvailabilityTests.swift; sourceTree = "<group>"; };
 		B1FB4B85DA52F6B7B91A605B /* StandalonePermissionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandalonePermissionsTests.swift; sourceTree = "<group>"; };
 		B8677FB795DB56B582549801 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		B8AFEBBBEE138C84591B7C54 /* OptimalRunnerTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = OptimalRunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B8AFEBBBEE138C84591B7C54 /* OptimalRunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OptimalRunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BA66E846DF8A43DDF59387B0 /* SpeechCuePlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechCuePlayer.swift; sourceTree = "<group>"; };
 		C170F297F51128DDECF1E267 /* AppShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShell.swift; sourceTree = "<group>"; };
 		DF3ABCFC9B8560A04F971ED8 /* CaptureWriterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureWriterTests.swift; sourceTree = "<group>"; };
@@ -444,7 +444,6 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					9AFD860C7C762073EC35341A = {
-						DevelopmentTeam = "${DEVELOPMENT_TEAM}";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -661,7 +660,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "${DEVELOPMENT_TEAM}";
+				DEVELOPMENT_TEAM = L784RZ9M82;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Sources/App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -685,7 +684,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "${DEVELOPMENT_TEAM}";
+				DEVELOPMENT_TEAM = L784RZ9M82;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Sources/App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -706,6 +705,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = L784RZ9M82;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -725,6 +725,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = L784RZ9M82;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (

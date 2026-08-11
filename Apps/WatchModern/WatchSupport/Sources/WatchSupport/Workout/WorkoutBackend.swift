@@ -1,4 +1,5 @@
 import Foundation
+import ORModels
 
 /// What kind of location the workout is happening in — mirrors
 /// `HKWorkoutSessionLocationType` without depending on HealthKit.
@@ -34,6 +35,21 @@ public protocol WorkoutBackend: Sendable {
     /// identifier, or `nil` when authorization was denied (AC-FR-D-1-7) — there is
     /// nothing to save to Health in that case, and that is not a failure.
     func endAndSave() async throws -> UUID?
+
+    /// Attaches the run's path to the saved workout (T-107).
+    ///
+    /// Called after `endAndSave`, because a route can only be finished against a workout
+    /// that exists. A default implementation does nothing, so a backend with no notion of
+    /// location — or a test fake — is not forced to care.
+    ///
+    /// Both watch tiers requested `HKSeriesType.workoutRoute()` write permission from the
+    /// day they were written and then never wrote one, so every run this app has ever saved
+    /// to Health has been mapless while holding permission to do better.
+    func saveRoute(_ route: [RoutePoint]) async throws
+}
+
+public extension WorkoutBackend {
+    func saveRoute(_ route: [RoutePoint]) async throws {}
 }
 
 public enum WorkoutBackendError: Error, Equatable, Sendable {

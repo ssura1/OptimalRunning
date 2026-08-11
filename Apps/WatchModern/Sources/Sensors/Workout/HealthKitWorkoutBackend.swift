@@ -1,5 +1,7 @@
+import CoreLocation
 import Foundation
 import HealthKit
+import ORModels
 import WatchSupport
 
 /// The real `WorkoutBackend`: `HKWorkoutSession` + `HKLiveWorkoutBuilder` (T-033).
@@ -21,6 +23,10 @@ final class HealthKitWorkoutBackend: WorkoutBackend {
     /// actors hopping per call for no added safety.
     private nonisolated(unsafe) var session: HKWorkoutSession?
     private nonisolated(unsafe) var builder: HKLiveWorkoutBuilder?
+    /// The saved workout, retained only long enough to attach a route to it (T-107).
+    /// `finishWorkout()` is the one moment it exists, and a route cannot be finished
+    /// against a workout that has not been saved.
+    private nonisolated(unsafe) var savedWorkout: HKWorkout?
 
     private static let typesToShare: Set<HKSampleType> = [
         HKQuantityType.workoutType(),
@@ -108,6 +114,36 @@ final class HealthKitWorkoutBackend: WorkoutBackend {
         let end = Date()
         session.end()
         try await builder.endCollection(at: end)
-        return try await builder.finishWorkout()?.uuid
+        let workout = try await builder.finishWorkout()
+        savedWorkout = workout
+        return workout?.uuid
+    }
+
+    /// Attaches the run's path to the saved workout (T-107).
+    ///
+    /// This tier requested `HKSeriesType.workoutRoute()` write permission from the day it
+    /// was written and never wrote a route, so every run it has saved to Health has been
+    /// mapless while holding permission to do better. Ported from `StandaloneWorkoutWriter`,
+    /// which had this right on the phone all along.
+    func saveRoute(_ route: [RoutePoint]) async throws {
+        guard let workout = savedWorkout, !route.isEmpty else { return }
+        defer { savedWorkout = nil }
+
+        let builder = HKWorkoutRouteBuilder(healthStore: store, device: .local())
+        let locations = route.map { point in
+            CLLocation(
+                coordinate: CLLocationCoordinate2D(
+                    latitude: point.latitude, longitude: point.longitude),
+                altitude: point.altitudeMetres,
+                // `RoutePoint` does not carry accuracy — the engine discarded it once the
+                // fix was accepted — so a nominal value is declared rather than a
+                // fabricated precise one. HealthKit rejects route points with negative
+                // accuracies outright, so it cannot simply be omitted.
+                horizontalAccuracy: 5,
+                verticalAccuracy: 5,
+                timestamp: Date(timeIntervalSince1970: point.timestamp))
+        }
+        try await builder.insertRouteData(locations)
+        _ = try await builder.finishRoute(with: workout, metadata: nil)
     }
 }

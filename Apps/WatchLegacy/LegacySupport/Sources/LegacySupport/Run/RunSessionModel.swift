@@ -61,6 +61,10 @@ public final class RunSessionModel: ObservableObject {
     private var runID: UUID?
     private var samples: [RunSample] = []
     private var zones: [PaceZone] = []
+    /// The run's path, for the Health workout's map ([legacy] T-107). `RunSample` carries
+    /// distance but no coordinates, so without this the route is unrecoverable after the
+    /// fact — which is why this tier has never written one.
+    private var route: [RoutePoint] = []
     private var lastOutput: EngineOutput?
 
     /// Whether the display is on. Series 3 has no dimmed state — the screen is on or off — so this
@@ -146,6 +150,15 @@ public final class RunSessionModel: ObservableObject {
         self.engine = engine
         lastOutput = output
 
+        if let location = input.location {
+            route.append(RoutePoint(
+                timestamp: input.timestamp,
+                latitude: location.latitude,
+                longitude: location.longitude,
+                altitudeMetres: location.altitudeMetres
+            ))
+        }
+
         session.tick(now: input.timestamp)
         record(output, plan: plan, profile: profile)
     }
@@ -201,6 +214,9 @@ public final class RunSessionModel: ObservableObject {
     public func end(now: TimeInterval) async throws -> (summary: RunSummary, steps: [StepSummary]) {
         accumulator.finish(with: lastOutput)
         try await session.end(now: now)
+        // After the save, because a route attaches to a workout that already exists
+        // ([legacy] T-107).
+        await session.saveRoute(route)
         store.finalizeRun()
         phase = .finished
 

@@ -2150,6 +2150,45 @@ route, heart rate and splits, and that needs two devices —
 reproduce reachability transitions between paired devices, which is why `FileTransporting` is
 injectable in the first place.
 
+<a id="t-107"></a>
+### T-107 — Write the workout route, which both watch tiers had permission for and never used
+
+| | |
+|---|---|
+| **Wave** | 9 |
+| **Satisfies** | AC-FR-D-1-5, AC-FR-F-2-7 |
+| **Touches** | both tiers' `WorkoutBackend`, `WorkoutSessionController`, `RunSessionModel` and `HealthKitWorkoutBackend` |
+
+Both watch tiers listed `HKSeriesType.workoutRoute()` in the types they request permission to
+*write*, from the day each was built, and neither ever constructed an
+`HKWorkoutRouteBuilder`. Every run this app has saved to Health has been mapless while
+holding permission to do better. `Apps/iPhone` had it right all along in
+`StandaloneWorkoutWriter`, so this is a port rather than a design.
+
+Two separate consumers of the same path, worth not confusing:
+
+| Where the map appears | Comes from |
+|---|---|
+| The **iPhone app's** run detail | `RunEnvelope.route`, wired in [T-106](#t-106) |
+| **Apple Health's** workout | `HKWorkoutRouteBuilder`, this task |
+
+Neither existed. Fixing one would have left the other empty.
+
+The route is accumulated in `RunSessionModel` from each tick's fix, because `RunSample`
+carries distance but no coordinates — after the run there is nothing left to reconstruct a
+path from. It is attached after `endAndSave`, since a route finishes against a workout that
+already exists, and `saveRoute` is deliberately non-throwing to its caller: the workout is
+already in Health with distance, pace and heart rate, so a failed map is a degradation rather
+than a lost run.
+
+**Legacy.** `HKWorkoutRouteBuilder` is watchOS 4+, so nothing is conditioned and
+`check-no-availability.sh` still passes (CON-3). Permitted under ADR-015 as completing
+behaviour the tier already committed to by requesting the permission — a contained port, not
+new feature work. It compiles and its 39 tests pass; it is **not verified on hardware**,
+because that needs a Series 3 and there is none, and Xcode 26 ships no watchOS 8 simulator.
+
+Verification for Modern is §C of [`Tools/watch-sync-protocol.md`](../Tools/watch-sync-protocol.md).
+
 ### Considered and declined
 
 Recorded because a decline that is not written down gets re-litigated every six months.

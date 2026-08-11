@@ -1,4 +1,5 @@
 import Foundation
+import ORModels
 import ORPace
 
 /// Lifecycle state of a workout session.
@@ -142,5 +143,15 @@ public final class WorkoutSessionController {
             phase = .failed
             throw error
         }
+    }
+
+    /// Attaches the run's path to the workout just saved ([legacy] T-107).
+    ///
+    /// Non-throwing on purpose: a route that fails to attach must not fail the run. The
+    /// workout is already in Health with its distance, pace and heart rate — losing the map
+    /// is a degradation, not a lost run.
+    public func saveRoute(_ route: [RoutePoint]) async {
+        guard !route.isEmpty, savedWorkoutID != nil else { return }
+        try? await backend.saveRoute(route)
     }
 }

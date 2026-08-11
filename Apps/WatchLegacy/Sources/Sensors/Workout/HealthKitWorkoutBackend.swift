@@ -1,6 +1,8 @@
+import CoreLocation
 import Foundation
 import HealthKit
 import LegacySupport
+import ORModels
 
 /// The real `WorkoutBackend`, over watchOS 8's HealthKit — Legacy tier (T-063, T-065).
 ///
@@ -27,6 +29,9 @@ final class HealthKitWorkoutBackend: WorkoutBackend, @unchecked Sendable {
     /// Wall-clock start, so run-relative segment times can be converted to the `Date` pair
     /// `HKWorkoutEvent` requires.
     private var startDate: Date?
+
+    /// The saved workout, retained only long enough to attach a route ([legacy] T-107).
+    private var savedWorkout: HKWorkout?
 
     private let activity: HKWorkoutActivityType = .running
 
@@ -113,11 +118,40 @@ final class HealthKitWorkoutBackend: WorkoutBackend, @unchecked Sendable {
         session.end()
         try await builder.endCollection(at: end)
         let workout = try await builder.finishWorkout()
+        savedWorkout = workout
 
         self.session = nil
         self.builder = nil
         self.startDate = nil
 
         return workout?.uuid
+    }
+
+    /// Attaches the run's path to the saved workout ([legacy] T-107).
+    ///
+    /// `HKWorkoutRouteBuilder` is watchOS 4+, so there is nothing to condition on at this
+    /// tier's watchOS 8 floor and no `#available` is introduced (CON-3). A direct port of
+    /// the Modern tier's implementation, which is itself a port of the phone's — this is
+    /// completing behaviour the tier already committed to by requesting the permission, not
+    /// new feature work (ADR-015).
+    func saveRoute(_ route: [RoutePoint]) async throws {
+        guard let workout = savedWorkout, !route.isEmpty else { return }
+        defer { savedWorkout = nil }
+
+        let builder = HKWorkoutRouteBuilder(healthStore: store, device: .local())
+        let locations = route.map { point in
+            CLLocation(
+                coordinate: CLLocationCoordinate2D(
+                    latitude: point.latitude, longitude: point.longitude),
+                altitude: point.altitudeMetres,
+                // `RoutePoint` carries no accuracy, and HealthKit rejects route points with
+                // negative accuracies — so a nominal value is declared rather than a
+                // fabricated precise one.
+                horizontalAccuracy: 5,
+                verticalAccuracy: 5,
+                timestamp: Date(timeIntervalSince1970: point.timestamp))
+        }
+        try await builder.insertRouteData(locations)
+        _ = try await builder.finishRoute(with: workout, metadata: nil)
     }
 }
