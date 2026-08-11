@@ -2044,6 +2044,57 @@ the abbreviation. They are not part of the alternation and gain nothing from bei
 VoiceOver still hears `WORK · REP 3/4 · 340 m to go`: "W, REP 3 of 4" is a worse thing to hear
 than it is to see, so `stepHeaderText` is unchanged and only the drawing splits.
 
+<a id="t-105"></a>
+### T-105 — A haptic at every boundary, and a second way to reach the ones you trigger
+
+| | |
+|---|---|
+| **Wave** | 9 |
+| **Satisfies** | FR-B-1, AC-FR-C-3-1, AC-FR-C-3-3, AC-FR-C-3-4 |
+| **Touches** | `RunnerProfile`, `SettingsStoreTests`, `Tests/TransitionHapticTests.swift`, and amends AC-FR-C-3-3 |
+
+Reported from the first real interval session: transitions were not reliably felt, and Double
+Tap needed **five attempts** to register.
+
+**The two are separate problems and only one of them was a bug.**
+
+**Manual advance.** Double Tap is a system gesture with no API to make it more reliable, so
+the answer is not to fix it but to stop depending on it. Tap already worked. The crown detent
+was already implemented, already correct, and *switched off* — AC-FR-C-3-3 made it opt-in and
+`RunnerProfile` defaulted it to `false`. A runner mid-rep therefore had exactly one working
+way to end an open-goal step plus a second that was advertised and unreliable. The default is
+now on. It advances only open-goal steps, exactly as a tap does, and a mistaken advance is
+undoable for 5 s. Double Tap stays, unchanged and unrelied-upon.
+
+**Transition haptics.** Tracing the path found no defect: `StepMachine` emits a
+`StepTransition` on both the automatic and manual paths, `RunEngine` turns any non-terminal
+transition into `.stepTransition`, and `RunTypeSemantics.permitsTransitionHaptics` is
+unconditionally true. What was missing was a test that would notice if that stopped being
+true, so that is what was added.
+
+**Which boundary uses which path is fixed by the plan, not by preference** — worth stating
+because it looks like a gap and is not:
+
+| Boundary | Goal | Ends by |
+|---|---|---|
+| warm-up → work | **open** | manual only — it never ends on its own |
+| work ↔ recovery, both directions | **distance** | automatic only — AC-FR-C-3-4 requires a tap on a closed step to be *ignored*, so a stray glove-tap cannot truncate a 400 m rep |
+
+So "manual work→recovery" is not a gap to fill; it is the rule that protects the rep.
+`TransitionHapticTests` asserts the property over *every* transition a session produces rather
+than a sampled one — a regression silencing only recovery→work, or only the manual path,
+cannot hide behind the boundaries that still work. Verified red by making
+`permitsTransitionHaptics` false: 3 of the 4 tests fail, and the fourth correctly does not,
+because it asserts a refused tap fires *no* haptic.
+
+**Not settled here.** Whether a haptic is *felt* is not a property code can assert — that, and
+whether capturing the crown for advance interferes with paging, need the wrist. Both are on
+[`Tools/watch-transitions-protocol.md`](../Tools/watch-transitions-protocol.md).
+
+**Left alone deliberately:** the Interval preset ships no `workTarget`, so FR-C-5's judging
+does not apply during reps. That is a real open decision recorded against T-101's neighbours,
+and it is not resolved as a side effect of touching this code.
+
 ### Considered and declined
 
 Recorded because a decline that is not written down gets re-litigated every six months.

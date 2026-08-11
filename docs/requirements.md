@@ -381,7 +381,7 @@ The expected pace is a function of progress, not a constant. It is defined by a 
 |---|---|
 | AC-FR-C-3-1 | WHEN the current step has an open goal, THE SYSTEM SHALL advance on a tap anywhere on the metrics page. |
 | AC-FR-C-3-2 | *(Modern, Series 9+)* THE SYSTEM SHALL also advance on the Double Tap gesture. |
-| AC-FR-C-3-3 | THE SYSTEM SHALL also advance via a crown-rotation detent when enabled in settings. |
+| AC-FR-C-3-3 | THE SYSTEM SHALL also advance via a crown-rotation detent, **on by default**, and disableable in settings. **Amended by [T-105](./implementation.md#t-105)** — was opt-in and defaulted off. On the first real interval session Double Tap needed five attempts to register, leaving one working way to end an open-goal step. The crown path was already implemented and correct; it was simply switched off, and a setting a runner does not know to look for is not a fallback. |
 | AC-FR-C-3-4 | WHEN the current step has a closed goal, THE SYSTEM SHALL NOT advance on tap — a tap SHALL be ignored — so a mis-tap cannot truncate a 1000 m rep. |
 | AC-FR-C-3-5 | THE SYSTEM SHALL make the advance affordance visible on the metrics page whenever the step is manually advanceable. |
 

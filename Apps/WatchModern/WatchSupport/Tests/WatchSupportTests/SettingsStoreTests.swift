@@ -17,7 +17,10 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.profile.units, .miles)
         XCTAssertEqual(store.profile.palette, .standard)
         XCTAssertTrue(store.profile.paceHapticsEnabled)
-        XCTAssertFalse(store.profile.crownAdvanceEnabled)
+        // On by default as of T-105, having shipped off. A runner mid-rep needs more than
+        // one working way to end an open-goal step, and Double Tap proved unreliable on
+        // hardware — see `RunnerProfile.crownAdvanceEnabled`.
+        XCTAssertTrue(store.profile.crownAdvanceEnabled)
     }
 
     // MARK: - Immediate effect, then persistence

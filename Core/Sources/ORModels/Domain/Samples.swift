@@ -175,7 +175,15 @@ public struct RunnerProfile: Codable, Sendable, Hashable {
     public var palette: PaletteChoice
     /// Pace haptics can be disabled without disabling interval haptics (AC-FR-B-1-7).
     public var paceHapticsEnabled: Bool
-    /// Opt-in crown-rotation detent for manual advance (AC-FR-C-3-3).
+    /// Crown-rotation detent for manual advance (AC-FR-C-3-3).
+    ///
+    /// **Defaults on as of T-105**, having shipped opt-in. On the first real interval
+    /// session Double Tap needed five attempts to register, which left a runner mid-rep
+    /// with one working way to end an open-goal step — a tap — and a second that was
+    /// advertised but unreliable. The crown was already implemented and already correct;
+    /// it was simply switched off, and a setting nobody knows to look for is not a
+    /// fallback. It advances only open-goal steps, exactly as a tap does, and a mistaken
+    /// advance is undoable for 5 s (FR-C-6).
     public var crownAdvanceEnabled: Bool
 
     // MARK: Standalone tier (FR-S-G-1)
@@ -230,7 +238,7 @@ public struct RunnerProfile: Codable, Sendable, Hashable {
         units: UnitPreference = .miles,
         palette: PaletteChoice = .standard,
         paceHapticsEnabled: Bool = true,
-        crownAdvanceEnabled: Bool = false,
+        crownAdvanceEnabled: Bool = true,
         heightMetres: Double? = nil,
         spokenCuesEnabled: Bool = true,
         splitAnnouncementsEnabled: Bool = true,
